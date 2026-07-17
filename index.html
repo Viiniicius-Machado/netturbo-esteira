@@ -357,6 +357,7 @@ function renderEsteira(){
         <select class="mini" id="sel-tecnico-${a.rowIndex}"><option value="">Técnico...</option></select>
       </div>
       <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.4rem" onclick="despachar(${a.rowIndex})">🚚 Despachar</button>
+      <button class="btn" style="width:100%;margin-top:.3rem;padding:.35rem;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;font-size:.68rem" onclick="excluirAtividade(${a.rowIndex})">🗑 Excluir (foi engano)</button>
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando despacho.</div>';
 
   const statusLabelMap = { 'DESPACHADA':'Aguardando início', 'INICIADA':'Em deslocamento', 'EM_CAMPO':'Em campo', 'NAO_VALIDADA':'Devolvido p/ técnico' };
@@ -366,6 +367,7 @@ function renderEsteira(){
       <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
       <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br>${statusLabelMap[a['Status']]||a['Status']}</div>
+      <button class="btn" style="width:100%;margin-top:.5rem;padding:.35rem;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-size:.68rem" onclick="desfazerDespacho(${a.rowIndex})">↩ Desfazer Despacho</button>
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade em andamento.</div>';
 
   const colV = document.getElementById('colValidacao');
@@ -409,6 +411,40 @@ window.validar = async function(rowIndex, aprovado){
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao validar.')); carregarEsteira(); return; }
     showToast(aprovado ? '✅ Atividade validada e concluída!' : '↩ Devolvido para o técnico com o motivo.');
+    carregarEsteira();
+  }catch(err){
+    console.error(err);
+    showToast('❌ Erro ao conectar com o backend.');
+  }
+};
+
+window.excluirAtividade = async function(rowIndex){
+  if(!confirm('Excluir esta atividade da esteira? Essa ação não pode ser desfeita.')) return;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'EXCLUIR_ATIVIDADE', rowIndex })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao excluir.')); carregarEsteira(); return; }
+    showToast('🗑 Atividade excluída.');
+    carregarEsteira();
+  }catch(err){
+    console.error(err);
+    showToast('❌ Erro ao conectar com o backend.');
+  }
+};
+
+window.desfazerDespacho = async function(rowIndex){
+  if(!confirm('Desfazer o despacho? A atividade volta para "Aguardando Despacho" e some da tela do técnico — o que ele já preencheu (ocorrência, horários) será apagado.')) return;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'DESFAZER_DESPACHO', rowIndex })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao desfazer.')); carregarEsteira(); return; }
+    showToast('↩ Despacho desfeito — voltou pra fila.');
     carregarEsteira();
   }catch(err){
     console.error(err);
