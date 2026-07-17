@@ -54,6 +54,21 @@
     .btn-iniciar{background:linear-gradient(135deg,#8a6010,#d4a843);color:#050505}
     .btn-chegada{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
     .btn-concluido{background:var(--surface3);color:var(--text-dim);cursor:default}
+    .btn-validar{background:linear-gradient(135deg,#2f6fa8,#5aa9e6);color:#050505}
+
+    .aviso-naovalidado{margin-top:.7rem;font-size:.78rem;font-weight:600;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:8px;padding:.6rem .8rem}
+
+    .form-ocorrencia{margin-top:.9rem;display:flex;flex-direction:column;gap:.7rem}
+    .form-ocorrencia label{font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)}
+    .form-ocorrencia textarea, .form-ocorrencia input{width:100%;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem;font-family:inherit}
+    .form-ocorrencia textarea{min-height:70px;resize:vertical}
+    .chip-group{display:flex;flex-wrap:wrap;gap:.4rem}
+    .chip{padding:.4rem .75rem;border-radius:20px;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);font-size:.72rem;font-weight:600;cursor:pointer}
+    .chip.active{background:rgba(90,169,230,.15);border-color:var(--accent);color:var(--accent)}
+    .causa-grid{display:grid;grid-template-columns:1fr 1fr;gap:.35rem}
+    @media(max-width:420px){.causa-grid{grid-template-columns:1fr}}
+    .causa-item{padding:.5rem .7rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);font-size:.75rem;cursor:pointer;color:var(--text-dim)}
+    .causa-item.active{background:rgba(90,169,230,.15);border-color:var(--accent);color:var(--accent)}
 
     .empty-msg{color:var(--text-muted);font-size:.85rem;text-align:center;padding:2rem 1rem}
     #toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap}
@@ -250,7 +265,16 @@ async function carregarAtividades(){
   }
 }
 
+const CONFIG_CAUSAS = {
+  'ROMPIMENTO':['Rompimento Troca de Poste','Rompimento Carga Alta','Rompimento Vandalismo','Rompimento Acidente em Via','Rompimento Queimadas','Rompimento Parcial','Rompimento Descarga Elétrica','Rompimento Poda Árvore','Rompimento Subterrâneo','Degradação Rede Externa','Degradação Rede Externa (Atenuação)','Visita Cliente (Rompimento Interno)','Improdutiva Chamado Improcedente','Improdutiva Cliente','Improdutiva Clima / Fator Externo','Improdutiva Comercial','Improdutiva Delivery','Improdutiva Documentação (APR/NR)','Improdutiva Documentação (ART/DWG)','Improdutiva Infraestrutura (Rede)','Improdutiva Last Mile','Improdutiva Logística','Improdutiva NOC','Improdutiva OEM','Improdutiva Terceiro (DER/Cia Elétrica)','Improdutiva Validação','🐛 Insetos'],
+  'MASSIVA':['Rompimento Troca de Poste','Rompimento Carga Alta','Rompimento Vandalismo','Rompimento Acidente em Via','Rompimento Queimadas','Rompimento Parcial','Rompimento Descarga Elétrica','Rompimento Poda Árvore','Rompimento Subterrâneo','Degradação Rede Externa','Degradação Rede Externa (Atenuação)','Visita Cliente (Rompimento Interno)','Improdutiva Chamado Improcedente','Improdutiva Cliente','Improdutiva Clima / Fator Externo','Improdutiva Comercial','Improdutiva Delivery','Improdutiva Documentação (APR/NR)','Improdutiva Documentação (ART/DWG)','Improdutiva Infraestrutura (Rede)','Improdutiva Last Mile','Improdutiva Logística','Improdutiva NOC','Improdutiva OEM','Improdutiva Terceiro (DER/Cia Elétrica)','Improdutiva Validação','🐛 Insetos'],
+  'ACOMPANHAMENTO CPFL':[], 'PREVENTIVA':[], 'AGENDAMENTO':['SEM ACESSO','GTD','TRANSMISSÃO']
+};
+
+let ATIVIDADES_CACHE = [];
+
 function renderAtividades(atividades){
+  ATIVIDADES_CACHE = atividades;
   const el = document.getElementById('listaAtividades');
   if(!atividades.length){
     el.innerHTML = '<div class="empty-msg">Nenhuma atividade despachada pra você no momento.</div>';
@@ -259,17 +283,25 @@ function renderAtividades(atividades){
 
   el.innerHTML = atividades.map(a=>{
     const status = a['Status'];
-    let statusLabel = '', statusClass = '', botao = '';
+    let statusLabel = '', statusClass = '', corpo = '';
 
     if(status === 'DESPACHADA'){
       statusLabel = 'Aguardando início'; statusClass = 'st-despachada';
-      botao = `<button class="btn-acao btn-iniciar" onclick="marcarAcao(${a.rowIndex})">▶ Iniciar Atividade</button>`;
+      corpo = `<button class="btn-acao btn-iniciar" onclick="marcarAcao(${a.rowIndex})">▶ Iniciar Atividade</button>`;
     } else if(status === 'INICIADA'){
       statusLabel = 'Em deslocamento (início: '+ (a['Hora Início']||'—') +')'; statusClass = 'st-iniciada';
-      botao = `<button class="btn-acao btn-chegada" onclick="marcarAcao(${a.rowIndex})">📍 Cheguei no Local</button>`;
-    } else if(status === 'EM_CAMPO'){
-      statusLabel = 'Em campo (chegada: ' + (a['Hora Chegada']||'—') + ')'; statusClass = 'st-em-campo';
-      botao = `<button class="btn-acao btn-concluido" disabled>Preenchimento da ocorrência em breve...</button>`;
+      corpo = `<button class="btn-acao btn-chegada" onclick="marcarAcao(${a.rowIndex})">📍 Cheguei no Local</button>`;
+    } else if(status === 'EM_CAMPO' || status === 'NAO_VALIDADA'){
+      statusLabel = status === 'NAO_VALIDADA' ? 'Devolvido — precisa de ajuste' : ('Em campo (chegada: ' + (a['Hora Chegada']||'—') + ')');
+      statusClass = status === 'NAO_VALIDADA' ? 'st-iniciada' : 'st-em-campo';
+      const avisoMotivo = status === 'NAO_VALIDADA' ? `<div class="aviso-naovalidado">⚠️ NOC não validou: ${a['Motivo Não Validado']||'sem motivo informado'}</div>` : '';
+      corpo = avisoMotivo + renderFormOcorrencia(a);
+    } else if(status === 'AGUARDANDO_VALIDACAO'){
+      statusLabel = 'Aguardando validação do NOC'; statusClass = 'st-iniciada';
+      corpo = `<button class="btn-acao btn-concluido" disabled>Aguardando a liderança validar com o NOC...</button>`;
+    } else if(status === 'VALIDADA'){
+      statusLabel = 'Concluída e validada ✅'; statusClass = 'st-em-campo';
+      corpo = '';
     } else {
       statusLabel = status; statusClass = 'st-despachada';
     }
@@ -279,10 +311,108 @@ function renderAtividades(atividades){
       <div class="atv-cliente">${a['Cliente']||'—'}</div>
       <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
       <span class="atv-status ${statusClass}">${statusLabel}</span>
-      ${botao}
+      ${corpo}
     </div>`;
   }).join('');
+
+  // Inicializa a lista de causas de cada formulário aberto (não dá pra rodar script via innerHTML)
+  atividades.forEach(a=>{
+    if(a['Status'] === 'EM_CAMPO' || a['Status'] === 'NAO_VALIDADA'){
+      renderCausasTecnico(a.rowIndex, a['Causa'] || '');
+    }
+  });
 }
+
+function renderFormOcorrencia(a){
+  const tipoAtual = a['Ocorrência'] || '';
+  const tipos = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO'];
+  return `
+    <div class="form-ocorrencia" id="form-${a.rowIndex}">
+      <div>
+        <label>Tipo de Ocorrência</label>
+        <div class="chip-group" id="chips-${a.rowIndex}">
+          ${tipos.map(t=>`<div class="chip${t===tipoAtual?' active':''}" data-tipo="${t}" onclick="selecionarTipo(${a.rowIndex},'${t}')">${t}</div>`).join('')}
+        </div>
+      </div>
+      <div>
+        <label>Causa Principal</label>
+        <div id="causas-${a.rowIndex}"></div>
+      </div>
+      <div>
+        <label>Materiais Utilizados</label>
+        <textarea id="materiais-${a.rowIndex}" placeholder="Ex: 1x mini fosc, 20m cabo drop...">${a['Materiais']||''}</textarea>
+      </div>
+      <div>
+        <label>Solução Realizada</label>
+        <textarea id="solucao-${a.rowIndex}" placeholder="O que foi feito para resolver...">${a['Solução']||''}</textarea>
+      </div>
+      <button class="btn-acao btn-validar" onclick="solicitarValidacao(${a.rowIndex})">✅ Solicitar Validação NOC</button>
+    </div>
+  `;
+}
+
+window.selecionarTipo = function(rowIndex, tipo){
+  document.querySelectorAll(`#chips-${rowIndex} .chip`).forEach(c=>c.classList.toggle('active', c.dataset.tipo===tipo));
+  renderCausasTecnico(rowIndex, '');
+};
+
+window.renderCausasTecnico = function(rowIndex, causaAtual){
+  const chipAtivo = document.querySelector(`#chips-${rowIndex} .chip.active`);
+  const tipo = chipAtivo ? chipAtivo.dataset.tipo : '';
+  const cont = document.getElementById('causas-'+rowIndex);
+  if(!cont) return;
+
+  if(tipo === 'ACOMPANHAMENTO CPFL'){
+    cont.innerHTML = `<input type="text" id="causaLivre-${rowIndex}" placeholder="Nº da Notificação CPFL..." value="${causaAtual}"/>`;
+    return;
+  }
+  if(tipo === 'PREVENTIVA'){
+    cont.innerHTML = `<input type="text" id="causaLivre-${rowIndex}" placeholder="Descreva a causa..." value="${causaAtual}"/>`;
+    return;
+  }
+  const lista = CONFIG_CAUSAS[tipo] || [];
+  if(!lista.length){
+    cont.innerHTML = '<div style="font-size:.72rem;color:var(--text-muted);font-style:italic">Selecione o tipo de ocorrência...</div>';
+    return;
+  }
+  cont.innerHTML = `<div class="causa-grid">${lista.map(c=>`<div class="causa-item${c===causaAtual?' active':''}" data-causa="${c}" onclick="selecionarCausa(${rowIndex},'${c.replace(/'/g,"\\'")}')">${c}</div>`).join('')}</div>`;
+};
+
+window.selecionarCausa = function(rowIndex, causa){
+  document.querySelectorAll(`#causas-${rowIndex} .causa-item`).forEach(c=>c.classList.toggle('active', c.dataset.causa===causa));
+};
+
+function pegarCausaAtual(rowIndex){
+  const livre = document.getElementById('causaLivre-'+rowIndex);
+  if(livre) return livre.value.trim();
+  const ativo = document.querySelector(`#causas-${rowIndex} .causa-item.active`);
+  return ativo ? ativo.dataset.causa : '';
+}
+
+window.solicitarValidacao = async function(rowIndex){
+  const chipAtivo = document.querySelector(`#chips-${rowIndex} .chip.active`);
+  const tipo = chipAtivo ? chipAtivo.dataset.tipo : '';
+  const causa = pegarCausaAtual(rowIndex);
+  const solucao = document.getElementById('solucao-'+rowIndex).value.trim();
+  const materiais = document.getElementById('materiais-'+rowIndex).value.trim();
+
+  if(!tipo){ showToast('⚠️ Selecione o tipo de ocorrência.'); return; }
+  if(!solucao){ showToast('⚠️ Preencha a solução realizada.'); return; }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao salvar.')); return; }
+    showToast('✅ Enviado para validação do NOC!');
+    carregarAtividades();
+  }catch(err){
+    console.error(err);
+    showToast('❌ Erro ao conectar com o servidor.');
+  }
+};
 
 window.marcarAcao = async function(rowIndex){
   try{
