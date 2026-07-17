@@ -145,6 +145,8 @@
       <div class="hdr-brand">Netturbo</div>
       <div class="hdr-sub">Minhas Atividades</div>
     </div>
+    <div style="flex:1"></div>
+    <button onclick="carregarAtividades()" style="background:var(--surface3);border:1px solid var(--border-hi);color:var(--text-dim);font-family:'Rajdhani',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.5rem .9rem;border-radius:8px;cursor:pointer">↻ Atualizar</button>
   </div>
 </header>
 
@@ -210,6 +212,7 @@ async function fazerLogin(){
     if(result.status !== 'ok'){ mostrarErroLogin(result.message || 'Não foi possível entrar.'); return; }
 
     TECNICO_LOGADO = tecnico;
+    sessionStorage.setItem('esteira_tecnico_logado', tecnico);
     document.getElementById('login-overlay').style.display = 'none';
     document.getElementById('headerApp').style.display = 'block';
     document.getElementById('app').style.display = 'block';
@@ -217,13 +220,27 @@ async function fazerLogin(){
     carregarAtividades();
     // Sem atualização automática aqui de propósito — o técnico costuma resolver
     // uma atividade de cada vez, e recarregar sozinho apagaria o formulário
-    // que ele está preenchendo. Se quiser ver atividade nova, recarrega a página.
+    // que ele está preenchendo. Use o botão "↻ Atualizar" no topo pra ver
+    // atividade nova sem perder o que estiver preenchendo.
   }catch(err){
     console.error(err);
     mostrarErroLogin('Erro ao conectar com o servidor.');
   }
 }
 window.fazerLogin = fazerLogin;
+
+// Se o técnico já tinha entrado nesta sessão do navegador (mesma aba/sessão),
+// não pede PIN/complemento de novo, mesmo se a página for recarregada (F5).
+(function tentarSessaoExistente(){
+  const salvo = sessionStorage.getItem('esteira_tecnico_logado');
+  if(salvo){
+    TECNICO_LOGADO = salvo;
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('headerApp').style.display = 'block';
+    document.getElementById('app').style.display = 'block';
+    carregarAtividades();
+  }
+})();
 
 function mostrarErroLogin(msg){
   const el = document.getElementById('erroLogin');
