@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Minhas Atividades · Netturbo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --accent:#5aa9e6;--accent-dark:#2f6fa8;--accent-dim:rgba(90,169,230,.08);
+      --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+      --border:#252525;--border-hi:#353535;
+      --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+      --red:#e53935;--amber:#ffa000;--green:#8bc34a;
+      --radius:6px;--radius-lg:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#061626,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+    .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#111a22,#0f0f0f);border:1px solid #12283a;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
+    .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);text-align:center}
+    .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
+    .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
+    .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
+    .login-field select,.login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.92rem;padding:.7rem .9rem;width:100%}
+    .login-field select:focus,.login-field input:focus{outline:none;border-color:var(--accent)}
+    .login-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#2f6fa8,#5aa9e6);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;margin-top:.3rem}
+    .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
+    .login-error.visible{display:block}
+    .login-info{font-size:.7rem;color:var(--text-dim);background:rgba(90,169,230,.08);border:1px solid rgba(90,169,230,.2);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
+    .login-info.visible{display:block}
+    .link-esqueci{font-size:.72rem;color:var(--accent);cursor:pointer;text-align:center;text-decoration:underline;margin-top:-.4rem}
+
+    header{background:linear-gradient(180deg,#0a141c,#0f0f0f);border-bottom:1px solid #12283a;position:sticky;top:0;z-index:100}
+    .header-inner{max-width:700px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem}
+    .hdr-brand{font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;letter-spacing:.1em;color:var(--accent);text-transform:uppercase}
+    .hdr-sub{font-size:.6rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase}
+
+    main{max-width:700px;margin:0 auto;padding:1.2rem 1rem 0}
+
+    .atv-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.1rem;margin-bottom:.9rem}
+    .atv-protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:1rem}
+    .atv-cliente{font-size:.88rem;margin-top:.2rem}
+    .atv-meta{font-size:.75rem;color:var(--text-muted);margin-top:.4rem;line-height:1.6}
+    .atv-status{display:inline-block;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .55rem;border-radius:20px;margin-top:.5rem}
+    .st-despachada{background:rgba(90,169,230,.1);color:var(--accent);border:1px solid rgba(90,169,230,.3)}
+    .st-iniciada{background:rgba(255,160,0,.1);color:var(--amber);border:1px solid rgba(255,160,0,.3)}
+    .st-em-campo{background:rgba(139,195,74,.1);color:var(--green);border:1px solid rgba(139,195,74,.3)}
+
+    .btn-acao{width:100%;margin-top:.8rem;padding:.85rem;border:none;border-radius:var(--radius-lg);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:.95rem;cursor:pointer}
+    .btn-iniciar{background:linear-gradient(135deg,#8a6010,#d4a843);color:#050505}
+    .btn-chegada{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
+    .btn-concluido{background:var(--surface3);color:var(--text-dim);cursor:default}
+
+    .empty-msg{color:var(--text-muted);font-size:.85rem;text-align:center;padding:2rem 1rem}
+    #toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap}
+    #toast.show{transform:translateX(-50%) translateY(0)}
+  </style>
+</head>
+<body>
+
+<!-- TELA DE LOGIN -->
+<div id="login-overlay">
+  <div class="login-box" id="boxLogin">
+    <div class="login-heading">
+      <h2 id="tituloEmpresa">NETTURBO</h2>
+      <p>Minhas Atividades · Acesso do Técnico</p>
+    </div>
+    <div class="login-field">
+      <label>Técnico</label>
+      <select id="selTecnico"></select>
+    </div>
+    <div class="login-field">
+      <label>PIN (fornecido pela liderança)</label>
+      <input type="password" inputmode="numeric" maxlength="4" id="inputPin" placeholder="0000"/>
+    </div>
+    <div class="login-field">
+      <label>Complemento (sua senha pessoal)</label>
+      <input type="password" id="inputComplemento" placeholder="Sua senha"/>
+    </div>
+    <div class="login-info" id="infoLogin">Primeiro acesso: o complemento que você digitar agora vai virar sua senha pessoal daqui pra frente.</div>
+    <div class="login-error" id="erroLogin"></div>
+    <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+    <div class="link-esqueci" onclick="mostrarReset()">Esqueci meu complemento</div>
+  </div>
+
+  <!-- TELA DE RESET (aparece no lugar do login) -->
+  <div class="login-box" id="boxReset" style="display:none">
+    <div class="login-heading">
+      <h2>Redefinir Complemento</h2>
+      <p>Informe seu PIN pra criar uma senha nova</p>
+    </div>
+    <div class="login-field">
+      <label>Técnico</label>
+      <select id="selTecnicoReset"></select>
+    </div>
+    <div class="login-field">
+      <label>PIN (fornecido pela liderança)</label>
+      <input type="password" inputmode="numeric" maxlength="4" id="inputPinReset" placeholder="0000"/>
+    </div>
+    <div class="login-field">
+      <label>Novo Complemento</label>
+      <input type="password" id="inputNovoComplemento" placeholder="Nova senha pessoal"/>
+    </div>
+    <div class="login-error" id="erroReset"></div>
+    <button class="login-btn" onclick="fazerReset()">Salvar Nova Senha</button>
+    <div class="link-esqueci" onclick="mostrarLogin()">Voltar ao login</div>
+  </div>
+</div>
+
+<!-- APP -->
+<header id="headerApp" style="display:none">
+  <div class="header-inner">
+    <div>
+      <div class="hdr-brand">Netturbo</div>
+      <div class="hdr-sub">Minhas Atividades</div>
+    </div>
+  </div>
+</header>
+
+<main id="app" style="display:none">
+  <div id="listaAtividades"></div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO — pra duplicar pra outra empresa, troca só a linha abaixo
+// e o texto "NETTURBO" nos dois <h2> de login acima.
+// ══════════════════════════════════════════════════════════════
+const EMPRESA_ATUAL = "NETTURBO";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+
+const TECH_MAP = {
+  "NETTURBO": ["Leonardo da Cruz Egidio","Weslley Rodrigues Pinto","Reginaldo Venâncio da Silva","Nicolas Lima de Almeida","Warley Aparecido de Paula","Marco Rodrigo dos Santos","Micael Oliveira dos Santos","Tiago Soares da Silva Calado"],
+  "OLIVEIRA": ["Evaneis Silva Oliveira"],
+  "PV": ["Petterson Valentim Barreto"],
+  "QUALITY": ["Jurandy Luis da Silva Filho","Guilherme dos Santos Reis","Wesley Henrique da Silva Rios"],
+  "SOLUTEC": ["Lielder Rogers Miranda","Marcio Aparecido Santiago"],
+  "VAL": ["Guilherme de Jesus Arruda","Djalma Aparecido Inocêncio","Marcos Mendes Merino","Altimayer de Araújo Lima","Robson Rodrigues Santos","Felipe Martins Santos Silva","Jonathan Henrique Honorato","Diego Eduardo de Souza Basso"]
+};
+
+let TECNICO_LOGADO = '';
+
+function popularTecnicos(){
+  const nomes = TECH_MAP[EMPRESA_ATUAL] || [];
+  const opts = '<option value="">Selecione...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
+  document.getElementById('selTecnico').innerHTML = opts;
+  document.getElementById('selTecnicoReset').innerHTML = opts;
+}
+popularTecnicos();
+
+function mostrarReset(){
+  document.getElementById('boxLogin').style.display = 'none';
+  document.getElementById('boxReset').style.display = 'flex';
+}
+function mostrarLogin(){
+  document.getElementById('boxReset').style.display = 'none';
+  document.getElementById('boxLogin').style.display = 'flex';
+}
+window.mostrarReset = mostrarReset;
+window.mostrarLogin = mostrarLogin;
+
+async function fazerLogin(){
+  const tecnico = document.getElementById('selTecnico').value;
+  const pin = document.getElementById('inputPin').value.trim();
+  const complemento = document.getElementById('inputComplemento').value;
+  const erroEl = document.getElementById('erroLogin');
+  erroEl.classList.remove('visible');
+
+  if(!tecnico || !pin || !complemento){ mostrarErroLogin('Preencha técnico, PIN e complemento.'); return; }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'LOGIN_TECNICO', empresa:EMPRESA_ATUAL, tecnico, pin, complemento })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ mostrarErroLogin(result.message || 'Não foi possível entrar.'); return; }
+
+    TECNICO_LOGADO = tecnico;
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('headerApp').style.display = 'block';
+    document.getElementById('app').style.display = 'block';
+    if(result.primeiroAcesso){ showToast('✅ Senha pessoal criada com sucesso!'); }
+    carregarAtividades();
+    if(!window._tecAutoRefresh){
+      window._tecAutoRefresh = setInterval(carregarAtividades, 15000);
+    }
+  }catch(err){
+    console.error(err);
+    mostrarErroLogin('Erro ao conectar com o servidor.');
+  }
+}
+window.fazerLogin = fazerLogin;
+
+function mostrarErroLogin(msg){
+  const el = document.getElementById('erroLogin');
+  el.textContent = '❌ ' + msg;
+  el.classList.add('visible');
+}
+
+async function fazerReset(){
+  const tecnico = document.getElementById('selTecnicoReset').value;
+  const pin = document.getElementById('inputPinReset').value.trim();
+  const novoComplemento = document.getElementById('inputNovoComplemento').value;
+  const erroEl = document.getElementById('erroReset');
+  erroEl.classList.remove('visible');
+
+  if(!tecnico || !pin || !novoComplemento){
+    erroEl.textContent = '❌ Preencha técnico, PIN e a nova senha.';
+    erroEl.classList.add('visible');
+    return;
+  }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'RESET_COMPLEMENTO', empresa:EMPRESA_ATUAL, tecnico, pin, novoComplemento })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){
+      erroEl.textContent = '❌ ' + (result.message || 'Não foi possível redefinir.');
+      erroEl.classList.add('visible');
+      return;
+    }
+    showToast('✅ Senha redefinida! Faça login com a senha nova.');
+    mostrarLogin();
+  }catch(err){
+    console.error(err);
+    erroEl.textContent = '❌ Erro ao conectar com o servidor.';
+    erroEl.classList.add('visible');
+  }
+}
+window.fazerReset = fazerReset;
+
+// ── ATIVIDADES ───────────────────────────────────────────────
+async function carregarAtividades(){
+  try{
+    const url = APPS_SCRIPT_URL + '?acao=LISTAR_ATIVIDADES_TECNICO&empresa=' + encodeURIComponent(EMPRESA_ATUAL) + '&tecnico=' + encodeURIComponent(TECNICO_LOGADO);
+    const resp = await fetch(url);
+    const result = await resp.json();
+    renderAtividades(result.atividades || []);
+  }catch(err){
+    console.error(err);
+  }
+}
+
+function renderAtividades(atividades){
+  const el = document.getElementById('listaAtividades');
+  if(!atividades.length){
+    el.innerHTML = '<div class="empty-msg">Nenhuma atividade despachada pra você no momento.</div>';
+    return;
+  }
+
+  el.innerHTML = atividades.map(a=>{
+    const status = a['Status'];
+    let statusLabel = '', statusClass = '', botao = '';
+
+    if(status === 'DESPACHADA'){
+      statusLabel = 'Aguardando início'; statusClass = 'st-despachada';
+      botao = `<button class="btn-acao btn-iniciar" onclick="marcarAcao(${a.rowIndex})">▶ Iniciar Atividade</button>`;
+    } else if(status === 'INICIADA'){
+      statusLabel = 'Em deslocamento (início: '+ (a['Hora Início']||'—') +')'; statusClass = 'st-iniciada';
+      botao = `<button class="btn-acao btn-chegada" onclick="marcarAcao(${a.rowIndex})">📍 Cheguei no Local</button>`;
+    } else if(status === 'EM_CAMPO'){
+      statusLabel = 'Em campo (chegada: ' + (a['Hora Chegada']||'—') + ')'; statusClass = 'st-em-campo';
+      botao = `<button class="btn-acao btn-concluido" disabled>Preenchimento da ocorrência em breve...</button>`;
+    } else {
+      statusLabel = status; statusClass = 'st-despachada';
+    }
+
+    return `<div class="atv-card">
+      <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
+      <div class="atv-cliente">${a['Cliente']||'—'}</div>
+      <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
+      <span class="atv-status ${statusClass}">${statusLabel}</span>
+      ${botao}
+    </div>`;
+  }).join('');
+}
+
+window.marcarAcao = async function(rowIndex){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'MARCAR_INICIO_CHEGADA', rowIndex })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao registrar.')); return; }
+    showToast(result.etapa === 'inicio' ? '✅ Início registrado: ' + result.hora : '✅ Chegada registrada: ' + result.hora);
+    carregarAtividades();
+  }catch(err){
+    console.error(err);
+    showToast('❌ Erro ao conectar com o servidor.');
+  }
+};
+
+// ── TOAST ──────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
+}
+</script>
+</body>
+</html>
