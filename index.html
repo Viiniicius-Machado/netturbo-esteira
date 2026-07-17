@@ -150,17 +150,28 @@
   <section class="card">
     <div class="card-header"><h2>📋 Esteira de Atividades</h2>
       <div style="flex:1"></div>
+      <select id="selLiderAtual" style="margin-right:.5rem;font-size:.75rem;padding:.35rem .6rem">
+        <option value="">Você é...</option>
+        <option value="Vinicius Machado">Vinicius Machado</option>
+        <option value="Weslley Rodrigues">Weslley Rodrigues</option>
+        <option value="Leonardo Egídio">Leonardo Egídio</option>
+        <option value="Reginaldo Venâncio">Reginaldo Venâncio</option>
+      </select>
       <button class="btn btn-outline" style="padding:.4rem .8rem;font-size:.72rem" onclick="carregarEsteira()">↻ Atualizar</button>
     </div>
     <div class="card-body">
-      <div class="board">
+      <div class="board" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
         <div>
           <div class="col-title">⏳ Aguardando Despacho <span class="col-count" id="countAguardando">0</span></div>
           <div id="colAguardando"></div>
         </div>
         <div>
-          <div class="col-title">🚚 Despachadas <span class="col-count" id="countDespachadas">0</span></div>
+          <div class="col-title">🚚 Despachadas / Em Campo <span class="col-count" id="countDespachadas">0</span></div>
           <div id="colDespachadas"></div>
+        </div>
+        <div>
+          <div class="col-title">📡 Aguardando Validação NOC <span class="col-count" id="countValidacao">0</span></div>
+          <div id="colValidacao"></div>
         </div>
       </div>
     </div>
@@ -325,10 +336,12 @@ window.carregarEsteira = carregarEsteira;
 
 function renderEsteira(){
   const aguardando = ATIVIDADES.filter(a => a['Status'] === 'AGUARDANDO_DESPACHO');
-  const despachadas = ATIVIDADES.filter(a => a['Status'] === 'DESPACHADA');
+  const emAndamento = ATIVIDADES.filter(a => ['DESPACHADA','INICIADA','EM_CAMPO','NAO_VALIDADA'].includes(a['Status']));
+  const aguardandoValidacao = ATIVIDADES.filter(a => a['Status'] === 'AGUARDANDO_VALIDACAO');
 
   document.getElementById('countAguardando').textContent = aguardando.length;
-  document.getElementById('countDespachadas').textContent = despachadas.length;
+  document.getElementById('countDespachadas').textContent = emAndamento.length;
+  document.getElementById('countValidacao').textContent = aguardandoValidacao.length;
 
   const colA = document.getElementById('colAguardando');
   colA.innerHTML = aguardando.length ? aguardando.map(a => `
@@ -346,14 +359,61 @@ function renderEsteira(){
       <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.4rem" onclick="despachar(${a.rowIndex})">🚚 Despachar</button>
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando despacho.</div>';
 
+  const statusLabelMap = { 'DESPACHADA':'Aguardando início', 'INICIADA':'Em deslocamento', 'EM_CAMPO':'Em campo', 'NAO_VALIDADA':'Devolvido p/ técnico' };
   const colD = document.getElementById('colDespachadas');
-  colD.innerHTML = despachadas.length ? despachadas.map(a => `
+  colD.innerHTML = emAndamento.length ? emAndamento.map(a => `
     <div class="atv-card status-despachada">
       <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
-      <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br>Despachado: ${a['Timestamp Despacho']||''}</div>
-    </div>`).join('') : '<div class="empty-msg">Nenhuma atividade despachada ainda.</div>';
+      <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br>${statusLabelMap[a['Status']]||a['Status']}</div>
+    </div>`).join('') : '<div class="empty-msg">Nenhuma atividade em andamento.</div>';
+
+  const colV = document.getElementById('colValidacao');
+  colV.innerHTML = aguardandoValidacao.length ? aguardandoValidacao.map(a => `
+    <div class="atv-card" style="border-left:3px solid #ab47bc">
+      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
+      <div class="cliente">${a['Cliente']||'—'}</div>
+      <div class="meta">
+        ${a['Empresa']||''} · ${a['Técnico']||''}<br>
+        <b>Ocorrência:</b> ${a['Ocorrência']||'—'} — ${a['Causa']||'—'}<br>
+        <b>Solução:</b> ${a['Solução']||'—'}<br>
+        <b>Materiais:</b> ${a['Materiais']||'—'}<br>
+        Início: ${a['Hora Início']||'—'} · Chegada: ${a['Hora Chegada']||'—'}
+      </div>
+      <div class="acoes" style="margin-top:.5rem">
+        <button class="btn btn-green" style="flex:1;padding:.4rem" onclick="validar(${a.rowIndex}, true)">✅ Validar</button>
+        <button class="btn" style="flex:1;padding:.4rem;background:#7a1010;color:#fff" onclick="validar(${a.rowIndex}, false)">❌ Não Validar</button>
+      </div>
+    </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando validação.</div>';
 }
+
+window.validar = async function(rowIndex, aprovado){
+  const validadoPor = document.getElementById('selLiderAtual').value;
+  if(!validadoPor){ showToast('⚠️ Selecione "Você é..." antes de validar.'); return; }
+
+  let motivo = '';
+  if(!aprovado){
+    motivo = prompt('Motivo da não validação (o técnico vai ver isso):');
+    if(motivo === null) return; // cancelou
+    if(!motivo.trim()){ showToast('⚠️ Informe o motivo da não validação.'); return; }
+  } else {
+    if(!confirm('Confirma que o NOC validou o sinal e a atividade pode ser fechada?')) return;
+  }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'VALIDAR', rowIndex, aprovado, motivo, validadoPor })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao validar.')); carregarEsteira(); return; }
+    showToast(aprovado ? '✅ Atividade validada e concluída!' : '↩ Devolvido para o técnico com o motivo.');
+    carregarEsteira();
+  }catch(err){
+    console.error(err);
+    showToast('❌ Erro ao conectar com o backend.');
+  }
+};
 
 window.atualizarTecnicosDespacho = function(rowIndex){
   const empresa = document.getElementById('sel-empresa-'+rowIndex).value;
