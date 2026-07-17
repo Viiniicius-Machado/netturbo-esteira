@@ -70,6 +70,18 @@
     .causa-item{padding:.5rem .7rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);font-size:.75rem;cursor:pointer;color:var(--text-dim)}
     .causa-item.active{background:rgba(90,169,230,.15);border-color:var(--accent);color:var(--accent)}
 
+    .toggle-row{display:flex;gap:.5rem}
+    .toggle-btn{flex:1;padding:.55rem;border-radius:var(--radius);border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);font-size:.8rem;font-weight:600;cursor:pointer;text-align:center}
+    .toggle-btn.on-yes{background:rgba(139,195,74,.12);border-color:var(--green);color:var(--green)}
+    .toggle-btn.on-no{background:rgba(229,57,53,.08);border-color:var(--red);color:var(--red)}
+    .mat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.5rem;margin-top:.5rem}
+    .mat-item{display:flex;flex-direction:column;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.5rem;align-items:center;gap:.3rem}
+    .mat-item span{font-size:.62rem;font-weight:600;text-align:center;color:var(--text-dim);line-height:1.25}
+    .mat-item input{width:100%;text-align:center;padding:.35rem;font-size:.85rem}
+    .mat-extra-row{display:flex;gap:.4rem;margin-top:.5rem}
+    .mat-extra-row input{flex:1}
+    .mat-extra-row button{width:38px;background:var(--accent-dark);color:#fff;border:none;border-radius:var(--radius);font-size:1.1rem;cursor:pointer}
+
     .empty-msg{color:var(--text-muted);font-size:.85rem;text-align:center;padding:2rem 1rem}
     #toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap}
     #toast.show{transform:translateX(-50%) translateY(0)}
@@ -203,9 +215,9 @@ async function fazerLogin(){
     document.getElementById('app').style.display = 'block';
     if(result.primeiroAcesso){ showToast('✅ Senha pessoal criada com sucesso!'); }
     carregarAtividades();
-    if(!window._tecAutoRefresh){
-      window._tecAutoRefresh = setInterval(carregarAtividades, 15000);
-    }
+    // Sem atualização automática aqui de propósito — o técnico costuma resolver
+    // uma atividade de cada vez, e recarregar sozinho apagaria o formulário
+    // que ele está preenchendo. Se quiser ver atividade nova, recarrega a página.
   }catch(err){
     console.error(err);
     mostrarErroLogin('Erro ao conectar com o servidor.');
@@ -339,16 +351,71 @@ function renderFormOcorrencia(a){
         <div id="causas-${a.rowIndex}"></div>
       </div>
       <div>
-        <label>Materiais Utilizados</label>
-        <textarea id="materiais-${a.rowIndex}" placeholder="Ex: 1x mini fosc, 20m cabo drop...">${a['Materiais']||''}</textarea>
+        <label>Houve uso de material?</label>
+        <div class="toggle-row">
+          <button type="button" class="toggle-btn" id="mat-sim-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, true)">✅ Sim</button>
+          <button type="button" class="toggle-btn" id="mat-nao-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, false)">❌ Não</button>
+        </div>
+        <div id="listamat-${a.rowIndex}"></div>
       </div>
       <div>
         <label>Solução Realizada</label>
         <textarea id="solucao-${a.rowIndex}" placeholder="O que foi feito para resolver...">${a['Solução']||''}</textarea>
       </div>
+      <div>
+        <label>Melhoria de Rede</label>
+        <textarea id="melhoria-${a.rowIndex}" placeholder="O que foi feito para melhorar a rede...">${a['Melhoria']||''}</textarea>
+      </div>
       <button class="btn-acao btn-validar" onclick="solicitarValidacao(${a.rowIndex})">✅ Solicitar Validação NOC</button>
     </div>
   `;
+}
+
+// ── MATERIAIS (mesma lista fixa do RFO Técnico) ─────────────────
+const MAT_FIBRA = ['CABO 12F','CABO 4F','CABO 24F','CABO 72F','ALÇA VERMELHA','MINI FISC','PLAQUETA NTT','FIO DE ESPINAR','FISC 48FO','EMENDA DROP 12F (PASTEL)'];
+let MATERIAIS_STATE = {}; // rowIndex -> { usaMat: true/false/null, itens: [{n,q,livre}] }
+
+window.setMaterialTecnico = function(rowIndex, sim){
+  document.getElementById('mat-sim-'+rowIndex).classList.toggle('on-yes', sim);
+  document.getElementById('mat-nao-'+rowIndex).classList.toggle('on-no', !sim);
+  if(!MATERIAIS_STATE[rowIndex] || MATERIAIS_STATE[rowIndex].usaMat !== sim){
+    MATERIAIS_STATE[rowIndex] = { usaMat: sim, itens: sim ? MAT_FIBRA.map(m=>({n:m,q:'',livre:false})) : [] };
+  }
+  renderListaMateriais(rowIndex);
+};
+
+function renderListaMateriais(rowIndex){
+  const cont = document.getElementById('listamat-'+rowIndex);
+  const estado = MATERIAIS_STATE[rowIndex];
+  if(!cont || !estado || !estado.usaMat){ if(cont) cont.innerHTML=''; return; }
+
+  cont.innerHTML = `<div class="mat-grid">${estado.itens.map((m,idx)=>
+    m.livre
+      ? `<div class="mat-item"><input type="text" placeholder="Material" value="${m.n}" oninput="atualizarMatLivre(${rowIndex},${idx},this.value)"/><input type="number" placeholder="Qtd" min="0" value="${m.q}" oninput="atualizarMatQtd(${rowIndex},${idx},this.value)"/></div>`
+      : `<div class="mat-item"><span>${m.n}</span><input type="number" placeholder="0" min="0" value="${m.q}" oninput="atualizarMatQtd(${rowIndex},${idx},this.value)"/></div>`
+  ).join('')}</div>
+  <div class="mat-extra-row">
+    <input type="text" id="matextra-n-${rowIndex}" placeholder="Outro material..."/>
+    <input type="number" id="matextra-q-${rowIndex}" placeholder="Qtd" min="0" style="max-width:70px"/>
+    <button type="button" onclick="adicionarMatExtra(${rowIndex})">+</button>
+  </div>`;
+}
+
+window.atualizarMatQtd = function(rowIndex, idx, val){ MATERIAIS_STATE[rowIndex].itens[idx].q = val; };
+window.atualizarMatLivre = function(rowIndex, idx, val){ MATERIAIS_STATE[rowIndex].itens[idx].n = val; };
+window.adicionarMatExtra = function(rowIndex){
+  const nome = document.getElementById('matextra-n-'+rowIndex).value.trim();
+  const qtd = document.getElementById('matextra-q-'+rowIndex).value;
+  if(!nome){ showToast('⚠️ Informe o nome do material.'); return; }
+  MATERIAIS_STATE[rowIndex].itens.push({ n:nome, q:qtd||'1', livre:true });
+  renderListaMateriais(rowIndex);
+};
+
+function montarStringMateriais(rowIndex){
+  const estado = MATERIAIS_STATE[rowIndex];
+  if(!estado || estado.usaMat !== true) return 'Não houve';
+  const lista = estado.itens.filter(m=>m.n && Number(m.q)>0).map(m=>m.n+': '+m.q);
+  return lista.length ? lista.join(' · ') : 'Nenhum item informado';
 }
 
 window.selecionarTipo = function(rowIndex, tipo){
@@ -394,15 +461,24 @@ window.solicitarValidacao = async function(rowIndex){
   const tipo = chipAtivo ? chipAtivo.dataset.tipo : '';
   const causa = pegarCausaAtual(rowIndex);
   const solucao = document.getElementById('solucao-'+rowIndex).value.trim();
-  const materiais = document.getElementById('materiais-'+rowIndex).value.trim();
+  const melhoria = document.getElementById('melhoria-'+rowIndex).value.trim();
+  const estadoMat = MATERIAIS_STATE[rowIndex];
 
   if(!tipo){ showToast('⚠️ Selecione o tipo de ocorrência.'); return; }
-  if(!solucao){ showToast('⚠️ Preencha a solução realizada.'); return; }
+  // Causa é obrigatória, exceto pra ACOMPANHAMENTO CPFL e PREVENTIVA (mesma regra do RFO Técnico original)
+  if(tipo !== 'ACOMPANHAMENTO CPFL' && tipo !== 'PREVENTIVA' && !causa){
+    showToast('⚠️ Selecione a Causa Principal.'); return;
+  }
+  if(!estadoMat || estadoMat.usaMat === null || estadoMat.usaMat === undefined){ showToast('⚠️ Informe se houve uso de material.'); return; }
+  if(!solucao){ showToast('⚠️ Preencha a Solução Realizada.'); return; }
+  if(!melhoria){ showToast('⚠️ Preencha a Melhoria de Rede.'); return; }
+
+  const materiais = montarStringMateriais(rowIndex);
 
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais })
+      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao salvar.')); return; }
