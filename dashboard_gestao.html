@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Dashboard de Gestão · Netturbo Esteira</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
+      --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+      --border:#252525;--border-hi:#353535;
+      --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+      --red:#e53935;--amber:#ffa000;--green:#8bc34a;
+      --radius:6px;--radius-lg:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+    .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
+    .login-logo{width:120px;height:auto;object-fit:contain;background:#fff;border-radius:12px;padding:.6rem}
+    .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);text-align:center}
+    .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
+    .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
+    .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
+    .login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.92rem;padding:.7rem .9rem;width:100%}
+    .login-field input:focus{outline:none;border-color:var(--accent)}
+    .login-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+    .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
+    .login-error.visible{display:block}
+
+    header{background:linear-gradient(180deg,#0c160a,#0f0f0f);border-bottom:1px solid #1a2a12;position:sticky;top:0;z-index:100}
+    .header-inner{max-width:1300px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.7rem 1.2rem;flex-wrap:wrap}
+    .hdr-logo{height:38px;width:auto;background:#fff;border-radius:6px;padding:.25rem .5rem}
+    .hdr-brand{font-family:'Rajdhani',sans-serif;font-size:1.25rem;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+    .hdr-sub{font-size:.58rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase}
+    .hdr-badge{font-size:.56rem;font-weight:700;letter-spacing:.1em;padding:.22rem .5rem;border-radius:20px;background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)}
+
+    main{max-width:1300px;margin:0 auto;padding:1.3rem 1.2rem 0}
+
+    .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.1rem}
+    .toolbar input[type="month"]{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem}
+    .btn{padding:.6rem 1.1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.82rem}
+    .btn-accent{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
+    .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+    .btn-green{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
+
+    .pipeline-bar{display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1.1rem;font-size:.75rem;color:var(--text-dim)}
+    .pipeline-bar b{color:var(--text);font-family:'Rajdhani',sans-serif;font-size:1rem}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
+    .card-header{padding:.7rem 1.1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+    .card-body{padding:1rem 1.1rem}
+
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.8rem}
+    .kpi-box{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.9rem;text-align:center}
+    .kpi-num{font-family:'Rajdhani',sans-serif;font-size:1.9rem;font-weight:700;color:var(--text)}
+    .kpi-label{font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.2rem}
+
+    .metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
+    .metric-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:1.1rem}
+    .metric-title{font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
+    .metric-big{font-family:'Rajdhani',sans-serif;font-size:2.2rem;font-weight:700}
+    .metric-sub{font-size:.72rem;color:var(--text-dim);margin-top:.4rem;line-height:1.5}
+    .metric-gap{font-size:.72rem;font-weight:700;margin-top:.5rem;padding:.4rem .6rem;border-radius:var(--radius);display:inline-block}
+    .gap-ok{background:rgba(139,195,74,.1);color:var(--green)}
+    .gap-bad{background:rgba(229,57,53,.1);color:var(--red)}
+
+    .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
+    table{width:100%;border-collapse:collapse;font-size:.72rem;min-width:1100px}
+    thead th{text-align:left;padding:.6rem .7rem;color:var(--text-muted);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2)}
+    tbody td{padding:.55rem .7rem;border-bottom:1px solid var(--border);font-family:monospace;font-size:.7rem;white-space:nowrap}
+    tbody tr:hover{background:var(--surface2)}
+    .pill{padding:.2rem .5rem;border-radius:20px;font-size:.62rem;font-weight:700;font-family:'Inter',sans-serif}
+    .pill.ok{background:rgba(139,195,74,.12);color:var(--green)}
+    .pill.breach{background:rgba(229,57,53,.12);color:var(--red)}
+    .empty-msg{padding:2rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+  </style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-box">
+    <img class="login-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+    <div class="login-heading">
+      <h2>Dashboard de Gestão</h2>
+      <p>Esteira de Despacho · Liderança</p>
+    </div>
+    <div class="login-field">
+      <label>Senha</label>
+      <input type="password" id="pwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()"/>
+    </div>
+    <div class="login-error" id="loginErro">❌ Senha incorreta.</div>
+    <button class="login-btn" onclick="tryLogin()">Entrar</button>
+  </div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <img class="hdr-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+    <div>
+      <div class="hdr-brand">Dashboard de Gestão</div>
+      <div class="hdr-sub">Consolidação · Esteira de Despacho</div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="hdr-badge">👑 LIDERANÇA</div>
+  </div>
+</header>
+
+<main id="app" style="display:none">
+
+  <div class="toolbar">
+    <input type="month" id="mesFiltro"/>
+    <button class="btn btn-accent" onclick="carregarDashboard()">Buscar</button>
+    <button class="btn btn-outline" onclick="carregarDashboard()">↻ Atualizar</button>
+    <div style="flex:1"></div>
+    <button class="btn btn-green" onclick="exportarExcel()">⬇ Exportar Excel</button>
+  </div>
+
+  <div class="pipeline-bar" id="pipelineBar">Carregando situação atual da esteira...</div>
+
+  <div class="card">
+    <div class="card-header">📊 Ocorrências no Mês (concluídas)</div>
+    <div class="card-body">
+      <div class="kpi-grid" id="kpiOcorrencias"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">🏗️ Produção por Empresa (mão de obra)</div>
+    <div class="card-body">
+      <div class="kpi-grid" id="kpiEmpresas"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">🎯 SLA, Eficiência e Tempos Médios</div>
+    <div class="card-body">
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="metric-title">C/SLA vs S/SLA</div>
+          <div style="display:flex;gap:1.2rem">
+            <div><div class="metric-big" style="color:var(--green)" id="mCSla">–</div><div class="metric-sub">Dentro do prazo</div></div>
+            <div><div class="metric-big" style="color:var(--red)" id="mSSla">–</div><div class="metric-sub">Estouraram</div></div>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Eficiência (Meta ≥70%)</div>
+          <div class="metric-big" id="mEficiencia">–</div>
+          <div class="metric-sub" id="mEficienciaGapTexto"></div>
+          <div class="metric-gap" id="mEficienciaGap"></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">MTTR Médio (Meta ≤4:00)</div>
+          <div class="metric-big" id="mMTTR">–</div>
+          <div class="metric-sub" id="mMTTRGapTempo"></div>
+          <div class="metric-gap" id="mMTTRGapQtd"></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">MTTD Médio (Meta ≤3:30)</div>
+          <div class="metric-big" id="mMTTD">–</div>
+          <div class="metric-sub" id="mMTTDGapTempo"></div>
+          <div class="metric-gap" id="mMTTDGapQtd"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">📋 Detalhamento (colunas prontas pra Excel)</div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Empresa</th><th>Técnico</th><th>Protocolo</th><th>Cliente</th><th>Cidade</th><th>Tipo</th>
+              <th>Causa</th><th>Início</th><th>Chegada</th><th>Validado</th>
+              <th>MTTR</th><th>MTTD</th><th>Status SLA</th><th>Validado Por</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyDados"></tbody>
+        </table>
+        <div id="emptyMsg" class="empty-msg" style="display:none">Nenhuma atividade concluída nesse mês.</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+const LEADERSHIP_PASSWORD = "Manutenção@101";
+const META_EFICIENCIA = 70;   // %
+const META_MTTR_MIN = 240;    // 4:00
+const META_MTTD_MIN = 210;    // 3:30
+
+const TIPOS = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO'];
+const EMPRESAS = ['VAL','PV','OLIVEIRA','SOLUTEC','QUALITY','NETTURBO'];
+
+let TODAS_ATIVIDADES = [];
+let DADOS_FILTRADOS = [];
+
+function tryLogin(){
+  const val = document.getElementById('pwdInput').value;
+  if(val === LEADERSHIP_PASSWORD){
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    const hoje = new Date();
+    document.getElementById('mesFiltro').value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0');
+    carregarDashboard();
+  }else{
+    const e = document.getElementById('loginErro');
+    e.classList.add('visible');
+    document.getElementById('pwdInput').value = '';
+    setTimeout(()=>e.classList.remove('visible'), 3000);
+  }
+}
+window.tryLogin = tryLogin;
+
+async function carregarDashboard(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
+    const result = await resp.json();
+    TODAS_ATIVIDADES = result.atividades || [];
+    renderPipeline();
+    renderDashboard();
+  }catch(err){
+    console.error(err);
+  }
+}
+window.carregarDashboard = carregarDashboard;
+
+function renderPipeline(){
+  const aguardandoDespacho = TODAS_ATIVIDADES.filter(a=>a['Status']==='AGUARDANDO_DESPACHO').length;
+  const emAndamento = TODAS_ATIVIDADES.filter(a=>['DESPACHADA','INICIADA','EM_CAMPO','NAO_VALIDADA'].includes(a['Status'])).length;
+  const aguardandoValidacao = TODAS_ATIVIDADES.filter(a=>a['Status']==='AGUARDANDO_VALIDACAO').length;
+  document.getElementById('pipelineBar').innerHTML =
+    `<span><b>${aguardandoDespacho}</b> aguardando despacho</span>` +
+    `<span><b>${emAndamento}</b> em andamento</span>` +
+    `<span><b>${aguardandoValidacao}</b> aguardando validação NOC</span>`;
+}
+
+// Extrai "YYYY-MM" de um timestamp tipo "17/07/2026, 18:11:43"
+function mesDeTimestamp(str){
+  const m = String(str||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(!m) return '';
+  return m[3] + '-' + m[2].padStart(2,'0');
+}
+
+function paraMinutos(str){
+  const m = String(str||'').trim().match(/^(\d{1,3}):(\d{2})$/);
+  if(!m) return null;
+  return parseInt(m[1],10)*60 + parseInt(m[2],10);
+}
+function fmtMin(min){
+  if(min===null || isNaN(min)) return '—';
+  const h = Math.floor(min/60), m = Math.round(min%60);
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+// Quantas atividades DENTRO da meta precisam entrar pra atingir a proporção-alvo
+function gapContagem(dentro, fora, metaPct){
+  const total = dentro + fora;
+  if(total === 0) return 0;
+  const metaFrac = metaPct/100;
+  const atual = dentro/total;
+  if(atual >= metaFrac) return 0;
+  const x = (metaFrac*total - dentro) / (1 - metaFrac);
+  return Math.max(0, Math.ceil(x));
+}
+
+function renderDashboard(){
+  const mes = document.getElementById('mesFiltro').value;
+  DADOS_FILTRADOS = TODAS_ATIVIDADES.filter(a => a['Status']==='VALIDADA' && mesDeTimestamp(a['Timestamp Validação'])===mes);
+
+  // ── Ocorrências ──
+  const kpiOc = document.getElementById('kpiOcorrencias');
+  kpiOc.innerHTML = TIPOS.map(t=>{
+    const n = DADOS_FILTRADOS.filter(a=>a['Ocorrência']===t).length;
+    return `<div class="kpi-box"><div class="kpi-num">${n}</div><div class="kpi-label">${t}</div></div>`;
+  }).join('');
+
+  // ── Produção por empresa ──
+  const kpiEmp = document.getElementById('kpiEmpresas');
+  kpiEmp.innerHTML = EMPRESAS.map(emp=>{
+    const n = DADOS_FILTRADOS.filter(a=>a['Empresa']===emp).length;
+    return `<div class="kpi-box"><div class="kpi-num">${n}</div><div class="kpi-label">${emp}</div></div>`;
+  }).join('');
+
+  // ── C/SLA, S/SLA, Eficiência, MTTR, MTTD ──
+  let cSla=0, sSla=0, somaMTTR=0, contMTTR=0, somaMTTD=0, contMTTD=0, cMttd=0, sMttd=0;
+  DADOS_FILTRADOS.forEach(a=>{
+    const mttr = paraMinutos(a['MTTR']);
+    const mttd = paraMinutos(a['MTTD']);
+    if(mttr!==null){
+      somaMTTR += mttr; contMTTR++;
+      if(mttr <= META_MTTR_MIN) cSla++; else sSla++;
+    }
+    if(mttd!==null){
+      somaMTTD += mttd; contMTTD++;
+      if(mttd <= META_MTTD_MIN) cMttd++; else sMttd++;
+    }
+  });
+
+  document.getElementById('mCSla').textContent = cSla;
+  document.getElementById('mSSla').textContent = sSla;
+
+  const totalSla = cSla + sSla;
+  const eficiencia = totalSla ? Math.round(cSla/totalSla*100) : 0;
+  const efEl = document.getElementById('mEficiencia');
+  efEl.textContent = eficiencia + '%';
+  efEl.style.color = eficiencia >= META_EFICIENCIA ? 'var(--green)' : 'var(--red)';
+  const gapEf = gapContagem(cSla, sSla, META_EFICIENCIA);
+  const gapEfEl = document.getElementById('mEficienciaGap');
+  if(gapEf === 0){
+    gapEfEl.textContent = '✓ Meta batida';
+    gapEfEl.className = 'metric-gap gap-ok';
+  }else{
+    gapEfEl.textContent = `Faltam ${gapEf} atividade(s) dentro do SLA pra bater a meta`;
+    gapEfEl.className = 'metric-gap gap-bad';
+  }
+
+  const mttrMedioMin = contMTTR ? Math.round(somaMTTR/contMTTR) : null;
+  const mttrEl = document.getElementById('mMTTR');
+  mttrEl.textContent = fmtMin(mttrMedioMin);
+  mttrEl.style.color = (mttrMedioMin!==null && mttrMedioMin<=META_MTTR_MIN) ? 'var(--green)' : 'var(--red)';
+  const diffMTTR = mttrMedioMin!==null ? mttrMedioMin - META_MTTR_MIN : null;
+  document.getElementById('mMTTRGapTempo').textContent = diffMTTR===null ? 'Sem dados' :
+    (diffMTTR<=0 ? `${fmtMin(Math.abs(diffMTTR))} abaixo da meta` : `+${fmtMin(diffMTTR)} acima da meta`);
+  const gapMttrEl = document.getElementById('mMTTRGapQtd');
+  if(gapEf === 0){
+    gapMttrEl.textContent = '✓ Meta batida';
+    gapMttrEl.className = 'metric-gap gap-ok';
+  }else{
+    gapMttrEl.textContent = `Faltam ${gapEf} atividade(s) dentro de 4h pra bater a meta`;
+    gapMttrEl.className = 'metric-gap gap-bad';
+  }
+
+  const mttdMedioMin = contMTTD ? Math.round(somaMTTD/contMTTD) : null;
+  const mttdEl = document.getElementById('mMTTD');
+  mttdEl.textContent = fmtMin(mttdMedioMin);
+  mttdEl.style.color = (mttdMedioMin!==null && mttdMedioMin<=META_MTTD_MIN) ? 'var(--green)' : 'var(--red)';
+  const diffMTTD = mttdMedioMin!==null ? mttdMedioMin - META_MTTD_MIN : null;
+  document.getElementById('mMTTDGapTempo').textContent = diffMTTD===null ? 'Sem dados' :
+    (diffMTTD<=0 ? `${fmtMin(Math.abs(diffMTTD))} abaixo da meta` : `+${fmtMin(diffMTTD)} acima da meta`);
+  const gapMttd = gapContagem(cMttd, sMttd, META_EFICIENCIA);
+  const gapMttdEl = document.getElementById('mMTTDGapQtd');
+  if(gapMttd === 0){
+    gapMttdEl.textContent = '✓ Meta batida';
+    gapMttdEl.className = 'metric-gap gap-ok';
+  }else{
+    gapMttdEl.textContent = `Faltam ${gapMttd} atividade(s) dentro de 3:30 pra bater a meta`;
+    gapMttdEl.className = 'metric-gap gap-bad';
+  }
+
+  // ── Tabela ──
+  const tbody = document.getElementById('tbodyDados');
+  document.getElementById('emptyMsg').style.display = DADOS_FILTRADOS.length ? 'none' : 'block';
+  tbody.innerHTML = DADOS_FILTRADOS.map(a=>{
+    const mttr = paraMinutos(a['MTTR']);
+    const slaOk = mttr!==null ? (mttr<=META_MTTR_MIN) : null;
+    return `<tr>
+      <td>${a['Empresa']||'—'}</td>
+      <td>${a['Técnico']||'—'}</td>
+      <td>${a['Protocolo O&M']||a['Protocolo NOC']||'—'}</td>
+      <td>${a['Cliente']||'—'}</td>
+      <td>${a['Cidade Falha']||'—'}</td>
+      <td>${a['Ocorrência']||'—'}</td>
+      <td>${a['Causa']||'—'}</td>
+      <td>${a['Hora Início']||'—'}</td>
+      <td>${a['Hora Chegada']||'—'}</td>
+      <td>${a['Timestamp Validação']||'—'}</td>
+      <td>${a['MTTR']||'—'}</td>
+      <td>${a['MTTD']||'—'}</td>
+      <td>${slaOk===null?'<span class="pill">Sem dado</span>':`<span class="pill ${slaOk?'ok':'breach'}">${slaOk?'C/SLA':'S/SLA'}</span>`}</td>
+      <td>${a['Validado Por']||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+window.exportarExcel = function(){
+  const rows = DADOS_FILTRADOS.map(a=>{
+    const mttr = paraMinutos(a['MTTR']);
+    const slaOk = mttr!==null ? (mttr<=META_MTTR_MIN) : null;
+    return {
+      'Empresa': a['Empresa']||'',
+      'Técnico': a['Técnico']||'',
+      'Protocolo': a['Protocolo O&M']||a['Protocolo NOC']||'',
+      'Cliente': a['Cliente']||'',
+      'Cidade': a['Cidade Falha']||'',
+      'Tipo de Ocorrência': a['Ocorrência']||'',
+      'Causa': a['Causa']||'',
+      'Início': a['Hora Início']||'',
+      'Chegada': a['Hora Chegada']||'',
+      'Validado em': a['Timestamp Validação']||'',
+      'MTTR': a['MTTR']||'',
+      'MTTD': a['MTTD']||'',
+      'Status SLA': slaOk===null?'Sem dado':(slaOk?'C/SLA':'S/SLA'),
+      'Validado Por': a['Validado Por']||''
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Consolidado');
+  const mes = document.getElementById('mesFiltro').value || 'geral';
+  XLSX.writeFile(wb, `Dashboard_Esteira_${mes}.xlsx`);
+};
+</script>
+</body>
+</html>
