@@ -480,7 +480,7 @@ function renderFormOcorrencia(a){
         <label>Causa Principal</label>
         <div id="causas-${a.rowIndex}"></div>
       </div>
-      <div id="local-falha-${a.rowIndex}" style="display:${isFibra?'block':'none'}">
+      <div id="local-falha-${a.rowIndex}">
         <label>Local da Falha</label>
         ${gpsWidget(a.rowIndex,'falha', a['GPS Falha']||'')}
       </div>
@@ -579,10 +579,8 @@ window.selecionarTipo = function(rowIndex, tipo){
   renderCausasTecnico(rowIndex, '');
 
   const isFibra = (tipo === 'ROMPIMENTO' || tipo === 'MASSIVA');
-  const falhaBlock = document.getElementById('local-falha-'+rowIndex);
   const ceoBlock = document.getElementById('ceo-block-'+rowIndex);
   const ceoExtra = document.getElementById('local-ceo-extra-'+rowIndex);
-  if(falhaBlock) falhaBlock.style.display = isFibra ? 'block' : 'none';
   if(ceoBlock) ceoBlock.style.display = isFibra ? 'block' : 'none';
   if(!isFibra){
     CEO_STATE[rowIndex] = null;
@@ -623,6 +621,19 @@ window.capturarGPS = function(rowIndex, key){
     const link = 'https://maps.google.com/?q='+latF+','+lonF;
     GPS_STATE[rowIndex+'-'+key] = link;
     GPS_COORDS[rowIndex+'-'+key] = { lat, lon };
+    val.textContent = '📍 ' + latF + ', ' + lonF + ' · buscando cidade...';
+
+    // Busca o nome da cidade a partir das coordenadas (mesma técnica já usada no RFO Técnico)
+    fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lon)
+      .then(r=>r.json())
+      .then(g=>{
+        const cidade = (g && g.address) ? (g.address.city || g.address.town || g.address.village || '') : '';
+        GPS_CIDADE_STATE[rowIndex+'-'+key] = cidade;
+        val.textContent = '📍 ' + latF + ', ' + lonF + (cidade ? ' · ' + cidade : '');
+      })
+      .catch(()=>{
+        val.textContent = '📍 ' + latF + ', ' + lonF;
+      });
     val.textContent = '📍 ' + latF + ', ' + lonF;
   }, ()=>{
     val.textContent = 'Não foi possível capturar sinal — use o campo manual abaixo.';
@@ -643,6 +654,7 @@ function pegarGPS(rowIndex, key){
 let CEO_STATE = {};
 let GPS_STATE = {};
 let GPS_COORDS = {}; // guarda lat/lon puros, pra comparar distância entre Caixa A e B
+let GPS_CIDADE_STATE = {}; // nome da cidade encontrado pela geocodificação reversa
 
 function distanciaMetros(lat1, lon1, lat2, lon2){
   const R = 6371000;
@@ -708,7 +720,7 @@ window.solicitarValidacao = async function(rowIndex){
     ceo = CEO_STATE[rowIndex];
     if(!ceo){ showToast('⚠️ Selecione o Tipo de CEO Utilizado.'); return; }
   }
-  const gpsFalha = isFibra ? pegarGPS(rowIndex,'falha') : '';
+  const gpsFalha = pegarGPS(rowIndex,'falha');
   const gpsCeoA = (ceo === 'nova') ? pegarGPS(rowIndex,'ceoA') : '';
   const gpsCeoB = (ceo === 'nova') ? pegarGPS(rowIndex,'ceoB') : '';
 
