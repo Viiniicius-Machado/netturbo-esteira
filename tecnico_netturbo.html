@@ -82,6 +82,15 @@
     .mat-extra-row input{flex:1}
     .mat-extra-row button{width:38px;background:var(--accent-dark);color:#fff;border:none;border-radius:var(--radius);font-size:1.1rem;cursor:pointer}
 
+    .ceo-options{display:flex;flex-direction:column;gap:.4rem}
+    .ceo-opt{padding:.55rem .75rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);font-size:.78rem;cursor:pointer;color:var(--text-dim)}
+    .ceo-opt.active{background:rgba(90,169,230,.15);border-color:var(--accent);color:var(--accent);font-weight:600}
+
+    .gps-block{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .7rem;margin-top:.3rem}
+    .btn-gps{width:100%;padding:.55rem;background:rgba(90,169,230,.1);border:1px solid rgba(90,169,230,.3);border-radius:var(--radius);color:var(--accent);font-size:.78rem;font-weight:600;cursor:pointer}
+    .gps-valor{font-size:.7rem;color:var(--text-dim);margin-top:.4rem;font-family:monospace;word-break:break-all}
+    .link-manual{font-size:.68rem;color:var(--accent);cursor:pointer;text-decoration:underline;margin-top:.4rem;display:inline-block}
+
     .empty-msg{color:var(--text-muted);font-size:.85rem;text-align:center;padding:2rem 1rem}
     #toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap}
     #toast.show{transform:translateX(-50%) translateY(0)}
@@ -354,7 +363,9 @@ function renderAtividades(atividades){
 
 function renderFormOcorrencia(a){
   const tipoAtual = a['Ocorrência'] || '';
+  const ceoAtual = a['CEO'] || '';
   const tipos = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO'];
+  const isFibra = (tipoAtual === 'ROMPIMENTO' || tipoAtual === 'MASSIVA');
   return `
     <div class="form-ocorrencia" id="form-${a.rowIndex}">
       <div>
@@ -366,6 +377,22 @@ function renderFormOcorrencia(a){
       <div>
         <label>Causa Principal</label>
         <div id="causas-${a.rowIndex}"></div>
+      </div>
+      <div id="local-falha-${a.rowIndex}" style="display:${isFibra?'block':'none'}">
+        <label>Local da Falha</label>
+        ${gpsWidget(a.rowIndex,'falha', a['GPS Falha']||'')}
+      </div>
+      <div id="ceo-block-${a.rowIndex}" style="display:${isFibra?'block':'none'}">
+        <label>Tipo de CEO Utilizado</label>
+        <div class="ceo-options" id="ceo-opts-${a.rowIndex}">
+          <div class="ceo-opt${ceoAtual==='nova'?' active':''}" data-ceo="nova" onclick="selecionarCEO(${a.rowIndex},'nova')">Caixa Nova → Nova (2 novas)</div>
+          <div class="ceo-opt${ceoAtual==='existente'?' active':''}" data-ceo="existente" onclick="selecionarCEO(${a.rowIndex},'existente')">Caixa Nova → Existente</div>
+          <div class="ceo-opt${ceoAtual==='existente-existente'?' active':''}" data-ceo="existente-existente" onclick="selecionarCEO(${a.rowIndex},'existente-existente')">Caixa Existente → Existente</div>
+        </div>
+      </div>
+      <div id="local-ceo-extra-${a.rowIndex}" style="display:${ceoAtual==='nova'?'block':'none'}">
+        <div><label>Localização Caixa Nova A</label>${gpsWidget(a.rowIndex,'ceoA', a['GPS Caixa Nova A']||'')}</div>
+        <div style="margin-top:.5rem"><label>Localização Caixa Nova B</label>${gpsWidget(a.rowIndex,'ceoB', a['GPS Caixa Nova B']||'')}</div>
       </div>
       <div>
         <label>Houve uso de material?</label>
@@ -386,6 +413,16 @@ function renderFormOcorrencia(a){
       <button class="btn-acao btn-validar" onclick="solicitarValidacao(${a.rowIndex})">✅ Solicitar Validação NOC</button>
     </div>
   `;
+}
+
+function gpsWidget(rowIndex, key, valorSalvo){
+  return `
+    <div class="gps-block">
+      <button type="button" class="btn-gps" onclick="capturarGPS(${rowIndex},'${key}')">📍 Capturar GPS</button>
+      <div class="gps-valor" id="gpsval-${rowIndex}-${key}">${valorSalvo||''}</div>
+      <div class="link-manual" onclick="alternarManual(${rowIndex},'${key}')">Sem sinal de GPS? Digitar endereço manualmente</div>
+      <input type="text" id="gpsmanual-${rowIndex}-${key}" placeholder="Endereço manual..." style="display:none;margin-top:.4rem"/>
+    </div>`;
 }
 
 // ── MATERIAIS (mesma lista fixa do RFO Técnico) ─────────────────
@@ -438,7 +475,54 @@ function montarStringMateriais(rowIndex){
 window.selecionarTipo = function(rowIndex, tipo){
   document.querySelectorAll(`#chips-${rowIndex} .chip`).forEach(c=>c.classList.toggle('active', c.dataset.tipo===tipo));
   renderCausasTecnico(rowIndex, '');
+
+  const isFibra = (tipo === 'ROMPIMENTO' || tipo === 'MASSIVA');
+  const falhaBlock = document.getElementById('local-falha-'+rowIndex);
+  const ceoBlock = document.getElementById('ceo-block-'+rowIndex);
+  const ceoExtra = document.getElementById('local-ceo-extra-'+rowIndex);
+  if(falhaBlock) falhaBlock.style.display = isFibra ? 'block' : 'none';
+  if(ceoBlock) ceoBlock.style.display = isFibra ? 'block' : 'none';
+  if(!isFibra){
+    CEO_STATE[rowIndex] = null;
+    if(ceoExtra) ceoExtra.style.display = 'none';
+  }
 };
+
+window.selecionarCEO = function(rowIndex, ceo){
+  document.querySelectorAll(`#ceo-opts-${rowIndex} .ceo-opt`).forEach(el=>el.classList.toggle('active', el.dataset.ceo===ceo));
+  CEO_STATE[rowIndex] = ceo;
+  const extra = document.getElementById('local-ceo-extra-'+rowIndex);
+  if(extra) extra.style.display = (ceo === 'nova') ? 'block' : 'none';
+};
+
+window.capturarGPS = function(rowIndex, key){
+  const val = document.getElementById('gpsval-'+rowIndex+'-'+key);
+  if(!val) return;
+  val.textContent = 'Buscando sinal...';
+  if(!navigator.geolocation){ val.textContent = 'GPS não suportado neste aparelho.'; return; }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat = pos.coords.latitude.toFixed(6), lon = pos.coords.longitude.toFixed(6);
+    const link = 'https://maps.google.com/?q='+lat+','+lon;
+    GPS_STATE[rowIndex+'-'+key] = link;
+    val.textContent = '📍 ' + lat + ', ' + lon;
+  }, ()=>{
+    val.textContent = 'Não foi possível capturar sinal — use o campo manual abaixo.';
+  }, { enableHighAccuracy:true, timeout:10000 });
+};
+
+window.alternarManual = function(rowIndex, key){
+  const inp = document.getElementById('gpsmanual-'+rowIndex+'-'+key);
+  if(inp) inp.style.display = (inp.style.display === 'none') ? 'block' : 'none';
+};
+
+function pegarGPS(rowIndex, key){
+  const manual = document.getElementById('gpsmanual-'+rowIndex+'-'+key);
+  if(manual && manual.value.trim()) return manual.value.trim();
+  return GPS_STATE[rowIndex+'-'+key] || '';
+}
+
+let CEO_STATE = {};
+let GPS_STATE = {};
 
 window.renderCausasTecnico = function(rowIndex, causaAtual){
   const chipAtivo = document.querySelector(`#chips-${rowIndex} .chip.active`);
@@ -490,12 +574,22 @@ window.solicitarValidacao = async function(rowIndex){
   if(!solucao){ showToast('⚠️ Preencha a Solução Realizada.'); return; }
   if(!melhoria){ showToast('⚠️ Preencha a Melhoria de Rede.'); return; }
 
+  const isFibra = (tipo === 'ROMPIMENTO' || tipo === 'MASSIVA');
+  let ceo = '';
+  if(isFibra){
+    ceo = CEO_STATE[rowIndex];
+    if(!ceo){ showToast('⚠️ Selecione o Tipo de CEO Utilizado.'); return; }
+  }
+  const gpsFalha = isFibra ? pegarGPS(rowIndex,'falha') : '';
+  const gpsCeoA = (ceo === 'nova') ? pegarGPS(rowIndex,'ceoA') : '';
+  const gpsCeoB = (ceo === 'nova') ? pegarGPS(rowIndex,'ceoB') : '';
+
   const materiais = montarStringMateriais(rowIndex);
 
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria })
+      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao salvar.')); return; }
