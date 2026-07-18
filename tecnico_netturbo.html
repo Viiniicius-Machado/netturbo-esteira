@@ -455,10 +455,15 @@ function renderAtividades(atividades){
     </div>`;
   }).join('');
 
-  // Inicializa a lista de causas de cada formulário aberto (não dá pra rodar script via innerHTML)
+  // Inicializa a lista de causas e o bloco de CEO de cada formulário aberto (não dá pra rodar script via innerHTML)
   atividades.forEach(a=>{
     if(a['Status'] === 'EM_CAMPO' || a['Status'] === 'NAO_VALIDADA'){
       renderCausasTecnico(a.rowIndex, a['Causa'] || '');
+      if(a['CEO']){
+        document.querySelectorAll(`#ceo-opts-${a.rowIndex} .ceo-opt`).forEach(el=>el.classList.toggle('active', el.dataset.ceo===a['CEO']));
+        CEO_STATE[a.rowIndex] = a['CEO'];
+        renderLocalCeoExtra(a.rowIndex, a['CEO'], a);
+      }
     }
   });
 }
@@ -492,10 +497,7 @@ function renderFormOcorrencia(a){
           <div class="ceo-opt${ceoAtual==='existente-existente'?' active':''}" data-ceo="existente-existente" onclick="selecionarCEO(${a.rowIndex},'existente-existente')">Caixa Existente → Existente</div>
         </div>
       </div>
-      <div id="local-ceo-extra-${a.rowIndex}" style="display:${ceoAtual==='nova'?'block':'none'}">
-        <div><label>Localização Caixa Nova A</label>${gpsWidget(a.rowIndex,'ceoA', a['GPS Caixa Nova A']||'')}</div>
-        <div style="margin-top:.5rem"><label>Localização Caixa Nova B</label>${gpsWidget(a.rowIndex,'ceoB', a['GPS Caixa Nova B']||'')}</div>
-      </div>
+      <div id="local-ceo-extra-${a.rowIndex}" style="display:none"></div>
       <div>
         <label>Houve uso de material?</label>
         <div class="toggle-row">
@@ -591,9 +593,32 @@ window.selecionarTipo = function(rowIndex, tipo){
 window.selecionarCEO = function(rowIndex, ceo){
   document.querySelectorAll(`#ceo-opts-${rowIndex} .ceo-opt`).forEach(el=>el.classList.toggle('active', el.dataset.ceo===ceo));
   CEO_STATE[rowIndex] = ceo;
-  const extra = document.getElementById('local-ceo-extra-'+rowIndex);
-  if(extra) extra.style.display = (ceo === 'nova') ? 'block' : 'none';
+  renderLocalCeoExtra(rowIndex, ceo, null);
 };
+
+// Monta o bloco de localização da(s) caixa(s) nova(s):
+// - "existente-existente": nenhuma caixa nova, não mostra nada
+// - "existente" (Nova → Existente): 1 caixa nova só
+// - "nova" (Nova → Nova): 2 caixas novas
+function renderLocalCeoExtra(rowIndex, ceo, atividade){
+  const cont = document.getElementById('local-ceo-extra-'+rowIndex);
+  if(!cont) return;
+  const valA = (atividade && atividade['GPS Caixa Nova A']) || '';
+  const valB = (atividade && atividade['GPS Caixa Nova B']) || '';
+
+  if(ceo === 'nova'){
+    cont.style.display = 'block';
+    cont.innerHTML = `
+      <div><label>Localização Caixa Nova A</label>${gpsWidget(rowIndex,'ceoA', valA)}</div>
+      <div style="margin-top:.5rem"><label>Localização Caixa Nova B</label>${gpsWidget(rowIndex,'ceoB', valB)}</div>`;
+  }else if(ceo === 'existente'){
+    cont.style.display = 'block';
+    cont.innerHTML = `<div><label>Localização da Caixa Nova</label>${gpsWidget(rowIndex,'ceoA', valA)}</div>`;
+  }else{
+    cont.style.display = 'none';
+    cont.innerHTML = '';
+  }
+}
 
 window.capturarGPS = function(rowIndex, key){
   const val = document.getElementById('gpsval-'+rowIndex+'-'+key);
@@ -721,7 +746,7 @@ window.solicitarValidacao = async function(rowIndex){
     if(!ceo){ showToast('⚠️ Selecione o Tipo de CEO Utilizado.'); return; }
   }
   const gpsFalha = pegarGPS(rowIndex,'falha');
-  const gpsCeoA = (ceo === 'nova') ? pegarGPS(rowIndex,'ceoA') : '';
+  const gpsCeoA = (ceo === 'nova' || ceo === 'existente') ? pegarGPS(rowIndex,'ceoA') : '';
   const gpsCeoB = (ceo === 'nova') ? pegarGPS(rowIndex,'ceoB') : '';
   const cidadeFalha = GPS_CIDADE_STATE[rowIndex+'-falha'] || '';
 
@@ -764,7 +789,7 @@ function copiarRelatorioWhats(rowIndex, campos){
   if(campos.causa) t += '*CAUSA:* ' + campos.causa + '\n';
   if(ceoLabel) t += '*CEO:* ' + ceoLabel + '\n';
   if(campos.gpsFalha) t += '*LOCAL DA FALHA:* ' + campos.gpsFalha + '\n';
-  if(campos.gpsCeoA) t += '*CAIXA NOVA A:* ' + campos.gpsCeoA + '\n';
+  if(campos.gpsCeoA) t += (campos.ceo === 'existente' ? '*CAIXA NOVA:* ' : '*CAIXA NOVA A:* ') + campos.gpsCeoA + '\n';
   if(campos.gpsCeoB) t += '*CAIXA NOVA B:* ' + campos.gpsCeoB + '\n';
   t += '\n*MATERIAIS:*\n' + campos.materiais + '\n';
   t += '\n*SOLUÇÃO:*\n' + campos.solucao + '\n';
