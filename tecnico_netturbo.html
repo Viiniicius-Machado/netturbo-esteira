@@ -723,6 +723,7 @@ window.solicitarValidacao = async function(rowIndex){
   const gpsFalha = pegarGPS(rowIndex,'falha');
   const gpsCeoA = (ceo === 'nova') ? pegarGPS(rowIndex,'ceoA') : '';
   const gpsCeoB = (ceo === 'nova') ? pegarGPS(rowIndex,'ceoB') : '';
+  const cidadeFalha = GPS_CIDADE_STATE[rowIndex+'-falha'] || '';
 
   if(ceo === 'nova' && gpsCeoA && gpsCeoB && gpsCeoA.trim().toLowerCase() === gpsCeoB.trim().toLowerCase()){
     showToast('⚠️ Localização da Caixa A e Caixa B estão idênticas — confira antes de enviar.');
@@ -734,12 +735,12 @@ window.solicitarValidacao = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB })
+      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, cidadeFalha })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao salvar.')); return; }
 
-    copiarRelatorioWhats(rowIndex, { tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB });
+    copiarRelatorioWhats(rowIndex, { tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, cidadeFalha });
     showToast('✅ Enviado e copiado! Cole no grupo do WhatsApp.');
     carregarAtividades();
   }catch(err){
@@ -756,7 +757,9 @@ function copiarRelatorioWhats(rowIndex, campos){
   t += '*IDENTIFICAÇÃO*\n';
   t += 'CLIENTE: ' + (a['Cliente']||'—') + '\n';
   t += 'PROTOCOLO: ' + (a['Protocolo O&M'] || a['Protocolo NOC'] || '—') + '\n';
-  t += 'ENDEREÇO: ' + (a['Endereço']||'—') + '\n\n';
+  t += 'ENDEREÇO: ' + (a['Endereço']||'—') + '\n';
+  if(campos.cidadeFalha) t += 'CIDADE: ' + campos.cidadeFalha + '\n';
+  t += '\n';
   t += '*TEMPOS*\n';
   t += 'INÍCIO: ' + (a['Hora Início']||'—') + '\n';
   t += 'CHEGADA: ' + (a['Hora Chegada']||'—') + '\n\n';
