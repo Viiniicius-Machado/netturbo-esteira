@@ -383,6 +383,7 @@ function renderEsteira(){
         ${a['Empresa']||''} · ${a['Técnico']||''}<br>
         ${a['CEO'] ? `<b>CEO:</b> ${a['CEO']==='nova'?'Caixa Nova → Nova':a['CEO']==='existente'?'Caixa Nova → Existente':'Caixa Existente → Existente'}<br>` : ''}
         Início: ${a['Hora Início']||'—'} · Chegada: ${a['Hora Chegada']||'—'}
+        ${a['Cidade Falha'] ? `<br><b>Cidade:</b> ${a['Cidade Falha']}` : ''}
         ${a['GPS Falha'] ? `<br><a href="${a['GPS Falha']}" target="_blank" style="color:var(--accent)">📍 Local da Falha</a>` : ''}
         ${a['GPS Caixa Nova A'] ? `<br><a href="${a['GPS Caixa Nova A']}" target="_blank" style="color:var(--accent)">📍 Caixa Nova A</a>` : ''}
         ${a['GPS Caixa Nova B'] ? `<br><a href="${a['GPS Caixa Nova B']}" target="_blank" style="color:var(--accent)">📍 Caixa Nova B</a>` : ''}
