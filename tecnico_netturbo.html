@@ -753,17 +753,13 @@ function copiarRelatorioWhats(rowIndex, campos){
   const a = ATIVIDADES_CACHE.find(x=>x.rowIndex === rowIndex) || {};
   const ceoLabel = campos.ceo === 'nova' ? 'Caixa Nova → Nova (2 novas)' : campos.ceo === 'existente' ? 'Caixa Nova → Existente' : campos.ceo === 'existente-existente' ? 'Caixa Existente → Existente' : '';
 
-  let t = '⏳ *SOLICITAÇÃO DE VALIDAÇÃO NOC* ⏳\n';
-  t += '_Aguardando confirmação de sinal — ainda não finalizado_\n\n';
+  let t = '*RFO - NETTURBO - ESTEIRA*\n\n';
   t += '*IDENTIFICAÇÃO*\n';
   t += 'CLIENTE: ' + (a['Cliente']||'—') + '\n';
   t += 'PROTOCOLO: ' + (a['Protocolo O&M'] || a['Protocolo NOC'] || '—') + '\n';
   t += 'ENDEREÇO: ' + (a['Endereço']||'—') + '\n';
   if(campos.cidadeFalha) t += 'CIDADE: ' + campos.cidadeFalha + '\n';
   t += '\n';
-  t += '*TEMPOS*\n';
-  t += 'INÍCIO: ' + (a['Hora Início']||'—') + '\n';
-  t += 'CHEGADA: ' + (a['Hora Chegada']||'—') + '\n\n';
   t += '*OCORRÊNCIA:* ' + campos.tipo + '\n';
   if(campos.causa) t += '*CAUSA:* ' + campos.causa + '\n';
   if(ceoLabel) t += '*CEO:* ' + ceoLabel + '\n';
@@ -773,7 +769,6 @@ function copiarRelatorioWhats(rowIndex, campos){
   t += '\n*MATERIAIS:*\n' + campos.materiais + '\n';
   t += '\n*SOLUÇÃO:*\n' + campos.solucao + '\n';
   t += '\n*MELHORIA NA REDE:*\n' + campos.melhoria;
-  t += '\n\n⏳ *SOLICITO VALIDAÇÃO DO SINAL — POR FAVOR CONFIRMAR* ⏳';
 
   try{
     if(navigator.clipboard && navigator.clipboard.writeText){
