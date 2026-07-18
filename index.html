@@ -391,23 +391,23 @@ function renderEsteira(){
       <div style="margin-top:.5rem;display:flex;flex-direction:column;gap:.5rem">
         <div>
           <label class="edit-label">Ocorrência</label>
-          <input type="text" class="edit-field" id="edit-ocorrencia-${a.rowIndex}" value="${(a['Ocorrência']||'').replace(/"/g,'&quot;')}"/>
+          <input type="text" class="edit-field" id="edit-ocorrencia-${a.rowIndex}" value="${String(a['Ocorrência']||'').replace(/"/g,'&quot;')}"/>
         </div>
         <div>
           <label class="edit-label">Causa</label>
-          <input type="text" class="edit-field" id="edit-causa-${a.rowIndex}" value="${(a['Causa']||'').replace(/"/g,'&quot;')}"/>
+          <input type="text" class="edit-field" id="edit-causa-${a.rowIndex}" value="${String(a['Causa']||'').replace(/"/g,'&quot;')}"/>
         </div>
         <div>
           <label class="edit-label">Solução</label>
-          <textarea class="edit-field" id="edit-solucao-${a.rowIndex}">${a['Solução']||''}</textarea>
+          <textarea class="edit-field" id="edit-solucao-${a.rowIndex}">${String(a['Solução']||'')}</textarea>
         </div>
         <div>
           <label class="edit-label">Melhoria</label>
-          <textarea class="edit-field" id="edit-melhoria-${a.rowIndex}">${a['Melhoria']||''}</textarea>
+          <textarea class="edit-field" id="edit-melhoria-${a.rowIndex}">${String(a['Melhoria']||'')}</textarea>
         </div>
         <div>
           <label class="edit-label">Materiais</label>
-          <textarea class="edit-field" id="edit-materiais-${a.rowIndex}">${a['Materiais']||''}</textarea>
+          <textarea class="edit-field" id="edit-materiais-${a.rowIndex}">${String(a['Materiais']||'')}</textarea>
         </div>
       </div>
       <div class="acoes" style="margin-top:.5rem">
