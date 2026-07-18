@@ -160,6 +160,18 @@
 </header>
 
 <main id="app" style="display:none">
+  <div class="atv-card" style="margin-bottom:1rem">
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.5rem">📊 Resumo do Dia</div>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+      <input type="date" id="dataResumo" style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.45rem .6rem"/>
+      <button onclick="buscarResumoDiario()" style="background:rgba(90,169,230,.1);border:1px solid rgba(90,169,230,.3);color:var(--accent);font-size:.72rem;font-weight:700;padding:.5rem .8rem;border-radius:var(--radius);cursor:pointer">Buscar</button>
+    </div>
+    <div style="display:flex;gap:1.2rem;margin-top:.7rem">
+      <div><div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--accent)" id="resumoRecebidas">–</div><div style="font-size:.62rem;color:var(--text-muted);text-transform:uppercase">Recebidas</div></div>
+      <div><div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--green)" id="resumoConcluidas">–</div><div style="font-size:.62rem;color:var(--text-muted);text-transform:uppercase">Concluídas</div></div>
+      <div><div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--text-dim)" id="resumoTotalGeral">–</div><div style="font-size:.62rem;color:var(--text-muted);text-transform:uppercase">Total Geral</div></div>
+    </div>
+  </div>
   <div id="listaAtividades"></div>
 </main>
 
@@ -227,6 +239,7 @@ async function fazerLogin(){
     document.getElementById('app').style.display = 'block';
     if(result.primeiroAcesso){ showToast('✅ Senha pessoal criada com sucesso!'); }
     carregarAtividades();
+    inicializarResumoDiario();
     // Sem atualização automática aqui de propósito — o técnico costuma resolver
     // uma atividade de cada vez, e recarregar sozinho apagaria o formulário
     // que ele está preenchendo. Use o botão "↻ Atualizar" no topo pra ver
@@ -248,8 +261,31 @@ window.fazerLogin = fazerLogin;
     document.getElementById('headerApp').style.display = 'block';
     document.getElementById('app').style.display = 'block';
     carregarAtividades();
+    inicializarResumoDiario();
   }
 })();
+
+function inicializarResumoDiario(){
+  const hoje = new Date();
+  const isoHoje = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
+  document.getElementById('dataResumo').value = isoHoje;
+  buscarResumoDiario();
+}
+
+window.buscarResumoDiario = async function(){
+  const data = document.getElementById('dataResumo').value;
+  if(!data) return;
+  try{
+    const url = APPS_SCRIPT_URL + '?acao=RESUMO_DIARIO_TECNICO&empresa=' + encodeURIComponent(EMPRESA_ATUAL) + '&tecnico=' + encodeURIComponent(TECNICO_LOGADO) + '&data=' + data;
+    const resp = await fetch(url);
+    const result = await resp.json();
+    document.getElementById('resumoRecebidas').textContent = result.recebidas ?? '0';
+    document.getElementById('resumoConcluidas').textContent = result.concluidas ?? '0';
+    document.getElementById('resumoTotalGeral').textContent = (result.totalConcluidasGeral ?? 0) + '/' + (result.totalRecebidasGeral ?? 0);
+  }catch(err){
+    console.error(err);
+  }
+};
 
 function mostrarErroLogin(msg){
   const el = document.getElementById('erroLogin');
@@ -501,10 +537,27 @@ window.capturarGPS = function(rowIndex, key){
   val.textContent = 'Buscando sinal...';
   if(!navigator.geolocation){ val.textContent = 'GPS não suportado neste aparelho.'; return; }
   navigator.geolocation.getCurrentPosition(pos=>{
-    const lat = pos.coords.latitude.toFixed(6), lon = pos.coords.longitude.toFixed(6);
-    const link = 'https://maps.google.com/?q='+lat+','+lon;
+    const lat = pos.coords.latitude, lon = pos.coords.longitude;
+
+    // Trava: Caixa Nova A e B não podem ser capturadas no mesmo lugar (erro comum de esquecer de andar até a 2ª caixa)
+    if(key === 'ceoA' || key === 'ceoB'){
+      const outraKey = (key === 'ceoA') ? 'ceoB' : 'ceoA';
+      const outra = GPS_COORDS[rowIndex+'-'+outraKey];
+      if(outra){
+        const dist = distanciaMetros(lat, lon, outra.lat, outra.lon);
+        if(dist < 5){
+          val.textContent = '⚠️ Muito perto da Caixa ' + (outraKey==='ceoA'?'A':'B') + ' já capturada (' + dist.toFixed(1) + 'm) — vá até a outra caixa antes de capturar.';
+          showToast('⚠️ GPS muito próximo da outra caixa — confira se você já se moveu até o local certo.');
+          return;
+        }
+      }
+    }
+
+    const latF = lat.toFixed(6), lonF = lon.toFixed(6);
+    const link = 'https://maps.google.com/?q='+latF+','+lonF;
     GPS_STATE[rowIndex+'-'+key] = link;
-    val.textContent = '📍 ' + lat + ', ' + lon;
+    GPS_COORDS[rowIndex+'-'+key] = { lat, lon };
+    val.textContent = '📍 ' + latF + ', ' + lonF;
   }, ()=>{
     val.textContent = 'Não foi possível capturar sinal — use o campo manual abaixo.';
   }, { enableHighAccuracy:true, timeout:10000 });
@@ -523,6 +576,15 @@ function pegarGPS(rowIndex, key){
 
 let CEO_STATE = {};
 let GPS_STATE = {};
+let GPS_COORDS = {}; // guarda lat/lon puros, pra comparar distância entre Caixa A e B
+
+function distanciaMetros(lat1, lon1, lat2, lon2){
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
 window.renderCausasTecnico = function(rowIndex, causaAtual){
   const chipAtivo = document.querySelector(`#chips-${rowIndex} .chip.active`);
@@ -584,6 +646,11 @@ window.solicitarValidacao = async function(rowIndex){
   const gpsCeoA = (ceo === 'nova') ? pegarGPS(rowIndex,'ceoA') : '';
   const gpsCeoB = (ceo === 'nova') ? pegarGPS(rowIndex,'ceoB') : '';
 
+  if(ceo === 'nova' && gpsCeoA && gpsCeoB && gpsCeoA.trim().toLowerCase() === gpsCeoB.trim().toLowerCase()){
+    showToast('⚠️ Localização da Caixa A e Caixa B estão idênticas — confira antes de enviar.');
+    return;
+  }
+
   const materiais = montarStringMateriais(rowIndex);
 
   try{
@@ -593,13 +660,56 @@ window.solicitarValidacao = async function(rowIndex){
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao salvar.')); return; }
-    showToast('✅ Enviado para validação do NOC!');
+
+    copiarRelatorioWhats(rowIndex, { tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB });
+    showToast('✅ Enviado e copiado! Cole no grupo do WhatsApp.');
     carregarAtividades();
   }catch(err){
     console.error(err);
     showToast('❌ Erro ao conectar com o servidor.');
   }
 };
+
+function copiarRelatorioWhats(rowIndex, campos){
+  const a = ATIVIDADES_CACHE.find(x=>x.rowIndex === rowIndex) || {};
+  const ceoLabel = campos.ceo === 'nova' ? 'Caixa Nova → Nova (2 novas)' : campos.ceo === 'existente' ? 'Caixa Nova → Existente' : campos.ceo === 'existente-existente' ? 'Caixa Existente → Existente' : '';
+
+  let t = '*RFO - NETTURBO - ESTEIRA*\n\n';
+  t += '*IDENTIFICAÇÃO*\n';
+  t += 'CLIENTE: ' + (a['Cliente']||'—') + '\n';
+  t += 'PROTOCOLO: ' + (a['Protocolo O&M'] || a['Protocolo NOC'] || '—') + '\n';
+  t += 'ENDEREÇO: ' + (a['Endereço']||'—') + '\n\n';
+  t += '*TEMPOS*\n';
+  t += 'INÍCIO: ' + (a['Hora Início']||'—') + '\n';
+  t += 'CHEGADA: ' + (a['Hora Chegada']||'—') + '\n\n';
+  t += '*OCORRÊNCIA:* ' + campos.tipo + '\n';
+  if(campos.causa) t += '*CAUSA:* ' + campos.causa + '\n';
+  if(ceoLabel) t += '*CEO:* ' + ceoLabel + '\n';
+  if(campos.gpsFalha) t += '*LOCAL DA FALHA:* ' + campos.gpsFalha + '\n';
+  if(campos.gpsCeoA) t += '*CAIXA NOVA A:* ' + campos.gpsCeoA + '\n';
+  if(campos.gpsCeoB) t += '*CAIXA NOVA B:* ' + campos.gpsCeoB + '\n';
+  t += '\n*MATERIAIS:*\n' + campos.materiais + '\n';
+  t += '\n*SOLUÇÃO:*\n' + campos.solucao + '\n';
+  t += '\n*MELHORIA NA REDE:*\n' + campos.melhoria;
+
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).catch(()=>copiarFallback(t));
+    }else{
+      copiarFallback(t);
+    }
+  }catch(e){ copiarFallback(t); }
+}
+
+function copiarFallback(texto){
+  const el = document.createElement('textarea');
+  el.value = texto;
+  el.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;opacity:0;';
+  document.body.appendChild(el);
+  el.focus(); el.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(el);
+}
 
 window.marcarAcao = async function(rowIndex){
   try{
