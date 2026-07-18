@@ -92,6 +92,13 @@
     .link-manual{font-size:.68rem;color:var(--accent);cursor:pointer;text-decoration:underline;margin-top:.4rem;display:inline-block}
 
     .empty-msg{color:var(--text-muted);font-size:.85rem;text-align:center;padding:2rem 1rem}
+
+    .resumo-titulo{font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.5rem}
+    .resumo-grid{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:.7rem}
+    .resumo-num{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--text)}
+    .resumo-num-sm{font-family:'Rajdhani',sans-serif;font-size:1.1rem;font-weight:700;color:var(--text)}
+    .resumo-label{font-size:.6rem;color:var(--text-muted);text-transform:uppercase;margin-top:.1rem}
+    details summary::-webkit-details-marker{color:var(--text-muted)}
     #toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap}
     #toast.show{transform:translateX(-50%) translateY(0)}
   </style>
@@ -161,16 +168,32 @@
 
 <main id="app" style="display:none">
   <div class="atv-card" style="margin-bottom:1rem">
-    <div style="font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.5rem">📊 Resumo do Dia</div>
+    <div class="resumo-titulo">📊 Resumo do Mês</div>
     <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-      <input type="date" id="dataResumo" style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.45rem .6rem"/>
-      <button onclick="buscarResumoDiario()" style="background:rgba(90,169,230,.1);border:1px solid rgba(90,169,230,.3);color:var(--accent);font-size:.72rem;font-weight:700;padding:.5rem .8rem;border-radius:var(--radius);cursor:pointer">Buscar</button>
+      <input type="month" id="mesResumo" style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.45rem .6rem"/>
+      <button onclick="buscarResumoMensal()" style="background:rgba(90,169,230,.1);border:1px solid rgba(90,169,230,.3);color:var(--accent);font-size:.72rem;font-weight:700;padding:.5rem .8rem;border-radius:var(--radius);cursor:pointer">Buscar</button>
     </div>
-    <div style="display:flex;gap:1.2rem;margin-top:.7rem">
-      <div><div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--accent)" id="resumoRecebidas">–</div><div style="font-size:.62rem;color:var(--text-muted);text-transform:uppercase">Recebidas</div></div>
-      <div><div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--green)" id="resumoConcluidas">–</div><div style="font-size:.62rem;color:var(--text-muted);text-transform:uppercase">Concluídas</div></div>
-      <div><div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--text-dim)" id="resumoTotalGeral">–</div><div style="font-size:.62rem;color:var(--text-muted);text-transform:uppercase">Total Geral</div></div>
+    <div class="resumo-grid">
+      <div><div class="resumo-num" id="resumoConcluidasMes">–</div><div class="resumo-label">Concluídas</div></div>
+      <div><div class="resumo-num" style="color:var(--green)" id="resumoCSla">–</div><div class="resumo-label">C/SLA</div></div>
+      <div><div class="resumo-num" style="color:var(--red)" id="resumoSSla">–</div><div class="resumo-label">S/SLA</div></div>
+      <div><div class="resumo-num" id="resumoEficiencia">–</div><div class="resumo-label">Eficiência (meta ≥70%)</div></div>
     </div>
+    <div class="resumo-grid">
+      <div><div class="resumo-num" id="resumoMTTR">–</div><div class="resumo-label">MTTR médio (meta ≤4:00)</div></div>
+      <div><div class="resumo-num" id="resumoMTTD">–</div><div class="resumo-label">MTTD médio (meta ≤3:30)</div></div>
+    </div>
+    <details style="margin-top:.8rem">
+      <summary style="font-size:.68rem;color:var(--text-muted);cursor:pointer">Conferir um dia específico</summary>
+      <div style="display:flex;gap:.5rem;margin-top:.6rem;align-items:center;flex-wrap:wrap">
+        <input type="date" id="dataResumo" style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.45rem .6rem"/>
+        <button onclick="buscarResumoDiario()" style="background:var(--surface3);border:1px solid var(--border-hi);color:var(--text-dim);font-size:.72rem;font-weight:700;padding:.5rem .8rem;border-radius:var(--radius);cursor:pointer">Buscar</button>
+      </div>
+      <div class="resumo-grid">
+        <div><div class="resumo-num-sm" id="resumoRecebidas">–</div><div class="resumo-label">Recebidas</div></div>
+        <div><div class="resumo-num-sm" id="resumoConcluidas">–</div><div class="resumo-label">Concluídas</div></div>
+      </div>
+    </details>
   </div>
   <div id="listaAtividades"></div>
 </main>
@@ -260,16 +283,25 @@ window.fazerLogin = fazerLogin;
     document.getElementById('login-overlay').style.display = 'none';
     document.getElementById('headerApp').style.display = 'block';
     document.getElementById('app').style.display = 'block';
-    carregarAtividades();
-    inicializarResumoDiario();
+    // setTimeout(...,0): espera a página terminar de carregar TODO o script
+    // antes de chamar essas funções — sem isso, dava erro quando o login
+    // já estava salvo de uma visita anterior (login automático disparava
+    // rápido demais, antes de tudo estar pronto).
+    setTimeout(()=>{
+      carregarAtividades();
+      inicializarResumoDiario();
+    }, 0);
   }
 })();
 
 function inicializarResumoDiario(){
   const hoje = new Date();
   const isoHoje = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
+  const mesAtual = isoHoje.slice(0,7);
   document.getElementById('dataResumo').value = isoHoje;
+  document.getElementById('mesResumo').value = mesAtual;
   buscarResumoDiario();
+  buscarResumoMensal();
 }
 
 window.buscarResumoDiario = async function(){
@@ -281,7 +313,41 @@ window.buscarResumoDiario = async function(){
     const result = await resp.json();
     document.getElementById('resumoRecebidas').textContent = result.recebidas ?? '0';
     document.getElementById('resumoConcluidas').textContent = result.concluidas ?? '0';
-    document.getElementById('resumoTotalGeral').textContent = (result.totalConcluidasGeral ?? 0) + '/' + (result.totalRecebidasGeral ?? 0);
+  }catch(err){
+    console.error(err);
+  }
+};
+
+window.buscarResumoMensal = async function(){
+  const mes = document.getElementById('mesResumo').value;
+  if(!mes) return;
+  try{
+    const url = APPS_SCRIPT_URL + '?acao=RESUMO_MENSAL_TECNICO&empresa=' + encodeURIComponent(EMPRESA_ATUAL) + '&tecnico=' + encodeURIComponent(TECNICO_LOGADO) + '&mes=' + mes;
+    const resp = await fetch(url);
+    const r = await resp.json();
+
+    document.getElementById('resumoConcluidasMes').textContent = r.totalConcluidas ?? '0';
+    document.getElementById('resumoCSla').textContent = r.cSla ?? '0';
+    document.getElementById('resumoSSla').textContent = r.sSla ?? '0';
+
+    const efEl = document.getElementById('resumoEficiencia');
+    const ef = r.eficiencia ?? 0;
+    efEl.textContent = ef + '%';
+    efEl.style.color = (ef >= 70) ? 'var(--green)' : 'var(--red)';
+
+    const mttrEl = document.getElementById('resumoMTTR');
+    mttrEl.textContent = r.mttrMedio || '—';
+    if(r.mttrMedio){
+      const [h,m] = r.mttrMedio.split(':').map(Number);
+      mttrEl.style.color = ((h*60+m) <= 240) ? 'var(--green)' : 'var(--red)'; // meta: 4:00
+    }
+
+    const mttdEl = document.getElementById('resumoMTTD');
+    mttdEl.textContent = r.mttdMedio || '—';
+    if(r.mttdMedio){
+      const [h,m] = r.mttdMedio.split(':').map(Number);
+      mttdEl.style.color = ((h*60+m) <= 210) ? 'var(--green)' : 'var(--red)'; // meta: 3:30
+    }
   }catch(err){
     console.error(err);
   }
