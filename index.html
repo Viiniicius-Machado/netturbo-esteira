@@ -378,10 +378,14 @@ function renderEsteira(){
       <div class="meta">
         ${a['Empresa']||''} · ${a['Técnico']||''}<br>
         <b>Ocorrência:</b> ${a['Ocorrência']||'—'} — ${a['Causa']||'—'}<br>
+        ${a['CEO'] ? `<b>CEO:</b> ${a['CEO']==='nova'?'Caixa Nova → Nova':a['CEO']==='existente'?'Caixa Nova → Existente':'Caixa Existente → Existente'}<br>` : ''}
         <b>Solução:</b> ${a['Solução']||'—'}<br>
         <b>Melhoria:</b> ${a['Melhoria']||'—'}<br>
         <b>Materiais:</b> ${a['Materiais']||'—'}<br>
         Início: ${a['Hora Início']||'—'} · Chegada: ${a['Hora Chegada']||'—'}
+        ${a['GPS Falha'] ? `<br><a href="${a['GPS Falha']}" target="_blank" style="color:var(--accent)">📍 Local da Falha</a>` : ''}
+        ${a['GPS Caixa Nova A'] ? `<br><a href="${a['GPS Caixa Nova A']}" target="_blank" style="color:var(--accent)">📍 Caixa Nova A</a>` : ''}
+        ${a['GPS Caixa Nova B'] ? `<br><a href="${a['GPS Caixa Nova B']}" target="_blank" style="color:var(--accent)">📍 Caixa Nova B</a>` : ''}
       </div>
       <div class="acoes" style="margin-top:.5rem">
         <button class="btn btn-green" style="flex:1;padding:.4rem" onclick="validar(${a.rowIndex}, true)">✅ Validar</button>
