@@ -204,6 +204,13 @@ const TECH_MAP = {
 
 let ATIVIDADES = [];
 
+// Registros novos já vêm com o texto pronto (NOVA/NOVA, NOVA/EXISTENTE, EXISTENTE).
+// Registros antigos ainda têm o código interno — esse mapa cobre os dois casos.
+function formatarCEO(val){
+  const map = { 'nova':'NOVA/NOVA', 'existente':'NOVA/EXISTENTE', 'existente-existente':'EXISTENTE' };
+  return map[val] || val;
+}
+
 // ── LOGIN ──────────────────────────────────────────────────────
 function tryLogin(){
   const val = document.getElementById('pwdInput').value;
@@ -384,11 +391,11 @@ function renderEsteira(){
       <div class="cliente">${a['Cliente']||'—'}</div>
       <div class="meta">
         ${a['Empresa']||''} · ${a['Técnico']||''}<br>
-        ${a['CEO'] ? `<b>CEO:</b> ${a['CEO']==='nova'?'Caixa Nova → Nova':a['CEO']==='existente'?'Caixa Nova → Existente':'Caixa Existente → Existente'}<br>` : ''}
+        ${a['CEO'] ? `<b>CEO:</b> ${formatarCEO(a['CEO'])}<br>` : ''}
         Início: ${a['Hora Início']||'—'} · Chegada: ${a['Hora Chegada']||'—'}
         ${a['Cidade Falha'] ? `<br><b>Cidade:</b> ${a['Cidade Falha']}` : ''}
         ${a['GPS Falha'] ? `<br><a href="${a['GPS Falha']}" target="_blank" style="color:var(--accent)">📍 Local da Falha</a>` : ''}
-        ${a['GPS Caixa Nova A'] ? `<br><a href="${a['GPS Caixa Nova A']}" target="_blank" style="color:var(--accent)">📍 ${a['CEO']==='existente' ? 'Caixa Nova' : 'Caixa Nova A'}</a>` : ''}
+        ${a['GPS Caixa Nova A'] ? `<br><a href="${a['GPS Caixa Nova A']}" target="_blank" style="color:var(--accent)">📍 ${(a['CEO']==='existente'||a['CEO']==='NOVA/EXISTENTE') ? 'Caixa Nova' : 'Caixa Nova A'}</a>` : ''}
         ${a['GPS Caixa Nova B'] ? `<br><a href="${a['GPS Caixa Nova B']}" target="_blank" style="color:var(--accent)">📍 Caixa Nova B</a>` : ''}
       </div>
       <div style="margin-top:.5rem;display:flex;flex-direction:column;gap:.5rem">
