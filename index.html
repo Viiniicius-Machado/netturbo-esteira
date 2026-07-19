@@ -353,6 +353,18 @@ function renderEsteira(){
   const emAndamento = ATIVIDADES.filter(a => ['DESPACHADA','INICIADA','EM_CAMPO','NAO_VALIDADA'].includes(a['Status']));
   const aguardandoValidacao = ATIVIDADES.filter(a => a['Status'] === 'AGUARDANDO_VALIDACAO');
 
+  // Captura QUALQUER coisa que o líder já tenha selecionado/digitado nas 3 colunas
+  // (selects de empresa/técnico, campos de edição, e se algum "+ Equipe de Apoio"
+  // estava aberto) — ANTES de redesenhar, senão a atualização automática apaga tudo.
+  const edicoesEmAndamento = {};
+  document.querySelectorAll('.board select, .board input, .board textarea').forEach(el=>{
+    if(el.id) edicoesEmAndamento[el.id] = el.value;
+  });
+  const detalhesAbertos = {};
+  document.querySelectorAll('.board details').forEach((el,idx)=>{
+    if(el.open) detalhesAbertos[idx] = true;
+  });
+
   document.getElementById('countAguardando').textContent = aguardando.length;
   document.getElementById('countDespachadas').textContent = emAndamento.length;
   document.getElementById('countValidacao').textContent = aguardandoValidacao.length;
@@ -407,11 +419,6 @@ function renderEsteira(){
       </details>` : ''}
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade em andamento.</div>';
 
-  // Captura o que o líder já tinha digitado nos campos editáveis, ANTES de
-  // redesenhar — senão a atualização automática apaga a edição em andamento.
-  const edicoesEmAndamento = {};
-  document.querySelectorAll('#colValidacao .edit-field').forEach(el=>{ edicoesEmAndamento[el.id] = el.value; });
-
   const colV = document.getElementById('colValidacao');
   colV.innerHTML = aguardandoValidacao.length ? aguardandoValidacao.map(a => `
     <div class="atv-card" style="border-left:3px solid #ab47bc">
@@ -458,6 +465,27 @@ function renderEsteira(){
   Object.keys(edicoesEmAndamento).forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.value = edicoesEmAndamento[id];
+  });
+  document.querySelectorAll('.board details').forEach((el,idx)=>{
+    if(detalhesAbertos[idx]) el.open = true;
+  });
+  // Reconstrói a lista de técnicos dos selects de empresa que já estavam preenchidos
+  // (o innerHTML novo vem só com "Técnico..." — sem isso, o valor restaurado acima não existiria como opção)
+  document.querySelectorAll('.board select[id^="sel-empresa-apoio2-"]').forEach(el=>{
+    if(el.value) atualizarTecnicosApoio2(el.id.replace('sel-empresa-apoio2-',''));
+  });
+  document.querySelectorAll('.board select[id^="sel-empresa-apoio-"]').forEach(el=>{
+    if(el.value) atualizarTecnicosApoio(el.id.replace('sel-empresa-apoio-',''));
+  });
+  document.querySelectorAll('.board select[id^="sel-empresa-"]:not([id*="apoio"])').forEach(el=>{
+    if(el.value) atualizarTecnicosDespacho(el.id.replace('sel-empresa-',''));
+  });
+  // Reaplica o técnico escolhido (agora que a lista de opções já foi reconstruída acima)
+  Object.keys(edicoesEmAndamento).forEach(id=>{
+    if(id.indexOf('sel-tecnico') === 0){
+      const el = document.getElementById(id);
+      if(el) el.value = edicoesEmAndamento[id];
+    }
   });
 }
 
