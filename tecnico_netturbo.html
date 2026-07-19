@@ -462,9 +462,10 @@ function renderAtividades(atividades){
     if(a['Status'] === 'EM_CAMPO' || a['Status'] === 'NAO_VALIDADA'){
       renderCausasTecnico(a.rowIndex, a['Causa'] || '');
       if(a['CEO']){
-        document.querySelectorAll(`#ceo-opts-${a.rowIndex} .ceo-opt`).forEach(el=>el.classList.toggle('active', el.dataset.ceo===a['CEO']));
-        CEO_STATE[a.rowIndex] = a['CEO'];
-        renderLocalCeoExtra(a.rowIndex, a['CEO'], a);
+        const ceoCodigo = CEO_LABELS_REVERSA[a['CEO']] || a['CEO'];
+        document.querySelectorAll(`#ceo-opts-${a.rowIndex} .ceo-opt`).forEach(el=>el.classList.toggle('active', el.dataset.ceo===ceoCodigo));
+        CEO_STATE[a.rowIndex] = ceoCodigo;
+        renderLocalCeoExtra(a.rowIndex, ceoCodigo, a);
       }
     }
   });
@@ -472,7 +473,7 @@ function renderAtividades(atividades){
 
 function renderFormOcorrencia(a){
   const tipoAtual = a['Ocorrência'] || '';
-  const ceoAtual = a['CEO'] || '';
+  const ceoAtual = CEO_LABELS_REVERSA[a['CEO']] || a['CEO'] || '';
   const tipos = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO'];
   const isFibra = (tipoAtual === 'ROMPIMENTO' || tipoAtual === 'MASSIVA');
   return `
@@ -678,6 +679,10 @@ function pegarGPS(rowIndex, key){
   return GPS_STATE[rowIndex+'-'+key] || '';
 }
 
+// Código interno (usado na lógica da tela) <-> texto legível (o que vai pra planilha)
+const CEO_LABELS = { 'nova':'NOVA/NOVA', 'existente':'NOVA/EXISTENTE', 'existente-existente':'EXISTENTE' };
+const CEO_LABELS_REVERSA = { 'NOVA/NOVA':'nova', 'NOVA/EXISTENTE':'existente', 'EXISTENTE':'existente-existente' };
+
 let CEO_STATE = {};
 let GPS_STATE = {};
 let GPS_COORDS = {}; // guarda lat/lon puros, pra comparar distância entre Caixa A e B
@@ -762,7 +767,7 @@ window.solicitarValidacao = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, cidadeFalha })
+      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, cidadeFalha })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao salvar.')); return; }
