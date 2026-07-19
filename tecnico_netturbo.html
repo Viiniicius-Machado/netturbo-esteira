@@ -434,6 +434,10 @@ function renderAtividades(atividades){
   }
 
   el.innerHTML = atividades.map(a=>{
+    if(a.papel === 'apoio'){
+      return renderCardApoio(a);
+    }
+
     const status = a['Status'];
     let statusLabel = '', statusClass = '', corpo = '';
 
@@ -458,10 +462,13 @@ function renderAtividades(atividades){
       statusLabel = status; statusClass = 'st-despachada';
     }
 
+    const infoApoio = a['Técnico Apoio'] ? `<div class="atv-meta" style="color:var(--accent)">🤝 Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}</div>` : '';
+
     return `<div class="atv-card">
       <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="atv-cliente">${a['Cliente']||'—'}</div>
       <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
+      ${infoApoio}
       <span class="atv-status ${statusClass}">${statusLabel}</span>
       ${corpo}
     </div>`;
@@ -479,6 +486,26 @@ function renderAtividades(atividades){
       }
     }
   });
+}
+
+// Card simplificado pra quem é equipe de apoio — só o próprio clock de
+// início/chegada, sem formulário de ocorrência (isso continua com o titular).
+function renderCardApoio(a){
+  let botao = '';
+  if(!a['Hora Início Apoio']){
+    botao = `<button class="btn-acao btn-iniciar" onclick="marcarAcaoApoio(${a.rowIndex})">▶ Iniciar Atividade</button>`;
+  } else if(!a['Hora Chegada Apoio']){
+    botao = `<button class="btn-acao btn-chegada" onclick="marcarAcaoApoio(${a.rowIndex})">📍 Cheguei no Local</button>`;
+  } else {
+    botao = `<button class="btn-acao btn-concluido" disabled>Sua parte concluída — titular finaliza o restante</button>`;
+  }
+  return `<div class="atv-card">
+    <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
+    <div class="atv-cliente">${a['Cliente']||'—'}</div>
+    <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>Titular: ${a['Técnico']||'—'} (${a['Empresa']||''})</div>
+    <span class="atv-status st-despachada">🤝 Você é EQUIPE DE APOIO</span>
+    ${botao}
+  </div>`;
 }
 
 function renderFormOcorrencia(a){
@@ -836,6 +863,22 @@ window.marcarAcao = async function(rowIndex){
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
       body: JSON.stringify({ acao:'MARCAR_INICIO_CHEGADA', rowIndex })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao registrar.')); return; }
+    showToast(result.etapa === 'inicio' ? '✅ Início registrado: ' + result.hora : '✅ Chegada registrada: ' + result.hora);
+    carregarAtividades();
+  }catch(err){
+    console.error(err);
+    showToast('❌ Erro ao conectar com o servidor.');
+  }
+};
+
+window.marcarAcaoApoio = async function(rowIndex){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'MARCAR_INICIO_CHEGADA_APOIO', rowIndex })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao registrar.')); return; }
