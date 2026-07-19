@@ -124,6 +124,7 @@
     <input type="month" id="mesFiltro"/>
     <button class="btn btn-accent" onclick="carregarDashboard()">Buscar</button>
     <button class="btn btn-outline" onclick="carregarDashboard()">↻ Atualizar</button>
+    <span style="font-size:.68rem;color:var(--text-muted);font-family:monospace" id="ultimaAtualizacao"></span>
     <div style="flex:1"></div>
     <button class="btn btn-green" onclick="exportarExcel()">⬇ Exportar Excel</button>
   </div>
@@ -234,6 +235,9 @@ function tryLogin(){
     const hoje = new Date();
     document.getElementById('mesFiltro').value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0');
     carregarDashboard();
+    if(!window._dashAutoRefresh){
+      window._dashAutoRefresh = setInterval(carregarDashboard, 30000); // atualiza sozinho a cada 30s
+    }
   }else{
     const e = document.getElementById('loginErro');
     e.classList.add('visible');
@@ -250,6 +254,7 @@ async function carregarDashboard(){
     TODAS_ATIVIDADES = result.atividades || [];
     renderPipeline();
     renderDashboard();
+    document.getElementById('ultimaAtualizacao').textContent = 'atualizado ' + new Date().toLocaleTimeString('pt-BR');
   }catch(err){
     console.error(err);
   }
