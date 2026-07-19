@@ -114,6 +114,10 @@
       <p>Minhas Atividades · Acesso do Técnico</p>
     </div>
     <div class="login-field">
+      <label>Empresa</label>
+      <select id="selEmpresa" onchange="atualizarTecnicosLogin()"></select>
+    </div>
+    <div class="login-field">
       <label>Técnico</label>
       <select id="selTecnico"></select>
     </div>
@@ -136,6 +140,10 @@
     <div class="login-heading">
       <h2>Redefinir Complemento</h2>
       <p>Informe seu PIN pra criar uma senha nova</p>
+    </div>
+    <div class="login-field">
+      <label>Empresa</label>
+      <select id="selEmpresaReset" onchange="atualizarTecnicosReset()"></select>
     </div>
     <div class="login-field">
       <label>Técnico</label>
@@ -204,10 +212,9 @@
 
 <script>
 // ══════════════════════════════════════════════════════════════
-// CONFIGURAÇÃO — pra duplicar pra outra empresa, troca só a linha abaixo
-// e o texto "NETTURBO" nos dois <h2> de login acima.
+// Página única pra todas as empresas — o técnico escolhe a dele
+// no login. Não precisa mais duplicar arquivo por empresa.
 // ══════════════════════════════════════════════════════════════
-const EMPRESA_ATUAL = "NETTURBO";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 
 const TECH_MAP = {
@@ -220,14 +227,27 @@ const TECH_MAP = {
 };
 
 let TECNICO_LOGADO = '';
+let EMPRESA_LOGADA = '';
 
-function popularTecnicos(){
-  const nomes = TECH_MAP[EMPRESA_ATUAL] || [];
-  const opts = '<option value="">Selecione...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
-  document.getElementById('selTecnico').innerHTML = opts;
-  document.getElementById('selTecnicoReset').innerHTML = opts;
+function popularEmpresas(){
+  const opts = '<option value="">Selecione...</option>' + Object.keys(TECH_MAP).map(e=>`<option value="${e}">${e}</option>`).join('');
+  document.getElementById('selEmpresa').innerHTML = opts;
+  document.getElementById('selEmpresaReset').innerHTML = opts;
 }
-popularTecnicos();
+popularEmpresas();
+
+window.atualizarTecnicosLogin = function(){
+  const empresa = document.getElementById('selEmpresa').value;
+  const nomes = TECH_MAP[empresa] || [];
+  document.getElementById('selTecnico').innerHTML = '<option value="">Selecione...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
+  document.getElementById('tituloEmpresa').textContent = empresa || 'NETTURBO';
+};
+
+window.atualizarTecnicosReset = function(){
+  const empresa = document.getElementById('selEmpresaReset').value;
+  const nomes = TECH_MAP[empresa] || [];
+  document.getElementById('selTecnicoReset').innerHTML = '<option value="">Selecione...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
+};
 
 function mostrarReset(){
   document.getElementById('boxLogin').style.display = 'none';
@@ -241,24 +261,27 @@ window.mostrarReset = mostrarReset;
 window.mostrarLogin = mostrarLogin;
 
 async function fazerLogin(){
+  const empresa = document.getElementById('selEmpresa').value;
   const tecnico = document.getElementById('selTecnico').value;
   const pin = document.getElementById('inputPin').value.trim();
   const complemento = document.getElementById('inputComplemento').value;
   const erroEl = document.getElementById('erroLogin');
   erroEl.classList.remove('visible');
 
-  if(!tecnico || !pin || !complemento){ mostrarErroLogin('Preencha técnico, PIN e complemento.'); return; }
+  if(!empresa || !tecnico || !pin || !complemento){ mostrarErroLogin('Preencha empresa, técnico, PIN e complemento.'); return; }
 
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'LOGIN_TECNICO', empresa:EMPRESA_ATUAL, tecnico, pin, complemento })
+      body: JSON.stringify({ acao:'LOGIN_TECNICO', empresa, tecnico, pin, complemento })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ mostrarErroLogin(result.message || 'Não foi possível entrar.'); return; }
 
     TECNICO_LOGADO = tecnico;
+    EMPRESA_LOGADA = empresa;
     sessionStorage.setItem('esteira_tecnico_logado', tecnico);
+    sessionStorage.setItem('esteira_empresa_logada', empresa);
     document.getElementById('login-overlay').style.display = 'none';
     document.getElementById('headerApp').style.display = 'block';
     document.getElementById('app').style.display = 'block';
@@ -277,8 +300,10 @@ window.fazerLogin = fazerLogin;
 // não pede PIN/complemento de novo, mesmo se a página for recarregada (F5).
 (function tentarSessaoExistente(){
   const salvo = sessionStorage.getItem('esteira_tecnico_logado');
-  if(salvo){
+  const salvoEmpresa = sessionStorage.getItem('esteira_empresa_logada');
+  if(salvo && salvoEmpresa){
     TECNICO_LOGADO = salvo;
+    EMPRESA_LOGADA = salvoEmpresa;
     document.getElementById('login-overlay').style.display = 'none';
     document.getElementById('headerApp').style.display = 'block';
     document.getElementById('app').style.display = 'block';
@@ -320,7 +345,7 @@ window.buscarResumoDiario = async function(){
   const data = document.getElementById('dataResumo').value;
   if(!data) return;
   try{
-    const url = APPS_SCRIPT_URL + '?acao=RESUMO_DIARIO_TECNICO&empresa=' + encodeURIComponent(EMPRESA_ATUAL) + '&tecnico=' + encodeURIComponent(TECNICO_LOGADO) + '&data=' + data;
+    const url = APPS_SCRIPT_URL + '?acao=RESUMO_DIARIO_TECNICO&empresa=' + encodeURIComponent(EMPRESA_LOGADA) + '&tecnico=' + encodeURIComponent(TECNICO_LOGADO) + '&data=' + data;
     const resp = await fetch(url);
     const result = await resp.json();
     document.getElementById('resumoRecebidas').textContent = result.recebidas ?? '0';
@@ -334,7 +359,7 @@ window.buscarResumoMensal = async function(){
   const mes = document.getElementById('mesResumo').value;
   if(!mes) return;
   try{
-    const url = APPS_SCRIPT_URL + '?acao=RESUMO_MENSAL_TECNICO&empresa=' + encodeURIComponent(EMPRESA_ATUAL) + '&tecnico=' + encodeURIComponent(TECNICO_LOGADO) + '&mes=' + mes;
+    const url = APPS_SCRIPT_URL + '?acao=RESUMO_MENSAL_TECNICO&empresa=' + encodeURIComponent(EMPRESA_LOGADA) + '&tecnico=' + encodeURIComponent(TECNICO_LOGADO) + '&mes=' + mes;
     const resp = await fetch(url);
     const r = await resp.json();
 
@@ -372,14 +397,15 @@ function mostrarErroLogin(msg){
 }
 
 async function fazerReset(){
+  const empresa = document.getElementById('selEmpresaReset').value;
   const tecnico = document.getElementById('selTecnicoReset').value;
   const pin = document.getElementById('inputPinReset').value.trim();
   const novoComplemento = document.getElementById('inputNovoComplemento').value;
   const erroEl = document.getElementById('erroReset');
   erroEl.classList.remove('visible');
 
-  if(!tecnico || !pin || !novoComplemento){
-    erroEl.textContent = '❌ Preencha técnico, PIN e a nova senha.';
+  if(!empresa || !tecnico || !pin || !novoComplemento){
+    erroEl.textContent = '❌ Preencha empresa, técnico, PIN e a nova senha.';
     erroEl.classList.add('visible');
     return;
   }
@@ -387,7 +413,7 @@ async function fazerReset(){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'RESET_COMPLEMENTO', empresa:EMPRESA_ATUAL, tecnico, pin, novoComplemento })
+      body: JSON.stringify({ acao:'RESET_COMPLEMENTO', empresa, tecnico, pin, novoComplemento })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){
@@ -408,7 +434,7 @@ window.fazerReset = fazerReset;
 // ── ATIVIDADES ───────────────────────────────────────────────
 async function carregarAtividades(){
   try{
-    const url = APPS_SCRIPT_URL + '?acao=LISTAR_ATIVIDADES_TECNICO&empresa=' + encodeURIComponent(EMPRESA_ATUAL) + '&tecnico=' + encodeURIComponent(TECNICO_LOGADO);
+    const url = APPS_SCRIPT_URL + '?acao=LISTAR_ATIVIDADES_TECNICO&empresa=' + encodeURIComponent(EMPRESA_LOGADA) + '&tecnico=' + encodeURIComponent(TECNICO_LOGADO);
     const resp = await fetch(url);
     const result = await resp.json();
     renderAtividades(result.atividades || []);
