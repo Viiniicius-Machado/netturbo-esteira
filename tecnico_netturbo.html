@@ -265,10 +265,7 @@ async function fazerLogin(){
     if(result.primeiroAcesso){ showToast('✅ Senha pessoal criada com sucesso!'); }
     carregarAtividades();
     inicializarResumoDiario();
-    // Sem atualização automática aqui de propósito — o técnico costuma resolver
-    // uma atividade de cada vez, e recarregar sozinho apagaria o formulário
-    // que ele está preenchendo. Use o botão "↻ Atualizar" no topo pra ver
-    // atividade nova sem perder o que estiver preenchendo.
+    iniciarAutoRefresh();
   }catch(err){
     console.error(err);
     mostrarErroLogin('Erro ao conectar com o servidor.');
@@ -292,9 +289,22 @@ window.fazerLogin = fazerLogin;
     setTimeout(()=>{
       carregarAtividades();
       inicializarResumoDiario();
+      iniciarAutoRefresh();
     }, 0);
   }
 })();
+
+// Atualiza sozinho a cada 20s — mas pula o ciclo se tiver algum formulário de
+// ocorrência aberto na tela (EM_CAMPO ou NAO_VALIDADA), pra nunca apagar o que
+// o técnico estiver preenchendo sem ele mandar.
+function iniciarAutoRefresh(){
+  if(window._tecAutoRefresh) return;
+  window._tecAutoRefresh = setInterval(()=>{
+    const temFormularioAberto = ATIVIDADES_CACHE.some(a => a['Status']==='EM_CAMPO' || a['Status']==='NAO_VALIDADA');
+    if(temFormularioAberto) return; // espera o próximo ciclo, não mexe agora
+    carregarAtividades();
+  }, 20000);
+}
 
 function inicializarResumoDiario(){
   const hoje = new Date();
