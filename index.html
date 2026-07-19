@@ -370,6 +370,16 @@ function renderEsteira(){
         </select>
         <select class="mini" id="sel-tecnico-${a.rowIndex}"><option value="">Técnico...</option></select>
       </div>
+      <details style="margin-top:.4rem">
+        <summary style="font-size:.65rem;color:var(--text-muted);cursor:pointer">+ Equipe de Apoio (opcional)</summary>
+        <div class="acoes" style="margin-top:.4rem">
+          <select class="mini" id="sel-empresa-apoio-${a.rowIndex}" onchange="atualizarTecnicosApoio(${a.rowIndex})">
+            <option value="">Empresa apoio...</option>
+            ${Object.keys(TECH_MAP).map(emp=>`<option value="${emp}">${emp}</option>`).join('')}
+          </select>
+          <select class="mini" id="sel-tecnico-apoio-${a.rowIndex}"><option value="">Técnico apoio...</option></select>
+        </div>
+      </details>
       <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.4rem" onclick="despachar(${a.rowIndex})">🚚 Despachar</button>
       <button class="btn" style="width:100%;margin-top:.3rem;padding:.35rem;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;font-size:.68rem" onclick="excluirAtividade(${a.rowIndex})">🗑 Excluir (foi engano)</button>
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando despacho.</div>';
@@ -381,7 +391,20 @@ function renderEsteira(){
       <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
       <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br>${statusLabelMap[a['Status']]||a['Status']}</div>
+      ${a['Técnico Apoio'] ? `<div class="meta" style="color:var(--accent)">🤝 Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}${a['Hora Início Apoio']?' ('+a['Hora Início Apoio']+(a['Hora Chegada Apoio']?' → '+a['Hora Chegada Apoio']:'')+')':''}</div>` : ''}
       <button class="btn" style="width:100%;margin-top:.5rem;padding:.35rem;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-size:.68rem" onclick="desfazerDespacho(${a.rowIndex})">↩ Desfazer Despacho</button>
+      ${!a['Técnico Apoio'] ? `
+      <details style="margin-top:.4rem">
+        <summary style="font-size:.62rem;color:var(--text-muted);cursor:pointer">+ Adicionar Equipe de Apoio</summary>
+        <div class="acoes" style="margin-top:.4rem">
+          <select class="mini" id="sel-empresa-apoio2-${a.rowIndex}" onchange="atualizarTecnicosApoio2(${a.rowIndex})">
+            <option value="">Empresa apoio...</option>
+            ${Object.keys(TECH_MAP).map(emp=>`<option value="${emp}">${emp}</option>`).join('')}
+          </select>
+          <select class="mini" id="sel-tecnico-apoio2-${a.rowIndex}"><option value="">Técnico apoio...</option></select>
+        </div>
+        <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.35rem;font-size:.68rem" onclick="adicionarApoio(${a.rowIndex})">Confirmar Apoio</button>
+      </details>` : ''}
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade em andamento.</div>';
 
   // Captura o que o líder já tinha digitado nos campos editáveis, ANTES de
@@ -516,19 +539,58 @@ window.atualizarTecnicosDespacho = function(rowIndex){
   sel.innerHTML = '<option value="">Técnico...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
 };
 
+window.atualizarTecnicosApoio = function(rowIndex){
+  const empresa = document.getElementById('sel-empresa-apoio-'+rowIndex).value;
+  const nomes = TECH_MAP[empresa] || [];
+  const sel = document.getElementById('sel-tecnico-apoio-'+rowIndex);
+  sel.innerHTML = '<option value="">Técnico apoio...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
+};
+
 window.despachar = async function(rowIndex){
   const empresa = document.getElementById('sel-empresa-'+rowIndex).value;
   const tecnico = document.getElementById('sel-tecnico-'+rowIndex).value;
   if(!empresa || !tecnico){ showToast('⚠️ Escolha empresa e técnico antes de despachar.'); return; }
 
+  const selEmpApoio = document.getElementById('sel-empresa-apoio-'+rowIndex);
+  const selTecApoio = document.getElementById('sel-tecnico-apoio-'+rowIndex);
+  const empresaApoio = selEmpApoio ? selEmpApoio.value : '';
+  const tecnicoApoio = selTecApoio ? selTecApoio.value : '';
+
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'DESPACHAR', rowIndex, empresa, tecnico })
+      body: JSON.stringify({ acao:'DESPACHAR', rowIndex, empresa, tecnico, empresaApoio, tecnicoApoio })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao despachar.')); carregarEsteira(); return; }
     showToast('✅ Atividade despachada!');
+    carregarEsteira();
+  }catch(err){
+    console.error(err);
+    showToast('❌ Erro ao conectar com o backend.');
+  }
+};
+
+window.atualizarTecnicosApoio2 = function(rowIndex){
+  const empresa = document.getElementById('sel-empresa-apoio2-'+rowIndex).value;
+  const nomes = TECH_MAP[empresa] || [];
+  const sel = document.getElementById('sel-tecnico-apoio2-'+rowIndex);
+  sel.innerHTML = '<option value="">Técnico apoio...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
+};
+
+window.adicionarApoio = async function(rowIndex){
+  const empresaApoio = document.getElementById('sel-empresa-apoio2-'+rowIndex).value;
+  const tecnicoApoio = document.getElementById('sel-tecnico-apoio2-'+rowIndex).value;
+  if(!empresaApoio || !tecnicoApoio){ showToast('⚠️ Escolha empresa e técnico de apoio.'); return; }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'DEFINIR_APOIO', rowIndex, empresaApoio, tecnicoApoio })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao definir apoio.')); return; }
+    showToast('✅ Equipe de apoio adicionada!');
     carregarEsteira();
   }catch(err){
     console.error(err);
