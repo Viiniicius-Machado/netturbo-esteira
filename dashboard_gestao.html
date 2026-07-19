@@ -200,7 +200,7 @@
         <table>
           <thead>
             <tr>
-              <th>Empresa</th><th>Técnico</th><th>Protocolo</th><th>Cliente</th><th>Cidade</th><th>Tipo</th>
+              <th>Empresa</th><th>Técnico</th><th>Equipe Apoio</th><th>Protocolo</th><th>Cliente</th><th>Cidade</th><th>Tipo</th>
               <th>Causa</th><th>Início</th><th>Chegada</th><th>Validado</th>
               <th>MTTR</th><th>MTTD</th><th>Status SLA</th><th>Validado Por</th>
             </tr>
@@ -423,6 +423,7 @@ function renderDashboard(){
     return `<tr>
       <td>${a['Empresa']||'—'}</td>
       <td>${a['Técnico']||'—'}</td>
+      <td>${a['Técnico Apoio'] ? (a['Empresa Apoio']+' · '+a['Técnico Apoio']) : '—'}</td>
       <td>${a['Protocolo O&M']||a['Protocolo NOC']||'—'}</td>
       <td>${a['Cliente']||'—'}</td>
       <td>${a['Cidade Falha']||'—'}</td>
@@ -446,6 +447,7 @@ window.exportarExcel = function(){
     return {
       'Empresa': a['Empresa']||'',
       'Técnico': a['Técnico']||'',
+      'Equipe Apoio': a['Técnico Apoio'] ? (a['Empresa Apoio']+' - '+a['Técnico Apoio']) : '',
       'Protocolo': a['Protocolo O&M']||a['Protocolo NOC']||'',
       'Cliente': a['Cliente']||'',
       'Cidade': a['Cidade Falha']||'',
