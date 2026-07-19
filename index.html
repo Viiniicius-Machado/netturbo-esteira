@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <style>
     :root{
-      --accent:#5aa9e6;--accent-dark:#2f6fa8;--accent-glow:rgba(90,169,230,.22);--accent-dim:rgba(90,169,230,.08);
+      --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-glow:rgba(168,201,60,.22);--accent-dim:rgba(168,201,60,.08);
       --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
       --border:#252525;--border-hi:#353535;
       --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
@@ -19,23 +19,23 @@
     html{font-size:15px;scroll-behavior:smooth}
     body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
 
-    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#061626,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
-    .login-box{width:100%;max-width:340px;background:linear-gradient(160deg,#111a22,#0f0f0f);border:1px solid #12283a;border-radius:20px;padding:2.5rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.4rem}
+    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+    .login-box{width:100%;max-width:340px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.5rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.4rem}
     .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);text-align:center}
     .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase;margin-top:.3rem;text-align:center}
     .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
     .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim)}
     .login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.95rem;padding:.75rem 1rem;width:100%}
     .login-field input:focus{outline:none;border-color:var(--accent)}
-    .login-btn{width:100%;padding:.85rem;background:linear-gradient(135deg,#2f6fa8,#5aa9e6);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;cursor:pointer}
+    .login-btn{width:100%;padding:.85rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;cursor:pointer}
     .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
     .login-error.visible{display:block}
 
-    header{background:linear-gradient(180deg,#0a141c,#0f0f0f);border-bottom:1px solid #12283a;position:sticky;top:0;z-index:100}
+    header{background:linear-gradient(180deg,#0c160a,#0f0f0f);border-bottom:1px solid #1a2a12;position:sticky;top:0;z-index:100}
     .header-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem}
     .hdr-brand{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:.1em;color:var(--accent);text-transform:uppercase}
     .hdr-sub{font-size:.6rem;color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase}
-    .hdr-badge{font-size:.56rem;font-weight:700;letter-spacing:.1em;padding:.22rem .5rem;border-radius:20px;background:rgba(90,169,230,.1);color:var(--accent);border:1px solid rgba(90,169,230,.3)}
+    .hdr-badge{font-size:.56rem;font-weight:700;letter-spacing:.1em;padding:.22rem .5rem;border-radius:20px;background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)}
 
     main{max-width:1100px;margin:0 auto;padding:1.4rem 1rem 0}
 
@@ -48,7 +48,7 @@
     textarea#maskInput:focus{outline:none;border-color:var(--accent)}
 
     .btn{padding:.65rem 1.2rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-size:.85rem}
-    .btn-accent{background:linear-gradient(135deg,#2f6fa8,#5aa9e6);color:#050505}
+    .btn-accent{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
     .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
     .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
     .btn-green{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
@@ -71,6 +71,10 @@
     .atv-card .protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.85rem}
     .atv-card .cliente{font-size:.78rem;margin-top:.15rem}
     .atv-card .meta{font-size:.68rem;color:var(--text-muted);margin-top:.3rem;line-height:1.5}
+    .edit-label{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:.15rem}
+    .edit-field{width:100%;background:var(--bg);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.75rem;padding:.4rem .55rem;font-family:inherit}
+    textarea.edit-field{min-height:50px;resize:vertical}
+    .edit-field:focus{outline:none;border-color:#ab47bc}
     .atv-card .acoes{margin-top:.6rem;display:flex;gap:.4rem}
 
     .status-aguardando{border-left:3px solid var(--amber)}
@@ -87,6 +91,7 @@
 
 <div id="login-overlay">
   <div class="login-box">
+    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:120px;height:auto;background:#fff;border-radius:12px;padding:.6rem" onerror="this.style.display='none'"/>
     <div class="login-heading">
       <h2>Netturbo</h2>
       <p>Esteira de Despacho · Liderança</p>
@@ -102,11 +107,13 @@
 
 <header>
   <div class="header-inner">
+    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="height:34px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem" onerror="this.style.display='none'"/>
     <div>
       <div class="hdr-brand">Netturbo</div>
       <div class="hdr-sub">Esteira de Despacho</div>
     </div>
     <div style="flex:1"></div>
+    <a href="dashboard_gestao.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px;margin-right:.5rem">📊 Dashboard</a>
     <div class="hdr-badge">👑 LIDERANÇA</div>
   </div>
 </header>
@@ -150,17 +157,28 @@
   <section class="card">
     <div class="card-header"><h2>📋 Esteira de Atividades</h2>
       <div style="flex:1"></div>
+      <select id="selLiderAtual" style="margin-right:.5rem;font-size:.75rem;padding:.35rem .6rem">
+        <option value="">Você é...</option>
+        <option value="Vinicius Machado">Vinicius Machado</option>
+        <option value="Weslley Rodrigues">Weslley Rodrigues</option>
+        <option value="Leonardo Egídio">Leonardo Egídio</option>
+        <option value="Reginaldo Venâncio">Reginaldo Venâncio</option>
+      </select>
       <button class="btn btn-outline" style="padding:.4rem .8rem;font-size:.72rem" onclick="carregarEsteira()">↻ Atualizar</button>
     </div>
     <div class="card-body">
-      <div class="board">
+      <div class="board" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
         <div>
           <div class="col-title">⏳ Aguardando Despacho <span class="col-count" id="countAguardando">0</span></div>
           <div id="colAguardando"></div>
         </div>
         <div>
-          <div class="col-title">🚚 Despachadas <span class="col-count" id="countDespachadas">0</span></div>
+          <div class="col-title">🚚 Despachadas / Em Campo <span class="col-count" id="countDespachadas">0</span></div>
           <div id="colDespachadas"></div>
+        </div>
+        <div>
+          <div class="col-title">📡 Aguardando Validação NOC <span class="col-count" id="countValidacao">0</span></div>
+          <div id="colValidacao"></div>
         </div>
       </div>
     </div>
@@ -171,8 +189,8 @@
 
 <script>
 // ── CONFIGURAÇÃO ──────────────────────────────────────────────
-const APPS_SCRIPT_URL = "COLE_AQUI_A_URL_DO_APPS_SCRIPT_DA_ESTEIRA";
-const LEADERSHIP_PASSWORD = "TROQUE_ESSA_SENHA";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+const LEADERSHIP_PASSWORD = "Manutencao101";
 
 // Empresas e técnicos (mesma lista já usada no RFO Técnico)
 const TECH_MAP = {
@@ -325,10 +343,12 @@ window.carregarEsteira = carregarEsteira;
 
 function renderEsteira(){
   const aguardando = ATIVIDADES.filter(a => a['Status'] === 'AGUARDANDO_DESPACHO');
-  const despachadas = ATIVIDADES.filter(a => a['Status'] === 'DESPACHADA');
+  const emAndamento = ATIVIDADES.filter(a => ['DESPACHADA','INICIADA','EM_CAMPO','NAO_VALIDADA'].includes(a['Status']));
+  const aguardandoValidacao = ATIVIDADES.filter(a => a['Status'] === 'AGUARDANDO_VALIDACAO');
 
   document.getElementById('countAguardando').textContent = aguardando.length;
-  document.getElementById('countDespachadas').textContent = despachadas.length;
+  document.getElementById('countDespachadas').textContent = emAndamento.length;
+  document.getElementById('countValidacao').textContent = aguardandoValidacao.length;
 
   const colA = document.getElementById('colAguardando');
   colA.innerHTML = aguardando.length ? aguardando.map(a => `
@@ -344,16 +364,132 @@ function renderEsteira(){
         <select class="mini" id="sel-tecnico-${a.rowIndex}"><option value="">Técnico...</option></select>
       </div>
       <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.4rem" onclick="despachar(${a.rowIndex})">🚚 Despachar</button>
+      <button class="btn" style="width:100%;margin-top:.3rem;padding:.35rem;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;font-size:.68rem" onclick="excluirAtividade(${a.rowIndex})">🗑 Excluir (foi engano)</button>
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando despacho.</div>';
 
+  const statusLabelMap = { 'DESPACHADA':'Aguardando início', 'INICIADA':'Em deslocamento', 'EM_CAMPO':'Em campo', 'NAO_VALIDADA':'Devolvido p/ técnico' };
   const colD = document.getElementById('colDespachadas');
-  colD.innerHTML = despachadas.length ? despachadas.map(a => `
+  colD.innerHTML = emAndamento.length ? emAndamento.map(a => `
     <div class="atv-card status-despachada">
       <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
-      <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br>Despachado: ${a['Timestamp Despacho']||''}</div>
-    </div>`).join('') : '<div class="empty-msg">Nenhuma atividade despachada ainda.</div>';
+      <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br>${statusLabelMap[a['Status']]||a['Status']}</div>
+      <button class="btn" style="width:100%;margin-top:.5rem;padding:.35rem;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-size:.68rem" onclick="desfazerDespacho(${a.rowIndex})">↩ Desfazer Despacho</button>
+    </div>`).join('') : '<div class="empty-msg">Nenhuma atividade em andamento.</div>';
+
+  const colV = document.getElementById('colValidacao');
+  colV.innerHTML = aguardandoValidacao.length ? aguardandoValidacao.map(a => `
+    <div class="atv-card" style="border-left:3px solid #ab47bc">
+      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
+      <div class="cliente">${a['Cliente']||'—'}</div>
+      <div class="meta">
+        ${a['Empresa']||''} · ${a['Técnico']||''}<br>
+        ${a['CEO'] ? `<b>CEO:</b> ${a['CEO']==='nova'?'Caixa Nova → Nova':a['CEO']==='existente'?'Caixa Nova → Existente':'Caixa Existente → Existente'}<br>` : ''}
+        Início: ${a['Hora Início']||'—'} · Chegada: ${a['Hora Chegada']||'—'}
+        ${a['Cidade Falha'] ? `<br><b>Cidade:</b> ${a['Cidade Falha']}` : ''}
+        ${a['GPS Falha'] ? `<br><a href="${a['GPS Falha']}" target="_blank" style="color:var(--accent)">📍 Local da Falha</a>` : ''}
+        ${a['GPS Caixa Nova A'] ? `<br><a href="${a['GPS Caixa Nova A']}" target="_blank" style="color:var(--accent)">📍 ${a['CEO']==='existente' ? 'Caixa Nova' : 'Caixa Nova A'}</a>` : ''}
+        ${a['GPS Caixa Nova B'] ? `<br><a href="${a['GPS Caixa Nova B']}" target="_blank" style="color:var(--accent)">📍 Caixa Nova B</a>` : ''}
+      </div>
+      <div style="margin-top:.5rem;display:flex;flex-direction:column;gap:.5rem">
+        <div>
+          <label class="edit-label">Ocorrência</label>
+          <input type="text" class="edit-field" id="edit-ocorrencia-${a.rowIndex}" value="${String(a['Ocorrência']||'').replace(/"/g,'&quot;')}"/>
+        </div>
+        <div>
+          <label class="edit-label">Causa</label>
+          <input type="text" class="edit-field" id="edit-causa-${a.rowIndex}" value="${String(a['Causa']||'').replace(/"/g,'&quot;')}"/>
+        </div>
+        <div>
+          <label class="edit-label">Solução</label>
+          <textarea class="edit-field" id="edit-solucao-${a.rowIndex}">${String(a['Solução']||'')}</textarea>
+        </div>
+        <div>
+          <label class="edit-label">Melhoria</label>
+          <textarea class="edit-field" id="edit-melhoria-${a.rowIndex}">${String(a['Melhoria']||'')}</textarea>
+        </div>
+        <div>
+          <label class="edit-label">Materiais</label>
+          <textarea class="edit-field" id="edit-materiais-${a.rowIndex}">${String(a['Materiais']||'')}</textarea>
+        </div>
+      </div>
+      <div class="acoes" style="margin-top:.5rem">
+        <button class="btn btn-green" style="flex:1;padding:.4rem" onclick="validar(${a.rowIndex}, true)">✅ Validar</button>
+        <button class="btn" style="flex:1;padding:.4rem;background:#7a1010;color:#fff" onclick="validar(${a.rowIndex}, false)">❌ Não Validar</button>
+      </div>
+    </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando validação.</div>';
 }
+
+window.validar = async function(rowIndex, aprovado){
+  const validadoPor = document.getElementById('selLiderAtual').value;
+  if(!validadoPor){ showToast('⚠️ Selecione "Você é..." antes de validar.'); return; }
+
+  let motivo = '';
+  let payloadExtra = {};
+  if(!aprovado){
+    motivo = prompt('Motivo da não validação (o técnico vai ver isso):');
+    if(motivo === null) return; // cancelou
+    if(!motivo.trim()){ showToast('⚠️ Informe o motivo da não validação.'); return; }
+  } else {
+    if(!confirm('Confirma que o NOC validou o sinal e a atividade pode ser fechada?')) return;
+    // Manda a versão (possivelmente editada) dos campos junto com a validação
+    payloadExtra = {
+      ocorrencia: document.getElementById('edit-ocorrencia-'+rowIndex).value.trim(),
+      causa: document.getElementById('edit-causa-'+rowIndex).value.trim(),
+      solucao: document.getElementById('edit-solucao-'+rowIndex).value.trim(),
+      materiais: document.getElementById('edit-materiais-'+rowIndex).value.trim(),
+      melhoria: document.getElementById('edit-melhoria-'+rowIndex).value.trim()
+    };
+  }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify(Object.assign({ acao:'VALIDAR', rowIndex, aprovado, motivo, validadoPor }, payloadExtra))
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao validar.')); carregarEsteira(); return; }
+    showToast(aprovado ? '✅ Atividade validada e concluída!' : '↩ Devolvido para o técnico com o motivo.');
+    carregarEsteira();
+  }catch(err){
+    console.error(err);
+    showToast('❌ Erro ao conectar com o backend.');
+  }
+};
+
+window.excluirAtividade = async function(rowIndex){
+  if(!confirm('Excluir esta atividade da esteira? Essa ação não pode ser desfeita.')) return;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'EXCLUIR_ATIVIDADE', rowIndex })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao excluir.')); carregarEsteira(); return; }
+    showToast('🗑 Atividade excluída.');
+    carregarEsteira();
+  }catch(err){
+    console.error(err);
+    showToast('❌ Erro ao conectar com o backend.');
+  }
+};
+
+window.desfazerDespacho = async function(rowIndex){
+  if(!confirm('Desfazer o despacho? A atividade volta para "Aguardando Despacho" e some da tela do técnico — o que ele já preencheu (ocorrência, horários) será apagado.')) return;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'DESFAZER_DESPACHO', rowIndex })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao desfazer.')); carregarEsteira(); return; }
+    showToast('↩ Despacho desfeito — voltou pra fila.');
+    carregarEsteira();
+  }catch(err){
+    console.error(err);
+    showToast('❌ Erro ao conectar com o backend.');
+  }
+};
 
 window.atualizarTecnicosDespacho = function(rowIndex){
   const empresa = document.getElementById('sel-empresa-'+rowIndex).value;
