@@ -384,6 +384,11 @@ function renderEsteira(){
       <button class="btn" style="width:100%;margin-top:.5rem;padding:.35rem;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-size:.68rem" onclick="desfazerDespacho(${a.rowIndex})">↩ Desfazer Despacho</button>
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade em andamento.</div>';
 
+  // Captura o que o líder já tinha digitado nos campos editáveis, ANTES de
+  // redesenhar — senão a atualização automática apaga a edição em andamento.
+  const edicoesEmAndamento = {};
+  document.querySelectorAll('#colValidacao .edit-field').forEach(el=>{ edicoesEmAndamento[el.id] = el.value; });
+
   const colV = document.getElementById('colValidacao');
   colV.innerHTML = aguardandoValidacao.length ? aguardandoValidacao.map(a => `
     <div class="atv-card" style="border-left:3px solid #ab47bc">
@@ -425,6 +430,12 @@ function renderEsteira(){
         <button class="btn" style="flex:1;padding:.4rem;background:#7a1010;color:#fff" onclick="validar(${a.rowIndex}, false)">❌ Não Validar</button>
       </div>
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando validação.</div>';
+
+  // Restaura o que o líder já tinha digitado (se a atividade ainda estiver na lista)
+  Object.keys(edicoesEmAndamento).forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = edicoesEmAndamento[id];
+  });
 }
 
 window.validar = async function(rowIndex, aprovado){
