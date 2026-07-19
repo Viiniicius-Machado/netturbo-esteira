@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <style>
     :root{
-      --accent:#5aa9e6;--accent-dark:#2f6fa8;--accent-dim:rgba(90,169,230,.08);
+      --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
       --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
       --border:#252525;--border-hi:#353535;
       --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
@@ -19,22 +19,22 @@
     html{font-size:15px}
     body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
 
-    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#061626,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
-    .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#111a22,#0f0f0f);border:1px solid #12283a;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
+    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+    .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
     .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);text-align:center}
     .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
     .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
     .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
     .login-field select,.login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.92rem;padding:.7rem .9rem;width:100%}
     .login-field select:focus,.login-field input:focus{outline:none;border-color:var(--accent)}
-    .login-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#2f6fa8,#5aa9e6);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;margin-top:.3rem}
+    .login-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;margin-top:.3rem}
     .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
     .login-error.visible{display:block}
-    .login-info{font-size:.7rem;color:var(--text-dim);background:rgba(90,169,230,.08);border:1px solid rgba(90,169,230,.2);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
+    .login-info{font-size:.7rem;color:var(--text-dim);background:rgba(168,201,60,.08);border:1px solid rgba(168,201,60,.2);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
     .login-info.visible{display:block}
     .link-esqueci{font-size:.72rem;color:var(--accent);cursor:pointer;text-align:center;text-decoration:underline;margin-top:-.4rem}
 
-    header{background:linear-gradient(180deg,#0a141c,#0f0f0f);border-bottom:1px solid #12283a;position:sticky;top:0;z-index:100}
+    header{background:linear-gradient(180deg,#0c160a,#0f0f0f);border-bottom:1px solid #1a2a12;position:sticky;top:0;z-index:100}
     .header-inner{max-width:700px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem}
     .hdr-brand{font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;letter-spacing:.1em;color:var(--accent);text-transform:uppercase}
     .hdr-sub{font-size:.6rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase}
@@ -46,7 +46,7 @@
     .atv-cliente{font-size:.88rem;margin-top:.2rem}
     .atv-meta{font-size:.75rem;color:var(--text-muted);margin-top:.4rem;line-height:1.6}
     .atv-status{display:inline-block;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .55rem;border-radius:20px;margin-top:.5rem}
-    .st-despachada{background:rgba(90,169,230,.1);color:var(--accent);border:1px solid rgba(90,169,230,.3)}
+    .st-despachada{background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)}
     .st-iniciada{background:rgba(255,160,0,.1);color:var(--amber);border:1px solid rgba(255,160,0,.3)}
     .st-em-campo{background:rgba(139,195,74,.1);color:var(--green);border:1px solid rgba(139,195,74,.3)}
 
@@ -54,7 +54,7 @@
     .btn-iniciar{background:linear-gradient(135deg,#8a6010,#d4a843);color:#050505}
     .btn-chegada{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
     .btn-concluido{background:var(--surface3);color:var(--text-dim);cursor:default}
-    .btn-validar{background:linear-gradient(135deg,#2f6fa8,#5aa9e6);color:#050505}
+    .btn-validar{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
 
     .aviso-naovalidado{margin-top:.7rem;font-size:.78rem;font-weight:600;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:8px;padding:.6rem .8rem}
 
@@ -64,11 +64,11 @@
     .form-ocorrencia textarea{min-height:70px;resize:vertical}
     .chip-group{display:flex;flex-wrap:wrap;gap:.4rem}
     .chip{padding:.4rem .75rem;border-radius:20px;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);font-size:.72rem;font-weight:600;cursor:pointer}
-    .chip.active{background:rgba(90,169,230,.15);border-color:var(--accent);color:var(--accent)}
+    .chip.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
     .causa-grid{display:grid;grid-template-columns:1fr 1fr;gap:.35rem}
     @media(max-width:420px){.causa-grid{grid-template-columns:1fr}}
     .causa-item{padding:.5rem .7rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);font-size:.75rem;cursor:pointer;color:var(--text-dim)}
-    .causa-item.active{background:rgba(90,169,230,.15);border-color:var(--accent);color:var(--accent)}
+    .causa-item.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
 
     .toggle-row{display:flex;gap:.5rem}
     .toggle-btn{flex:1;padding:.55rem;border-radius:var(--radius);border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);font-size:.8rem;font-weight:600;cursor:pointer;text-align:center}
@@ -84,10 +84,10 @@
 
     .ceo-options{display:flex;flex-direction:column;gap:.4rem}
     .ceo-opt{padding:.55rem .75rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);font-size:.78rem;cursor:pointer;color:var(--text-dim)}
-    .ceo-opt.active{background:rgba(90,169,230,.15);border-color:var(--accent);color:var(--accent);font-weight:600}
+    .ceo-opt.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent);font-weight:600}
 
     .gps-block{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .7rem;margin-top:.3rem}
-    .btn-gps{width:100%;padding:.55rem;background:rgba(90,169,230,.1);border:1px solid rgba(90,169,230,.3);border-radius:var(--radius);color:var(--accent);font-size:.78rem;font-weight:600;cursor:pointer}
+    .btn-gps{width:100%;padding:.55rem;background:rgba(168,201,60,.1);border:1px solid rgba(168,201,60,.3);border-radius:var(--radius);color:var(--accent);font-size:.78rem;font-weight:600;cursor:pointer}
     .gps-valor{font-size:.7rem;color:var(--text-dim);margin-top:.4rem;font-family:monospace;word-break:break-all}
     .link-manual{font-size:.68rem;color:var(--accent);cursor:pointer;text-decoration:underline;margin-top:.4rem;display:inline-block}
 
@@ -108,6 +108,7 @@
 <!-- TELA DE LOGIN -->
 <div id="login-overlay">
   <div class="login-box" id="boxLogin">
+    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:110px;height:auto;background:#fff;border-radius:12px;padding:.5rem" onerror="this.style.display='none'"/>
     <div class="login-heading">
       <h2 id="tituloEmpresa">NETTURBO</h2>
       <p>Minhas Atividades · Acesso do Técnico</p>
@@ -157,6 +158,7 @@
 <!-- APP -->
 <header id="headerApp" style="display:none">
   <div class="header-inner">
+    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="height:30px;width:auto;background:#fff;border-radius:6px;padding:.15rem .35rem" onerror="this.style.display='none'"/>
     <div>
       <div class="hdr-brand">Netturbo</div>
       <div class="hdr-sub">Minhas Atividades</div>
@@ -171,7 +173,7 @@
     <div class="resumo-titulo">📊 Resumo do Mês</div>
     <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
       <input type="month" id="mesResumo" style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.45rem .6rem"/>
-      <button onclick="buscarResumoMensal()" style="background:rgba(90,169,230,.1);border:1px solid rgba(90,169,230,.3);color:var(--accent);font-size:.72rem;font-weight:700;padding:.5rem .8rem;border-radius:var(--radius);cursor:pointer">Buscar</button>
+      <button onclick="buscarResumoMensal()" style="background:rgba(168,201,60,.1);border:1px solid rgba(168,201,60,.3);color:var(--accent);font-size:.72rem;font-weight:700;padding:.5rem .8rem;border-radius:var(--radius);cursor:pointer">Buscar</button>
     </div>
     <div class="resumo-grid">
       <div><div class="resumo-num" id="resumoConcluidasMes">–</div><div class="resumo-label">Concluídas</div></div>
