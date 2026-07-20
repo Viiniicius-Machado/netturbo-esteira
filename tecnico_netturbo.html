@@ -522,12 +522,24 @@ function renderAtividades(atividades){
 // início/chegada, sem formulário de ocorrência (isso continua com o titular).
 function renderCardApoio(a){
   let botao = '';
+  let formMateriais = '';
   if(!a['Hora Início Apoio']){
     botao = `<button class="btn-acao btn-iniciar" onclick="marcarAcaoApoio(${a.rowIndex})">▶ Iniciar Atividade</button>`;
   } else if(!a['Hora Chegada Apoio']){
     botao = `<button class="btn-acao btn-chegada" onclick="marcarAcaoApoio(${a.rowIndex})">📍 Cheguei no Local</button>`;
   } else {
     botao = `<button class="btn-acao btn-concluido" disabled>Sua parte concluída — titular finaliza o restante</button>`;
+    formMateriais = `
+      <div style="margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--border)">
+        <label style="font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">Usou material seu nessa atividade? (registro pessoal, não vai pra validação)</label>
+        <div class="toggle-row" style="margin-top:.4rem">
+          <button type="button" class="toggle-btn" id="mat-sim-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, true)">✅ Sim</button>
+          <button type="button" class="toggle-btn" id="mat-nao-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, false)">❌ Não</button>
+        </div>
+        <div id="listamat-${a.rowIndex}"></div>
+        <button class="btn-acao" style="background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505;margin-top:.6rem" onclick="salvarMateriaisApoio(${a.rowIndex})">💾 Salvar Meus Materiais</button>
+        <button class="btn-acao btn-validar" style="margin-top:.5rem" onclick="copiarRelatorioApoio(${a.rowIndex})">📋 Copiar Meu Relatório (uso pessoal)</button>
+      </div>`;
   }
   return `<div class="atv-card">
     <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
@@ -535,8 +547,48 @@ function renderCardApoio(a){
     <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>Titular: ${a['Técnico']||'—'} (${a['Empresa']||''})</div>
     <span class="atv-status st-despachada">🤝 Você é EQUIPE DE APOIO</span>
     ${botao}
+    ${formMateriais}
   </div>`;
 }
+
+window.salvarMateriaisApoio = async function(rowIndex){
+  const materiais = montarStringMateriais(rowIndex);
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'SALVAR_MATERIAIS_APOIO', rowIndex, materiaisApoio: materiais })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao salvar.')); return; }
+    showToast('✅ Seus materiais foram registrados!');
+  }catch(err){
+    console.error(err);
+    showToast('❌ Erro ao conectar com o servidor.');
+  }
+};
+
+window.copiarRelatorioApoio = function(rowIndex){
+  const a = ATIVIDADES_CACHE.find(x=>x.rowIndex === rowIndex) || {};
+  const materiais = montarStringMateriais(rowIndex);
+
+  let t = '*MEU REGISTRO — EQUIPE DE APOIO*\n';
+  t += '_Uso pessoal — não substitui o RFO oficial do titular_\n\n';
+  t += 'CLIENTE: ' + (a['Cliente']||'—') + '\n';
+  t += 'PROTOCOLO: ' + (a['Protocolo O&M']||a['Protocolo NOC']||'—') + '\n';
+  t += 'ENDEREÇO: ' + (a['Endereço']||'—') + '\n\n';
+  t += 'MEU INÍCIO: ' + (a['Hora Início Apoio']||'—') + '\n';
+  t += 'MINHA CHEGADA: ' + (a['Hora Chegada Apoio']||'—') + '\n\n';
+  t += '*MATERIAIS QUE EU USEI:*\n' + materiais;
+
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).catch(()=>copiarFallback(t));
+    }else{
+      copiarFallback(t);
+    }
+  }catch(e){ copiarFallback(t); }
+  showToast('✅ Copiado! Cole no seu grupo.');
+};
 
 function renderFormOcorrencia(a){
   const tipoAtual = a['Ocorrência'] || '';
@@ -704,7 +756,7 @@ window.capturarGPS = function(rowIndex, key){
       const outra = GPS_COORDS[rowIndex+'-'+outraKey];
       if(outra){
         const dist = distanciaMetros(lat, lon, outra.lat, outra.lon);
-        if(dist < 5){
+        if(dist < 15){
           val.textContent = '⚠️ Muito perto da Caixa ' + (outraKey==='ceoA'?'A':'B') + ' já capturada (' + dist.toFixed(1) + 'm) — vá até a outra caixa antes de capturar.';
           showToast('⚠️ GPS muito próximo da outra caixa — confira se você já se moveu até o local certo.');
           return;
