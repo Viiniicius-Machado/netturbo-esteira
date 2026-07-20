@@ -781,7 +781,6 @@ window.capturarGPS = function(rowIndex, key){
       .catch(()=>{
         val.textContent = '📍 ' + latF + ', ' + lonF;
       });
-    val.textContent = '📍 ' + latF + ', ' + lonF;
   }, ()=>{
     val.textContent = 'Não foi possível capturar sinal — use o campo manual abaixo.';
   }, { enableHighAccuracy:true, timeout:10000 });
