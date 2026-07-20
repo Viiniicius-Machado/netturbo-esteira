@@ -388,12 +388,16 @@ function renderDashboard(){
   const diffMTTR = mttrMedioMin!==null ? mttrMedioMin - META_MTTR_MIN : null;
   document.getElementById('mMTTRGapTempo').textContent = diffMTTR===null ? 'Sem dados' :
     (diffMTTR<=0 ? `${fmtMin(Math.abs(diffMTTR))} abaixo da meta` : `+${fmtMin(diffMTTR)} acima da meta`);
+  // CORRIGIDO: antes usava gapEf (da Eficiência) por engano; agora calcula
+  // o gap específico do MTTR a partir de cSla/sSla (que já são as contagens
+  // dentro/fora da meta de MTTR calculadas acima).
+  const gapMttr = gapContagem(cSla, sSla, META_EFICIENCIA);
   const gapMttrEl = document.getElementById('mMTTRGapQtd');
-  if(gapEf === 0){
+  if(gapMttr === 0){
     gapMttrEl.textContent = '✓ Meta batida';
     gapMttrEl.className = 'metric-gap gap-ok';
   }else{
-    gapMttrEl.textContent = `Faltam ${gapEf} atividade(s) dentro de 4h pra bater a meta`;
+    gapMttrEl.textContent = `Faltam ${gapMttr} atividade(s) dentro de 4h pra bater a meta`;
     gapMttrEl.className = 'metric-gap gap-bad';
   }
 
