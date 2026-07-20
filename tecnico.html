@@ -537,8 +537,7 @@ function renderCardApoio(a){
           <button type="button" class="toggle-btn" id="mat-nao-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, false)">❌ Não</button>
         </div>
         <div id="listamat-${a.rowIndex}"></div>
-        <button class="btn-acao" style="background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505;margin-top:.6rem" onclick="salvarMateriaisApoio(${a.rowIndex})">💾 Salvar Meus Materiais</button>
-        <button class="btn-acao btn-validar" style="margin-top:.5rem" onclick="copiarRelatorioApoio(${a.rowIndex})">📋 Copiar Meu Relatório (uso pessoal)</button>
+        <button class="btn-acao btn-validar" style="margin-top:.6rem" onclick="salvarECopiarApoio(${a.rowIndex})">💾 Salvar e Copiar Relatório</button>
       </div>`;
   }
   return `<div class="atv-card">
@@ -551,8 +550,12 @@ function renderCardApoio(a){
   </div>`;
 }
 
-window.salvarMateriaisApoio = async function(rowIndex){
+// Salva os materiais no backend (vai pro resumo/Excel da liderança) e, se
+// a gravação der certo, já copia o texto formatado pro técnico colar no
+// WhatsApp — uma ação só, sem precisar clicar em dois botões.
+window.salvarECopiarApoio = async function(rowIndex){
   const materiais = montarStringMateriais(rowIndex);
+
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
@@ -560,17 +563,13 @@ window.salvarMateriaisApoio = async function(rowIndex){
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao salvar.')); return; }
-    showToast('✅ Seus materiais foram registrados!');
   }catch(err){
     console.error(err);
     showToast('❌ Erro ao conectar com o servidor.');
+    return;
   }
-};
 
-window.copiarRelatorioApoio = function(rowIndex){
   const a = ATIVIDADES_CACHE.find(x=>x.rowIndex === rowIndex) || {};
-  const materiais = montarStringMateriais(rowIndex);
-
   let t = '*MEU REGISTRO — EQUIPE DE APOIO*\n';
   t += '_Uso pessoal — não substitui o RFO oficial do titular_\n\n';
   t += 'CLIENTE: ' + (a['Cliente']||'—') + '\n';
@@ -587,7 +586,8 @@ window.copiarRelatorioApoio = function(rowIndex){
       copiarFallback(t);
     }
   }catch(e){ copiarFallback(t); }
-  showToast('✅ Copiado! Cole no seu grupo.');
+
+  showToast('✅ Salvo e copiado! Cole no seu grupo.');
 };
 
 function renderFormOcorrencia(a){
