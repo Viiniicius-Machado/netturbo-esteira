@@ -54,7 +54,7 @@
     .pipeline-bar b{color:var(--text);font-family:'Rajdhani',sans-serif;font-size:1rem}
 
     .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
-    .card-header{padding:.55rem 1rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);box-shadow:0 2px 6px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15);border-bottom:none;font-family:'Rajdhani',sans-serif;font-size:.82rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0a0a05;text-shadow:0 1px 0 rgba(255,255,255,.2)}
+    .card-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
     .card-body{padding:.75rem .9rem}
 
     .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:.5rem}
@@ -206,18 +206,18 @@
     <div class="card" style="margin-bottom:0;flex:1">
       <div class="card-header">Destaques MTTR</div>
       <div class="card-body">
-        <div class="destaque-sub-title">Mais rápidas</div>
+        <div class="destaque-sub-title">🟢 Mais rápidas</div>
         <div id="destMttrRapidas"></div>
-        <div class="destaque-sub-title" style="margin-top:.9rem">Mais críticas (maior estouro)</div>
+        <div class="destaque-sub-title" style="margin-top:.9rem">🔴 Mais críticas (maior estouro)</div>
         <div id="destMttrCriticas"></div>
       </div>
     </div>
     <div class="card" style="margin-bottom:0;flex:1">
       <div class="card-header">Destaques MTTD</div>
       <div class="card-body">
-        <div class="destaque-sub-title">Mais rápidas</div>
+        <div class="destaque-sub-title">🟢 Mais rápidas</div>
         <div id="destMttdRapidas"></div>
-        <div class="destaque-sub-title" style="margin-top:.9rem">Mais críticas (maior estouro)</div>
+        <div class="destaque-sub-title" style="margin-top:.9rem">🔴 Mais críticas (maior estouro)</div>
         <div id="destMttdCriticas"></div>
       </div>
     </div>
