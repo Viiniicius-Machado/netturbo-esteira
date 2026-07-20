@@ -192,7 +192,7 @@
           <div class="metric-gap" id="mMTTRGapQtd"></div>
         </div>
         <div class="metric-card">
-          <div class="metric-title">MTTD Médio (Meta ≤3:30)</div>
+          <div class="metric-title">MTTD Médio (Meta ≤1:00)</div>
           <div class="metric-big" id="mMTTD">–</div>
           <div class="metric-sub" id="mMTTDGapTempo"></div>
           <div class="metric-gap" id="mMTTDGapQtd"></div>
@@ -247,8 +247,8 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 const LEADERSHIP_PASSWORD = "Manutencao@101";
 const META_EFICIENCIA = 70;   // %
-const META_MTTR_MIN = 240;    // 4:00
-const META_MTTD_MIN = 210;    // 3:30
+const META_MTTR_MIN = 240;    // 4:00 (Chegada → Validação: tempo de reparo em campo)
+const META_MTTD_MIN = 60;     // 1:00 (Despacho → Chegada: tempo de resposta/deslocamento)
 
 const TIPOS = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO'];
 const EMPRESAS = ['VAL','PV','OLIVEIRA','SOLUTEC','QUALITY','NETTURBO'];

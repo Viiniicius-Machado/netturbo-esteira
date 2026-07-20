@@ -195,7 +195,7 @@
     </div>
     <div class="resumo-grid">
       <div><div class="resumo-num" id="resumoMTTR">–</div><div class="resumo-label">MTTR médio (meta ≤4:00)</div></div>
-      <div><div class="resumo-num" id="resumoMTTD">–</div><div class="resumo-label">MTTD médio (meta ≤3:30)</div></div>
+      <div><div class="resumo-num" id="resumoMTTD">–</div><div class="resumo-label">MTTD médio (meta ≤1:00)</div></div>
     </div>
     <details style="margin-top:.8rem">
       <summary style="font-size:.68rem;color:var(--text-muted);cursor:pointer">Conferir um dia específico</summary>
@@ -393,7 +393,7 @@ window.buscarResumoMensal = async function(){
     mttdEl.textContent = r.mttdMedio || '—';
     if(r.mttdMedio){
       const [h,m] = r.mttdMedio.split(':').map(Number);
-      mttdEl.style.color = ((h*60+m) <= 210) ? 'var(--green)' : 'var(--red)'; // meta: 3:30
+      mttdEl.style.color = ((h*60+m) <= 60) ? 'var(--green)' : 'var(--red)'; // meta: 1:00
     }
   }catch(err){
     console.error(err);
