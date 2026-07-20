@@ -193,14 +193,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUl
 const LEADERSHIP_PASSWORD = "Manutencao@101";
 
 // Empresas e técnicos (mesma lista já usada no RFO Técnico)
-const TECH_MAP = {
-  "NETTURBO": ["Leonardo da Cruz Egidio","Weslley Rodrigues Pinto","Reginaldo Venâncio da Silva","Nicolas Lima de Almeida","Warley Aparecido de Paula","Marco Rodrigo dos Santos","Micael Oliveira dos Santos","Tiago Soares da Silva Calado"],
-  "OLIVEIRA": ["Evaneis Silva Oliveira"],
-  "PV": ["Petterson Valentim Barreto"],
-  "QUALITY": ["Jurandy Luis da Silva Filho","Guilherme dos Santos Reis","Wesley Henrique da Silva Rios"],
-  "SOLUTEC": ["Lielder Rogers Miranda","Marcio Aparecido Santiago"],
-  "VAL": ["Guilherme de Jesus Arruda","Djalma Aparecido Inocêncio","Marcos Mendes Merino","Altimayer de Araújo Lima","Robson Rodrigues Santos","Felipe Martins Santos Silva","Jonathan Henrique Honorato","Diego Eduardo de Souza Basso"]
-};
+let TECH_MAP = {}; // preenchido ao vivo pelo backend — ver carregarTecnicos()
 
 let ATIVIDADES = [];
 
@@ -212,11 +205,21 @@ function formatarCEO(val){
 }
 
 // ── LOGIN ──────────────────────────────────────────────────────
+async function carregarTecnicos(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS');
+    const result = await resp.json();
+    TECH_MAP = result.empresas || {};
+  }catch(err){
+    console.error('Não foi possível carregar a lista de técnicos:', err);
+  }
+}
+
 function tryLogin(){
   const val = document.getElementById('pwdInput').value;
   if(val === LEADERSHIP_PASSWORD){
     document.getElementById('login-overlay').style.display = 'none';
-    carregarEsteira();
+    carregarTecnicos().then(carregarEsteira);
     if(!window._esteiraAutoRefresh){
       window._esteiraAutoRefresh = setInterval(carregarEsteira, 15000);
     }
