@@ -64,6 +64,11 @@
 
     #reviewBox{display:none}
 
+    .agendamento-toggle{display:flex;gap:.5rem;margin-top:.3rem}
+    .ag-btn{flex:1;padding:.55rem;border-radius:var(--radius);border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);font-size:.8rem;font-weight:600;cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:.05em;text-transform:uppercase}
+    .ag-btn.ag-ativo{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
+    .badge-agendamento{display:inline-block;font-size:.6rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:.15rem .5rem;border-radius:20px;background:rgba(255,160,0,.12);color:var(--amber);border:1px solid rgba(255,160,0,.35);margin-top:.3rem}
+
     .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.9rem;margin-top:.5rem}
     .col-title{font-family:'Rajdhani',sans-serif;font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
     .col-count{background:var(--surface3);border-radius:20px;padding:.05rem .5rem;font-size:.68rem}
@@ -145,6 +150,13 @@
           <div class="field full"><label>Porta</label><textarea id="f_porta"></textarea></div>
           <div class="field full"><label>Observações</label><textarea id="f_obs"></textarea></div>
         </div>
+        <div class="field full" style="margin-top:.8rem">
+          <label>É Agendamento?</label>
+          <div class="agendamento-toggle">
+            <button type="button" class="ag-btn" id="agSim" onclick="marcarAgendamento(true)">Sim</button>
+            <button type="button" class="ag-btn ag-ativo" id="agNao" onclick="marcarAgendamento(false)">Não</button>
+          </div>
+        </div>
         <div style="margin-top:.8rem">
           <button class="btn btn-green" onclick="confirmarAtividade()">✅ Adicionar à Esteira</button>
         </div>
@@ -195,6 +207,13 @@ const LEADERSHIP_PASSWORD = "Manutencao@101";
 let TECH_MAP = {}; // preenchido ao vivo pelo backend — ver carregarTecnicos()
 
 let ATIVIDADES = [];
+let AGENDAMENTO_ATUAL = false; // estado do toggle Sim/Não na revisão
+
+window.marcarAgendamento = function(sim){
+  AGENDAMENTO_ATUAL = sim;
+  document.getElementById('agSim').classList.toggle('ag-ativo', sim);
+  document.getElementById('agNao').classList.toggle('ag-ativo', !sim);
+};
 
 // Registros novos já vêm com o texto pronto (NOVA/NOVA, NOVA/EXISTENTE, EXISTENTE).
 // Registros antigos ainda têm o código interno — esse mapa cobre os dois casos.
@@ -297,6 +316,7 @@ function processarMascara(){
   document.getElementById('f_protocoloOem').value = campos.protocoloOem;
   document.getElementById('f_porta').value = campos.porta;
   document.getElementById('f_obs').value = campos.obs;
+  marcarAgendamento(false);
 
   document.getElementById('reviewBox').style.display = 'block';
   showToast('✅ Campos identificados — confira antes de confirmar.');
@@ -321,7 +341,8 @@ async function confirmarAtividade(){
     protocoloNoc:  document.getElementById('f_protocoloNoc').value.trim(),
     protocoloOem:  document.getElementById('f_protocoloOem').value.trim(),
     porta:         document.getElementById('f_porta').value.trim(),
-    obs:           document.getElementById('f_obs').value.trim()
+    obs:           document.getElementById('f_obs').value.trim(),
+    agendamento:   AGENDAMENTO_ATUAL ? 'Sim' : 'Não'
   };
   try{
     const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(payload) });
@@ -377,6 +398,7 @@ function renderEsteira(){
       <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
       <div class="meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
+      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">📅 Agendamento</div>' : ''}
       <div class="acoes">
         <select class="mini" id="sel-empresa-${a.rowIndex}" onchange="atualizarTecnicosDespacho(${a.rowIndex})">
           <option value="">Empresa...</option>
@@ -405,6 +427,7 @@ function renderEsteira(){
       <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
       <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br>${statusLabelMap[a['Status']]||a['Status']}</div>
+      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">📅 Agendamento</div>' : ''}
       ${a['Técnico Apoio'] ? `<div class="meta" style="color:var(--accent)">🤝 Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}${a['Hora Início Apoio']?' ('+a['Hora Início Apoio']+(a['Hora Chegada Apoio']?' → '+a['Hora Chegada Apoio']:'')+')':''}</div>` : ''}
       <button class="btn" style="width:100%;margin-top:.5rem;padding:.35rem;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-size:.68rem" onclick="desfazerDespacho(${a.rowIndex})">↩ Desfazer Despacho</button>
       ${!a['Técnico Apoio'] ? `
@@ -426,6 +449,7 @@ function renderEsteira(){
     <div class="atv-card" style="border-left:3px solid #ab47bc">
       <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
+      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">📅 Agendamento</div>' : ''}
       <div class="meta">
         ${a['Empresa']||''} · ${a['Técnico']||''}<br>
         ${a['CEO'] ? `<b>CEO:</b> ${formatarCEO(a['CEO'])}<br>` : ''}
