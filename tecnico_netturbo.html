@@ -217,14 +217,7 @@
 // ══════════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 
-const TECH_MAP = {
-  "NETTURBO": ["Leonardo da Cruz Egidio","Weslley Rodrigues Pinto","Reginaldo Venâncio da Silva","Nicolas Lima de Almeida","Warley Aparecido de Paula","Marco Rodrigo dos Santos","Micael Oliveira dos Santos","Tiago Soares da Silva Calado"],
-  "OLIVEIRA": ["Evaneis Silva Oliveira"],
-  "PV": ["Petterson Valentim Barreto"],
-  "QUALITY": ["Jurandy Luis da Silva Filho","Guilherme dos Santos Reis","Wesley Henrique da Silva Rios"],
-  "SOLUTEC": ["Lielder Rogers Miranda","Marcio Aparecido Santiago"],
-  "VAL": ["Guilherme de Jesus Arruda","Djalma Aparecido Inocêncio","Marcos Mendes Merino","Altimayer de Araújo Lima","Robson Rodrigues Santos","Felipe Martins Santos Silva","Jonathan Henrique Honorato","Diego Eduardo de Souza Basso"]
-};
+let TECH_MAP = {}; // preenchido ao vivo pelo backend — ver carregarTecnicos()
 
 let TECNICO_LOGADO = '';
 let EMPRESA_LOGADA = '';
@@ -234,7 +227,18 @@ function popularEmpresas(){
   document.getElementById('selEmpresa').innerHTML = opts;
   document.getElementById('selEmpresaReset').innerHTML = opts;
 }
-popularEmpresas();
+
+async function carregarTecnicos(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS');
+    const result = await resp.json();
+    TECH_MAP = result.empresas || {};
+  }catch(err){
+    console.error('Não foi possível carregar a lista de técnicos:', err);
+  }
+  popularEmpresas();
+}
+carregarTecnicos();
 
 window.atualizarTecnicosLogin = function(){
   const empresa = document.getElementById('selEmpresa').value;
