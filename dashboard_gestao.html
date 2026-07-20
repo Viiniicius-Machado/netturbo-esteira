@@ -86,6 +86,15 @@
     .rank-pos{font-family:'Rajdhani',sans-serif;font-size:.85rem;color:var(--text-muted);width:18px}
     .rank-nome{flex:1;font-size:.82rem}
     .rank-qtd{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;color:var(--accent)}
+
+    .destaque-sub-title{font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+    .destaque-item{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.5rem .65rem;margin-top:.4rem}
+    .destaque-topo{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+    .destaque-protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.82rem}
+    .destaque-tempo{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.82rem;white-space:nowrap}
+    .destaque-cliente{font-size:.75rem;margin-top:.15rem}
+    .destaque-causa{font-size:.68rem;color:var(--text-dim);margin-top:.15rem}
+    .destaque-data{font-size:.62rem;color:var(--text-muted);margin-top:.15rem;font-family:monospace}
   </style>
 </head>
 <body>
@@ -193,6 +202,27 @@
     </div>
   </div>
 
+  <div class="metric-row" style="margin-bottom:1rem">
+    <div class="card" style="margin-bottom:0;flex:1">
+      <div class="card-header">⚡ Destaques MTTR</div>
+      <div class="card-body">
+        <div class="destaque-sub-title">🟢 Mais rápidas</div>
+        <div id="destMttrRapidas"></div>
+        <div class="destaque-sub-title" style="margin-top:.9rem">🔴 Mais críticas (maior estouro)</div>
+        <div id="destMttrCriticas"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:0;flex:1">
+      <div class="card-header">⏱️ Destaques MTTD</div>
+      <div class="card-body">
+        <div class="destaque-sub-title">🟢 Mais rápidas</div>
+        <div id="destMttdRapidas"></div>
+        <div class="destaque-sub-title" style="margin-top:.9rem">🔴 Mais críticas (maior estouro)</div>
+        <div id="destMttdCriticas"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="card-header">📋 Detalhamento (colunas prontas pra Excel)</div>
     <div class="card-body" style="padding:0">
@@ -295,6 +325,43 @@ function contarPorCampo(dados, campo){
   return Object.entries(cont).sort((a,b)=>b[1]-a[1]).slice(0,5);
 }
 
+// Monta as top 3 mais rápidas (menor tempo) e as top 3 mais críticas
+// (maior estouro acima da meta) de um campo de tempo ('MTTR' ou 'MTTD').
+// "Estouro" = tempo - meta, então a ordenação de críticas reflete o quanto
+// cada atividade passou do limite, não só o tempo bruto.
+function montarDestaques(dados, campoTempo, metaMin){
+  const comTempo = dados
+    .map(a => ({ a, min: paraMinutos(a[campoTempo]) }))
+    .filter(x => x.min !== null);
+
+  const rapidas = [...comTempo].sort((x,y) => x.min - y.min).slice(0,3);
+  const criticas = [...comTempo]
+    .filter(x => x.min > metaMin)
+    .sort((x,y) => (y.min - metaMin) - (x.min - metaMin))
+    .slice(0,3);
+
+  return { rapidas, criticas };
+}
+
+function renderDestaqueLista(elId, lista, comData){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if(!lista.length){
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:.76rem;font-style:italic;margin-top:.4rem">Sem dados nesse mês.</div>';
+    return;
+  }
+  el.innerHTML = lista.map(({a, min}) => `
+    <div class="destaque-item">
+      <div class="destaque-topo">
+        <span class="destaque-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</span>
+        <span class="destaque-tempo">${fmtMin(min)}</span>
+      </div>
+      <div class="destaque-cliente">${a['Cliente']||'—'}</div>
+      <div class="destaque-causa">${a['Causa'] || 'Sem causa registrada'}</div>
+      ${comData ? `<div class="destaque-data">${a['Timestamp Validação']||'—'}</div>` : ''}
+    </div>`).join('');
+}
+
 function renderRanking(elId, ranking){
   const el = document.getElementById(elId);
   if(!ranking.length){
@@ -347,6 +414,15 @@ function renderDashboard(){
   // ── Ranking de cidades e causas mais comuns ──
   renderRanking('rankCidades', contarPorCampo(DADOS_FILTRADOS, 'Cidade Falha'));
   renderRanking('rankCausas', contarPorCampo(DADOS_FILTRADOS, 'Causa'));
+
+  // ── Destaques de MTTR e MTTD (mais rápidas / mais críticas) ──
+  const destMttr = montarDestaques(DADOS_FILTRADOS, 'MTTR', META_MTTR_MIN);
+  renderDestaqueLista('destMttrRapidas', destMttr.rapidas, false);
+  renderDestaqueLista('destMttrCriticas', destMttr.criticas, true);
+
+  const destMttd = montarDestaques(DADOS_FILTRADOS, 'MTTD', META_MTTD_MIN);
+  renderDestaqueLista('destMttdRapidas', destMttd.rapidas, false);
+  renderDestaqueLista('destMttdCriticas', destMttd.criticas, true);
 
   // ── C/SLA, S/SLA, Eficiência, MTTR, MTTD ──
   let cSla=0, sSla=0, somaMTTR=0, contMTTR=0, somaMTTD=0, contMTTD=0, cMttd=0, sMttd=0;
