@@ -388,18 +388,13 @@ function renderDashboard(){
   const diffMTTR = mttrMedioMin!==null ? mttrMedioMin - META_MTTR_MIN : null;
   document.getElementById('mMTTRGapTempo').textContent = diffMTTR===null ? 'Sem dados' :
     (diffMTTR<=0 ? `${fmtMin(Math.abs(diffMTTR))} abaixo da meta` : `+${fmtMin(diffMTTR)} acima da meta`);
-  // CORRIGIDO: antes usava gapEf (da Eficiência) por engano; agora calcula
-  // o gap específico do MTTR a partir de cSla/sSla (que já são as contagens
-  // dentro/fora da meta de MTTR calculadas acima).
-  const gapMttr = gapContagem(cSla, sSla, META_EFICIENCIA);
-  const gapMttrEl = document.getElementById('mMTTRGapQtd');
-  if(gapMttr === 0){
-    gapMttrEl.textContent = '✓ Meta batida';
-    gapMttrEl.className = 'metric-gap gap-ok';
-  }else{
-    gapMttrEl.textContent = `Faltam ${gapMttr} atividade(s) dentro de 4h pra bater a meta`;
-    gapMttrEl.className = 'metric-gap gap-bad';
-  }
+  // Removida a caixa "Faltam X atividades..." deste card: ela usava a mesma
+  // contagem (cSla/sSla) do card de Eficiência, e as duas juntas criavam uma
+  // contradição visual sempre que a MÉDIA estava boa mas havia atividades
+  // pontuais fora da meta (média baixa não significa que todas bateram a meta
+  // individualmente). Essa contagem já é mostrada de forma clara no card de
+  // Eficiência — aqui fica só a comparação da média com a meta, sem duplicar.
+  document.getElementById('mMTTRGapQtd').style.display = 'none';
 
   const mttdMedioMin = contMTTD ? Math.round(somaMTTD/contMTTD) : null;
   const mttdEl = document.getElementById('mMTTD');
@@ -408,15 +403,8 @@ function renderDashboard(){
   const diffMTTD = mttdMedioMin!==null ? mttdMedioMin - META_MTTD_MIN : null;
   document.getElementById('mMTTDGapTempo').textContent = diffMTTD===null ? 'Sem dados' :
     (diffMTTD<=0 ? `${fmtMin(Math.abs(diffMTTD))} abaixo da meta` : `+${fmtMin(diffMTTD)} acima da meta`);
-  const gapMttd = gapContagem(cMttd, sMttd, META_EFICIENCIA);
-  const gapMttdEl = document.getElementById('mMTTDGapQtd');
-  if(gapMttd === 0){
-    gapMttdEl.textContent = '✓ Meta batida';
-    gapMttdEl.className = 'metric-gap gap-ok';
-  }else{
-    gapMttdEl.textContent = `Faltam ${gapMttd} atividade(s) dentro de 3:30 pra bater a meta`;
-    gapMttdEl.className = 'metric-gap gap-bad';
-  }
+  // Mesmo motivo do MTTR acima: removida a caixa duplicada de contagem.
+  document.getElementById('mMTTDGapQtd').style.display = 'none';
 
   // ── Tabela ──
   const tbody = document.getElementById('tbodyDados');
