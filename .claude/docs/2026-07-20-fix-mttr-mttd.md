@@ -71,6 +71,27 @@ Ao colar o trecho do fix no editor do Apps Script, o **conteúdo inteiro do scri
 6. Testado: `GET .../exec?acao=LISTAR_ESTEIRA` voltou a responder com JSON válido — site restaurado
 7. Rodado `recalcularMTTRMTTDHistorico()` — **14 atividades recalculadas, 0 puladas**
 
+## Bug no backfill descoberto na verificação pós-fix (mesmo dia)
+
+Ao conferir o dashboard depois do fix, os destaques "MTTD mais críticas" mostravam **24:00** para 3 atividades — impossível pra uma janela de deslocamento. Causa: `Hora Chegada` só guarda `HH:MM` (sem segundos), enquanto `Timestamp Despacho` guarda segundos exatos. Quando a chegada cai no mesmo minuto do despacho (ex: despacho `00:45:24`, chegada `00:45:00`), a chegada "parece" ser alguns segundos *antes* do despacho — e a lógica de rollover de dia (`if (chegada < despacho) chegada += 24h`) disparava por engano, gerando 1439–1440 min de diferença.
+
+**Correção:** em `diferencaTimestampAteHora` e `recalcularMTTRMTTDHistorico`, a comparação que decide se cruzou a meia-noite agora ignora os segundos (compara contra uma cópia do timestamp de início com segundos zerados), e o resultado final é sempre `Math.max(0, ...)` pra nunca ficar negativo.
+
+- Nova versão implantada: **Versão 20**, mesma URL
+- Backfill rodado de novo: **11 recalculadas, 0 puladas** (a esteira é usada ao vivo, então o total de `VALIDADA` mudou de 14→11 entre as duas rodadas — não é bug)
+- Confirmado nos 3 registros antes quebrados (`ATV-1784519043912`, `ATV-1784521581307`, `ATV-1784522687780`): MTTD agora `00:00`, correto
+- Varredura completa das 11 atividades validadas: 0 sem MTTD, 0 valores suspeitos (≥3h)
+- `dashboard_gestao.html` e `tecnico.html` testados localmente (servidor HTTP temporário) e confirmados puxando dados da API corrigida
+
+## Problema recorrente ao editar no navegador: chaves duplicadas
+
+Em pelo menos 2 ocasiões, digitar código multi-linha no editor Monaco do Apps Script via automação de teclado gerou **chaves `}` órfãs ou blocos de código embaralhados** (conteúdo antigo e novo se misturando). Causa provável: o autocompletar/autocorreção do Monaco reage a `Enter` logo após `{` inserindo uma chave de fechamento automática que "sobra" quando o conteúdo é digitado em lotes grandes.
+
+**Mitigação que funcionou:** dividir a digitação em blocos pequenos (2-4 linhas) com `Escape` entre cada bloco pra fechar qualquer popup de sugestão aberto, e **sempre salvar + conferir o dropdown de funções / erro de sintaxe imediatamente depois de qualquer edição no Apps Script**, antes de seguir em frente.
+
 ## Lição para o futuro
 
-Ao editar o Apps Script pelo editor web, **sempre confirmar em qual dos 3 projetos** ("Netturbo Esteira - Base" é o de produção) e **nunca colar um trecho parcial substituindo tudo** — sempre mesclar no arquivo completo antes de salvar. Depois de qualquer edição, checar `Implantar → Gerenciar implantações` e criar **Nova versão** explicitamente (salvar/editar código não atualiza a URL pública sozinho).
+1. Ao editar o Apps Script pelo editor web, **sempre confirmar em qual dos 3 projetos** ("Netturbo Esteira - Base" é o de produção) e **nunca colar um trecho parcial substituindo tudo** — sempre mesclar no arquivo completo antes de salvar.
+2. Depois de qualquer edição, checar `Implantar → Gerenciar implantações` e criar **Nova versão** explicitamente (salvar/editar código não atualiza a URL pública sozinho).
+3. Depois de editar código no editor Monaco via automação, **sempre salvar e checar erro de sintaxe / dropdown de funções antes de seguir** — chaves duplicadas/órfãs são um risco real e nem sempre óbvio visualmente.
+4. Ao calcular diferenças de tempo entre um timestamp com segundos e um horário só `HH:MM`, **ignorar segundos na comparação de rollover de dia** — senão casos "mesmo minuto" disparam falsos positivos de 24h.

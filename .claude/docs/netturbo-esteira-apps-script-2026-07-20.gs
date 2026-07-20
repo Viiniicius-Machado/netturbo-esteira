@@ -621,13 +621,17 @@ function parseTimestampBR(str) {
 
 // Diferença entre um Timestamp completo (Despacho) e uma Hora "HH:MM" (Chegada),
 // com rollover pro dia seguinte se a chegada for "antes" do horário do despacho.
+// A comparação de rollover ignora os segundos do timestamp de início — senão
+// uma chegada no mesmo minuto do despacho "parece" anterior por causa dos
+// segundos e dispara um rollover de 24h por engano.
 function diferencaTimestampAteHora(timestamp, horaFim) {
   const inicio = parseTimestampBR(timestamp);
   if (!inicio || !horaFim) return '';
   const [h, m] = horaFim.split(':').map(Number);
   let fim = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate(), h, m, 0);
-  if (fim < inicio) fim = new Date(fim.getTime() + 24 * 60 * 60 * 1000);
-  const diffMin = Math.round((fim.getTime() - inicio.getTime()) / 60000);
+  const inicioSemSegundos = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate(), inicio.getHours(), inicio.getMinutes(), 0);
+  if (fim < inicioSemSegundos) fim = new Date(fim.getTime() + 24 * 60 * 60 * 1000);
+  const diffMin = Math.max(0, Math.round((fim.getTime() - inicio.getTime()) / 60000));
   return fmtMinParaHora(diffMin);
 }
 
@@ -760,15 +764,19 @@ function recalcularMTTRMTTDHistorico() {
 
     const [hChegada, mChegada] = horaChegada.split(':').map(Number);
 
-    // MTTD = Despacho → Chegada (ancora a Chegada no dia do Despacho, com rollover se cruzar meia-noite)
+    // MTTD = Despacho → Chegada (ancora a Chegada no dia do Despacho, com rollover se cruzar meia-noite;
+    // compara contra o despacho sem segundos pra não disparar rollover por diferença de segundos)
     let chegadaAncoradaDespacho = new Date(despachoDate.getFullYear(), despachoDate.getMonth(), despachoDate.getDate(), hChegada, mChegada, 0);
-    if (chegadaAncoradaDespacho < despachoDate) chegadaAncoradaDespacho = new Date(chegadaAncoradaDespacho.getTime() + 86400000);
-    const mttdMin = Math.round((chegadaAncoradaDespacho.getTime() - despachoDate.getTime()) / 60000);
+    const despachoSemSegundos = new Date(despachoDate.getFullYear(), despachoDate.getMonth(), despachoDate.getDate(), despachoDate.getHours(), despachoDate.getMinutes(), 0);
+    if (chegadaAncoradaDespacho < despachoSemSegundos) chegadaAncoradaDespacho = new Date(chegadaAncoradaDespacho.getTime() + 86400000);
+    const mttdMin = Math.max(0, Math.round((chegadaAncoradaDespacho.getTime() - despachoDate.getTime()) / 60000));
 
-    // MTTR = Chegada → Validação (ancora a Chegada no dia da Validação, voltando um dia se necessário)
+    // MTTR = Chegada → Validação (ancora a Chegada no dia da Validação, voltando um dia se necessário;
+    // mesma lógica de ignorar segundos na comparação)
     let chegadaAncoradaValidacao = new Date(validacaoDate.getFullYear(), validacaoDate.getMonth(), validacaoDate.getDate(), hChegada, mChegada, 0);
-    if (chegadaAncoradaValidacao > validacaoDate) chegadaAncoradaValidacao = new Date(chegadaAncoradaValidacao.getTime() - 86400000);
-    const mttrMin = Math.round((validacaoDate.getTime() - chegadaAncoradaValidacao.getTime()) / 60000);
+    const validacaoSemSegundos = new Date(validacaoDate.getFullYear(), validacaoDate.getMonth(), validacaoDate.getDate(), validacaoDate.getHours(), validacaoDate.getMinutes(), 0);
+    if (chegadaAncoradaValidacao > validacaoSemSegundos) chegadaAncoradaValidacao = new Date(chegadaAncoradaValidacao.getTime() - 86400000);
+    const mttrMin = Math.max(0, Math.round((validacaoDate.getTime() - chegadaAncoradaValidacao.getTime()) / 60000));
 
     sheet.getRange(rowIndex, idx('MTTD'), 1, 1).setNumberFormat('@STRING@');
     sheet.getRange(rowIndex, idx('MTTD')).setValue(fmtMinParaHora(mttdMin));
