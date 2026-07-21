@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Painel · Netturbo Esteira</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --accent:#a8c93c;--accent-dark:#6b8a1f;
+      --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+      --border:#252525;--border-hi:#353535;
+      --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh}
+
+    header{background:linear-gradient(180deg,#0c160a,#0f0f0f);border-bottom:1px solid #1a2a12}
+    .header-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:1rem 1.2rem}
+    .hdr-logo{height:38px;width:auto;background:#fff;border-radius:6px;padding:.25rem .5rem}
+    .hdr-brand{font-family:'Rajdhani',sans-serif;font-size:1.25rem;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+    .hdr-sub{font-size:.6rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase}
+
+    main{max-width:900px;margin:0 auto;padding:2rem 1.2rem}
+    .intro h1{font-family:'Rajdhani',sans-serif;font-size:1.7rem;font-weight:700;letter-spacing:.04em}
+    .intro p{font-size:.85rem;color:var(--text-dim);margin-top:.4rem;line-height:1.6}
+
+    .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:1.8rem}
+    .hub-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.4rem;display:flex;flex-direction:column;gap:.6rem;text-decoration:none;color:var(--text);transition:border-color .15s ease,transform .15s ease}
+    .hub-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+    .hub-icon{width:44px;height:44px;border-radius:10px;background:var(--accent-dim,rgba(168,201,60,.1));display:flex;align-items:center;justify-content:center;font-size:1.4rem}
+    .hub-title{font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:700;letter-spacing:.02em}
+    .hub-desc{font-size:.78rem;color:var(--text-dim);line-height:1.5;flex:1}
+    .hub-abrir{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.3rem;margin-top:.3rem}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <img class="hdr-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+    <div>
+      <div class="hdr-brand">Netturbo</div>
+      <div class="hdr-sub">Painel · Esteira de Despacho</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="intro">
+    <h1>Painel</h1>
+    <p>Acesso rápido às telas da Esteira de Despacho. Escolha abaixo o que você precisa abrir.</p>
+  </div>
+
+  <div class="card-grid">
+    <a class="hub-card" href="index.html">
+      <div class="hub-icon">📋</div>
+      <div class="hub-title">Esteira de Despacho</div>
+      <div class="hub-desc">Cadastro e acompanhamento das atividades — quadro Aguardando / Despachada, para o time de despacho.</div>
+      <div class="hub-abrir">Abrir →</div>
+    </a>
+    <a class="hub-card" href="dashboard_gestao.html">
+      <div class="hub-icon">📊</div>
+      <div class="hub-title">Dashboard de Gestão</div>
+      <div class="hub-desc">Indicadores da operação — SLA, eficiência, MTTR/MTTD, produção por empresa e ranking de causas. Acesso restrito à liderança.</div>
+      <div class="hub-abrir">Abrir →</div>
+    </a>
+    <a class="hub-card" href="tecnico.html">
+      <div class="hub-icon">🛠️</div>
+      <div class="hub-title">Minhas Atividades</div>
+      <div class="hub-desc">App do técnico em campo — início, chegada, registro de ocorrência e relatório de atendimento.</div>
+      <div class="hub-abrir">Abrir →</div>
+    </a>
+  </div>
+</main>
+
+</body>
+</html>

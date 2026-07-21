@@ -94,10 +94,36 @@
     .empty-msg{color:var(--text-muted);font-size:.85rem;text-align:center;padding:2rem 1rem}
 
     .resumo-titulo{font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.5rem}
-    .resumo-grid{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:.7rem}
-    .resumo-num{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--text)}
-    .resumo-num-sm{font-family:'Rajdhani',sans-serif;font-size:1.1rem;font-weight:700;color:var(--text)}
-    .resumo-label{font-size:.6rem;color:var(--text-muted);text-transform:uppercase;margin-top:.1rem}
+
+    .btn{padding:.5rem .8rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.72rem}
+    .btn-accent{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
+    .btn-outline{background:var(--surface3);border:1px solid var(--border-hi);color:var(--text-dim)}
+
+    .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:.5rem;margin-top:.7rem}
+    .stat-card{background:var(--surface3);border:1px solid var(--border-hi);border-top:3px solid var(--border-hi);border-radius:var(--radius);padding:.5rem .6rem}
+    .stat-value{font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;color:var(--text);line-height:1.1}
+    .stat-label{font-size:.56rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-top:.15rem}
+    .stat-card.stat-accent{border-top-color:var(--accent)}
+    .stat-card.stat-accent .stat-value{color:var(--accent)}
+    .stat-card.stat-ok{border-top-color:var(--green)}
+    .stat-card.stat-ok .stat-value{color:var(--green)}
+    .stat-card.stat-warn{border-top-color:var(--amber)}
+    .stat-card.stat-warn .stat-value{color:var(--amber)}
+    .stat-card.stat-bad{border-top-color:var(--red)}
+    .stat-card.stat-bad .stat-value{color:var(--red)}
+
+    .metric-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.8rem}
+    .metric-title{font-size:.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem}
+    .metric-sub{font-size:.7rem;color:var(--text-dim);margin-top:.3rem;line-height:1.5}
+
+    .gauge-card{display:flex;align-items:center;gap:.9rem}
+    .gauge-svg-wrap{position:relative;width:76px;height:76px;flex-shrink:0}
+    .gauge-svg{width:100%;height:100%;transform:rotate(-90deg)}
+    .gauge-track{fill:none;stroke:var(--surface2);stroke-width:9}
+    .gauge-fill{fill:none;stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+    .gauge-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.05rem}
+    .gauge-info{flex:1;min-width:0}
+
     details summary::-webkit-details-marker{color:var(--text-muted)}
     #toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap}
     #toast.show{transform:translateX(-50%) translateY(0)}
@@ -172,7 +198,7 @@
       <div class="hdr-sub">Minhas Atividades</div>
     </div>
     <div style="flex:1"></div>
-    <button onclick="carregarAtividades()" style="background:var(--surface3);border:1px solid var(--border-hi);color:var(--text-dim);font-family:'Rajdhani',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.5rem .9rem;border-radius:8px;cursor:pointer">↻ Atualizar</button>
+    <button class="btn btn-outline" onclick="carregarAtividades()">↻ Atualizar</button>
   </div>
 </header>
 
@@ -185,27 +211,60 @@
     <div class="resumo-titulo">📊 Resumo do Mês</div>
     <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
       <input type="month" id="mesResumo" style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.45rem .6rem"/>
-      <button onclick="buscarResumoMensal()" style="background:rgba(168,201,60,.1);border:1px solid rgba(168,201,60,.3);color:var(--accent);font-size:.72rem;font-weight:700;padding:.5rem .8rem;border-radius:var(--radius);cursor:pointer">Buscar</button>
+      <button class="btn btn-accent" onclick="buscarResumoMensal()">Buscar</button>
     </div>
-    <div class="resumo-grid">
-      <div><div class="resumo-num" id="resumoConcluidasMes">–</div><div class="resumo-label">Concluídas</div></div>
-      <div><div class="resumo-num" style="color:var(--green)" id="resumoCSla">–</div><div class="resumo-label">C/SLA</div></div>
-      <div><div class="resumo-num" style="color:var(--red)" id="resumoSSla">–</div><div class="resumo-label">S/SLA</div></div>
-      <div><div class="resumo-num" id="resumoEficiencia">–</div><div class="resumo-label">Eficiência (meta ≥70%)</div></div>
+    <div class="stat-row">
+      <div class="stat-card stat-accent">
+        <div class="stat-value" id="resumoConcluidasMes">–</div>
+        <div class="stat-label">Concluídas</div>
+      </div>
+      <div class="stat-card stat-ok">
+        <div class="stat-value" id="resumoCSla">–</div>
+        <div class="stat-label">C/SLA</div>
+      </div>
+      <div class="stat-card stat-bad">
+        <div class="stat-value" id="resumoSSla">–</div>
+        <div class="stat-label">S/SLA</div>
+      </div>
     </div>
-    <div class="resumo-grid">
-      <div><div class="resumo-num" id="resumoMTTR">–</div><div class="resumo-label">MTTR médio (meta ≤4:00)</div></div>
-      <div><div class="resumo-num" id="resumoMTTD">–</div><div class="resumo-label">MTTD médio (meta ≤1:00)</div></div>
+    <div class="metric-card gauge-card" style="margin-top:.5rem">
+      <div class="gauge-svg-wrap">
+        <svg class="gauge-svg" viewBox="0 0 100 100">
+          <circle class="gauge-track" cx="50" cy="50" r="42"/>
+          <circle class="gauge-fill" id="gEficienciaFill" cx="50" cy="50" r="42"/>
+        </svg>
+        <div class="gauge-center" id="gEficienciaNum">–</div>
+      </div>
+      <div class="gauge-info">
+        <div class="metric-title">Eficiência (Meta ≥70%)</div>
+        <div class="metric-sub" id="mEficienciaGapTexto"></div>
+      </div>
+    </div>
+    <div class="stat-row" style="margin-top:.5rem">
+      <div class="stat-card" id="cardResumoMTTR">
+        <div class="stat-value" id="resumoMTTR">–</div>
+        <div class="stat-label">MTTR médio (meta ≤4:00)</div>
+      </div>
+      <div class="stat-card" id="cardResumoMTTD">
+        <div class="stat-value" id="resumoMTTD">–</div>
+        <div class="stat-label">MTTD médio (meta ≤1:00)</div>
+      </div>
     </div>
     <details style="margin-top:.8rem">
       <summary style="font-size:.68rem;color:var(--text-muted);cursor:pointer">Conferir um dia específico</summary>
       <div style="display:flex;gap:.5rem;margin-top:.6rem;align-items:center;flex-wrap:wrap">
         <input type="date" id="dataResumo" style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.45rem .6rem"/>
-        <button onclick="buscarResumoDiario()" style="background:var(--surface3);border:1px solid var(--border-hi);color:var(--text-dim);font-size:.72rem;font-weight:700;padding:.5rem .8rem;border-radius:var(--radius);cursor:pointer">Buscar</button>
+        <button class="btn btn-outline" onclick="buscarResumoDiario()">Buscar</button>
       </div>
-      <div class="resumo-grid">
-        <div><div class="resumo-num-sm" id="resumoRecebidas">–</div><div class="resumo-label">Recebidas</div></div>
-        <div><div class="resumo-num-sm" id="resumoConcluidas">–</div><div class="resumo-label">Concluídas</div></div>
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-value" id="resumoRecebidas">–</div>
+          <div class="stat-label">Recebidas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="resumoConcluidas">–</div>
+          <div class="stat-label">Concluídas</div>
+        </div>
       </div>
     </details>
   </div>
@@ -365,6 +424,44 @@ window.buscarResumoDiario = async function(){
   }
 };
 
+// Desenha um gauge circular (anel) no SVG indicado, preenchendo de acordo com pct (0-100).
+function renderGauge(fillId, pct, cor){
+  const fill = document.getElementById(fillId);
+  if(!fill) return;
+  const r = 42, c = 2*Math.PI*r;
+  const clamped = Math.max(0, Math.min(100, pct));
+  fill.style.strokeDasharray = c;
+  fill.style.strokeDashoffset = c * (1 - clamped/100);
+  fill.style.stroke = cor;
+}
+
+// Quantas atividades DENTRO da meta precisam entrar pra atingir a proporção-alvo
+function gapContagem(dentro, fora, metaPct){
+  const total = dentro + fora;
+  if(total === 0) return 0;
+  const metaFrac = metaPct/100;
+  const atual = dentro/total;
+  if(atual >= metaFrac) return 0;
+  const x = (metaFrac*total - dentro) / (1 - metaFrac);
+  return Math.max(0, Math.ceil(x));
+}
+
+// Aplica a cor de status (ok/atenção/crítico) na borda + número de um stat-card,
+// a partir de um valor e uma meta (higherIsBetter=true pra eficiência, false pra tempos).
+function faixaStatusCard(elId, valor, meta, higherIsBetter){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  el.classList.remove('stat-ok','stat-warn','stat-bad');
+  if(valor===null || isNaN(valor)) return;
+  let faixa;
+  if(higherIsBetter){
+    faixa = valor >= meta ? 'ok' : (valor >= meta*0.85 ? 'warn' : 'bad');
+  }else{
+    faixa = valor <= meta ? 'ok' : (valor <= meta*1.15 ? 'warn' : 'bad');
+  }
+  el.classList.add('stat-'+faixa);
+}
+
 window.buscarResumoMensal = async function(){
   const mes = document.getElementById('mesResumo').value;
   if(!mes) return;
@@ -374,27 +471,31 @@ window.buscarResumoMensal = async function(){
     const r = await resp.json();
 
     document.getElementById('resumoConcluidasMes').textContent = r.totalConcluidas ?? '0';
-    document.getElementById('resumoCSla').textContent = r.cSla ?? '0';
-    document.getElementById('resumoSSla').textContent = r.sSla ?? '0';
+    const cSla = r.cSla ?? 0, sSla = r.sSla ?? 0;
+    document.getElementById('resumoCSla').textContent = cSla;
+    document.getElementById('resumoSSla').textContent = sSla;
 
-    const efEl = document.getElementById('resumoEficiencia');
+    const totalSla = cSla + sSla;
     const ef = r.eficiencia ?? 0;
-    efEl.textContent = ef + '%';
-    efEl.style.color = (ef >= 70) ? 'var(--green)' : 'var(--red)';
+    const corEficiencia = !totalSla ? 'var(--text-muted)' :
+      (ef >= 70 ? 'var(--green)' : (ef >= 70*0.85 ? 'var(--amber)' : 'var(--red)'));
+    document.getElementById('gEficienciaNum').textContent = totalSla ? ef + '%' : '–';
+    document.getElementById('gEficienciaNum').style.color = corEficiencia;
+    renderGauge('gEficienciaFill', totalSla ? ef : 0, corEficiencia);
+    const gapEf = gapContagem(cSla, sSla, 70);
+    document.getElementById('mEficienciaGapTexto').textContent = !totalSla
+      ? 'Sem dados nesse mês'
+      : (gapEf === 0 ? '✓ Meta batida' : `Faltam ${gapEf} atividade(s) dentro do SLA pra bater a meta`);
 
-    const mttrEl = document.getElementById('resumoMTTR');
-    mttrEl.textContent = r.mttrMedio || '—';
-    if(r.mttrMedio){
-      const [h,m] = r.mttrMedio.split(':').map(Number);
-      mttrEl.style.color = ((h*60+m) <= 240) ? 'var(--green)' : 'var(--red)'; // meta: 4:00
-    }
+    document.getElementById('resumoMTTR').textContent = r.mttrMedio || '—';
+    let mttrMin = null;
+    if(r.mttrMedio){ const [h,m] = r.mttrMedio.split(':').map(Number); mttrMin = h*60+m; }
+    faixaStatusCard('cardResumoMTTR', mttrMin, 240, false); // meta: 4:00
 
-    const mttdEl = document.getElementById('resumoMTTD');
-    mttdEl.textContent = r.mttdMedio || '—';
-    if(r.mttdMedio){
-      const [h,m] = r.mttdMedio.split(':').map(Number);
-      mttdEl.style.color = ((h*60+m) <= 60) ? 'var(--green)' : 'var(--red)'; // meta: 1:00
-    }
+    document.getElementById('resumoMTTD').textContent = r.mttdMedio || '—';
+    let mttdMin = null;
+    if(r.mttdMedio){ const [h,m] = r.mttdMedio.split(':').map(Number); mttdMin = h*60+m; }
+    faixaStatusCard('cardResumoMTTD', mttdMin, 60, false); // meta: 1:00
   }catch(err){
     console.error(err);
   }

@@ -34,13 +34,13 @@
     .login-error.visible{display:block}
 
     header{background:linear-gradient(180deg,#0c160a,#0f0f0f);border-bottom:1px solid #1a2a12;position:sticky;top:0;z-index:100}
-    .header-inner{max-width:1300px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.7rem 1.2rem;flex-wrap:wrap}
+    .header-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.7rem 1.2rem;flex-wrap:wrap}
     .hdr-logo{height:38px;width:auto;background:#fff;border-radius:6px;padding:.25rem .5rem}
     .hdr-brand{font-family:'Rajdhani',sans-serif;font-size:1.25rem;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
     .hdr-sub{font-size:.58rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase}
     .hdr-badge{font-size:.56rem;font-weight:700;letter-spacing:.1em;padding:.22rem .5rem;border-radius:20px;background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)}
 
-    main{max-width:1300px;margin:0 auto;padding:1.3rem 1.2rem 0}
+    main{max-width:1400px;margin:0 auto;padding:1.3rem 1.2rem 0}
 
     .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.1rem}
     .toolbar input[type="month"]{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem}
@@ -50,26 +50,46 @@
     .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
     .btn-green{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
 
-    .pipeline-bar{display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1.1rem;font-size:.75rem;color:var(--text-dim)}
-    .pipeline-bar b{color:var(--text);font-family:'Rajdhani',sans-serif;font-size:1rem}
+    .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.6rem;margin-bottom:1.1rem}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .8rem}
+    .stat-value{font-family:'Rajdhani',sans-serif;font-size:1.6rem;font-weight:700;color:var(--text);line-height:1.1}
+    .stat-label{font-size:.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem}
+    .stat-card.stat-accent{border-top-color:var(--accent)}
+    .stat-card.stat-accent .stat-value{color:var(--accent)}
+    .stat-card.stat-ok{border-top-color:var(--green)}
+    .stat-card.stat-ok .stat-value{color:var(--green)}
+    .stat-card.stat-bad{border-top-color:var(--red)}
+    .stat-card.stat-bad .stat-value{color:var(--red)}
 
     .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
     .card-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
     .card-body{padding:.75rem .9rem}
 
-    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:.5rem}
-    .kpi-box{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.55rem;text-align:center}
-    .kpi-num{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--text)}
-    .kpi-label{font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.1rem}
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(76px,1fr));gap:.4rem}
+    .kpi-box{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.4rem .3rem;text-align:center}
+    .kpi-num{font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:700;color:var(--text)}
+    .kpi-label{font-size:.52rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-top:.1rem}
 
     .metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
     .metric-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:1.1rem}
     .metric-title{font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
     .metric-big{font-family:'Rajdhani',sans-serif;font-size:2.2rem;font-weight:700}
     .metric-sub{font-size:.72rem;color:var(--text-dim);margin-top:.4rem;line-height:1.5}
-    .metric-gap{font-size:.72rem;font-weight:700;margin-top:.5rem;padding:.4rem .6rem;border-radius:var(--radius);display:inline-block}
-    .gap-ok{background:rgba(139,195,74,.1);color:var(--green)}
-    .gap-bad{background:rgba(229,57,53,.1);color:var(--red)}
+    .metric-card.m-ok{border-color:rgba(139,195,74,.4)}
+    .metric-card.m-warn{border-color:rgba(255,160,0,.4)}
+    .metric-card.m-bad{border-color:rgba(229,57,53,.4)}
+    .metric-card.m-ok .metric-big{color:var(--green)}
+    .metric-card.m-warn .metric-big{color:var(--amber)}
+    .metric-card.m-bad .metric-big{color:var(--red)}
+
+    .gauge-card{display:flex;align-items:center;gap:1rem}
+    .gauge-svg-wrap{position:relative;width:86px;height:86px;flex-shrink:0}
+    .gauge-svg{width:100%;height:100%;transform:rotate(-90deg)}
+    .gauge-track{fill:none;stroke:var(--surface2);stroke-width:9}
+    .gauge-fill{fill:none;stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+    .gauge-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.2rem}
+    .gauge-info{flex:1;min-width:0}
+    .gauge-info .metric-title{margin-bottom:.35rem}
 
     .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
     table{width:100%;border-collapse:collapse;font-size:.72rem;min-width:1100px}
@@ -81,11 +101,14 @@
     .pill.breach{background:rgba(229,57,53,.12);color:var(--red)}
     .empty-msg{padding:2rem;text-align:center;color:var(--text-muted);font-size:.82rem}
 
-    .rank-item{display:flex;align-items:center;gap:.7rem;padding:.5rem 0;border-top:1px solid var(--border)}
+    .rank-item{display:flex;align-items:center;gap:.6rem;padding:.38rem 0;border-top:1px solid var(--border)}
     .rank-item:first-child{border-top:none}
-    .rank-pos{font-family:'Rajdhani',sans-serif;font-size:.85rem;color:var(--text-muted);width:18px}
-    .rank-nome{flex:1;font-size:.82rem}
-    .rank-qtd{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;color:var(--accent)}
+    .rank-pos{font-family:'Rajdhani',sans-serif;font-size:.8rem;color:var(--text-muted);width:16px;flex-shrink:0}
+    .rank-main{flex:1;min-width:0}
+    .rank-nome{font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .rank-bar-track{height:4px;background:var(--surface2);border-radius:3px;margin-top:.28rem;overflow:hidden}
+    .rank-bar-fill{height:100%;background:var(--accent);border-radius:3px}
+    .rank-qtd{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.9rem;color:var(--accent);flex-shrink:0}
 
     .destaque-sub-title{font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
     .destaque-item{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.5rem .65rem;margin-top:.4rem}
@@ -123,6 +146,7 @@
       <div class="hdr-sub">Consolidação · Esteira de Despacho</div>
     </div>
     <div style="flex:1"></div>
+    <a href="painel.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px">🏠 Painel</a>
   </div>
 </header>
 
@@ -137,19 +161,45 @@
     <button class="btn btn-green" onclick="exportarExcel()">Exportar Excel</button>
   </div>
 
-  <div class="pipeline-bar" id="pipelineBar">Carregando situação atual da esteira...</div>
-
-  <div class="card">
-    <div class="card-header">Ocorrências no Mês (concluídas)</div>
-    <div class="card-body">
-      <div class="kpi-grid" id="kpiOcorrencias"></div>
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value" id="stAguardando">–</div>
+      <div class="stat-label">Aguardando Despacho</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stAndamento">–</div>
+      <div class="stat-label">Em Andamento</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stValidacao">–</div>
+      <div class="stat-label">Aguardando Validação NOC</div>
+    </div>
+    <div class="stat-card stat-accent">
+      <div class="stat-value" id="stConcluidas">–</div>
+      <div class="stat-label">Concluídas no Mês</div>
+    </div>
+    <div class="stat-card stat-ok">
+      <div class="stat-value" id="stCSla">–</div>
+      <div class="stat-label">C/SLA</div>
+    </div>
+    <div class="stat-card stat-bad">
+      <div class="stat-value" id="stSSla">–</div>
+      <div class="stat-label">S/SLA</div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-header">Produção por Empresa (mão de obra)</div>
-    <div class="card-body">
-      <div class="kpi-grid" id="kpiEmpresas"></div>
+  <div class="metric-row" style="margin-bottom:1rem">
+    <div class="card" style="margin-bottom:0;flex:1">
+      <div class="card-header">Ocorrências no Mês (concluídas)</div>
+      <div class="card-body">
+        <div class="kpi-grid" id="kpiOcorrencias"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:0;flex:1">
+      <div class="card-header">Produção por Empresa (mão de obra)</div>
+      <div class="card-body">
+        <div class="kpi-grid" id="kpiEmpresas"></div>
+      </div>
     </div>
   </div>
 
@@ -172,30 +222,32 @@
     <div class="card-header">SLA, Eficiência e Tempos Médios</div>
     <div class="card-body">
       <div class="metric-row">
-        <div class="metric-card">
-          <div class="metric-title">C/SLA vs S/SLA</div>
-          <div style="display:flex;gap:1.2rem">
-            <div><div class="metric-big" style="color:var(--green)" id="mCSla">–</div><div class="metric-sub">Dentro do prazo</div></div>
-            <div><div class="metric-big" style="color:var(--red)" id="mSSla">–</div><div class="metric-sub">Estouraram</div></div>
+        <div class="metric-card gauge-card">
+          <div class="gauge-svg-wrap">
+            <svg class="gauge-svg" viewBox="0 0 100 100">
+              <circle class="gauge-track" cx="50" cy="50" r="42"/>
+              <circle class="gauge-fill" id="gEficienciaFill" cx="50" cy="50" r="42"/>
+            </svg>
+            <div class="gauge-center" id="gEficienciaNum">–</div>
+          </div>
+          <div class="gauge-info">
+            <div class="metric-title">Eficiência (Meta ≥70%)</div>
+            <div class="metric-sub" id="mEficienciaGapTexto"></div>
+            <div class="metric-sub" style="margin-top:.3rem">
+              <span style="color:var(--green)">● C/SLA <b id="mCSla">–</b></span>
+              &nbsp;&nbsp;<span style="color:var(--red)">● S/SLA <b id="mSSla">–</b></span>
+            </div>
           </div>
         </div>
-        <div class="metric-card">
-          <div class="metric-title">Eficiência (Meta ≥70%)</div>
-          <div class="metric-big" id="mEficiencia">–</div>
-          <div class="metric-sub" id="mEficienciaGapTexto"></div>
-          <div class="metric-gap" id="mEficienciaGap"></div>
-        </div>
-        <div class="metric-card">
+        <div class="metric-card" id="cardMTTR">
           <div class="metric-title">MTTR Médio (Meta ≤4:00)</div>
           <div class="metric-big" id="mMTTR">–</div>
           <div class="metric-sub" id="mMTTRGapTempo"></div>
-          <div class="metric-gap" id="mMTTRGapQtd"></div>
         </div>
-        <div class="metric-card">
+        <div class="metric-card" id="cardMTTD">
           <div class="metric-title">MTTD Médio (Meta ≤1:00)</div>
           <div class="metric-big" id="mMTTD">–</div>
           <div class="metric-sub" id="mMTTDGapTempo"></div>
-          <div class="metric-gap" id="mMTTDGapQtd"></div>
         </div>
       </div>
     </div>
@@ -294,10 +346,35 @@ function renderPipeline(){
   const aguardandoDespacho = TODAS_ATIVIDADES.filter(a=>a['Status']==='AGUARDANDO_DESPACHO').length;
   const emAndamento = TODAS_ATIVIDADES.filter(a=>['DESPACHADA','INICIADA','EM_CAMPO','NAO_VALIDADA'].includes(a['Status'])).length;
   const aguardandoValidacao = TODAS_ATIVIDADES.filter(a=>a['Status']==='AGUARDANDO_VALIDACAO').length;
-  document.getElementById('pipelineBar').innerHTML =
-    `<span><b>${aguardandoDespacho}</b> aguardando despacho</span>` +
-    `<span><b>${emAndamento}</b> em andamento</span>` +
-    `<span><b>${aguardandoValidacao}</b> aguardando validação NOC</span>`;
+  document.getElementById('stAguardando').textContent = aguardandoDespacho;
+  document.getElementById('stAndamento').textContent = emAndamento;
+  document.getElementById('stValidacao').textContent = aguardandoValidacao;
+}
+
+// Desenha um gauge circular (anel) no SVG indicado, preenchendo de acordo com pct (0-100).
+function renderGauge(fillId, pct, cor){
+  const fill = document.getElementById(fillId);
+  if(!fill) return;
+  const r = 42, c = 2*Math.PI*r;
+  const clamped = Math.max(0, Math.min(100, pct));
+  fill.style.strokeDasharray = c;
+  fill.style.strokeDashoffset = c * (1 - clamped/100);
+  fill.style.stroke = cor;
+}
+
+// Classifica um valor em 3 faixas (ok / atenção / crítico) a partir de uma meta.
+// higherIsBetter=true → eficiência (quanto maior, melhor); false → tempos (quanto menor, melhor).
+function faixaStatus(valor, meta, higherIsBetter){
+  if(valor===null || isNaN(valor)) return '';
+  if(higherIsBetter){
+    if(valor >= meta) return 'ok';
+    if(valor >= meta*0.85) return 'warn';
+    return 'bad';
+  }else{
+    if(valor <= meta) return 'ok';
+    if(valor <= meta*1.15) return 'warn';
+    return 'bad';
+  }
 }
 
 // Extrai "YYYY-MM" de um timestamp tipo "17/07/2026, 18:11:43"
@@ -367,10 +444,14 @@ function renderRanking(elId, ranking){
     el.innerHTML = '<div style="color:var(--text-muted);font-size:.78rem;font-style:italic">Sem dados nesse mês.</div>';
     return;
   }
+  const max = ranking[0][1];
   el.innerHTML = ranking.map(([nome,qtd],i)=>`
     <div class="rank-item">
       <div class="rank-pos">${i+1}</div>
-      <div class="rank-nome">${nome}</div>
+      <div class="rank-main">
+        <div class="rank-nome">${nome}</div>
+        <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${max?Math.round(qtd/max*100):0}%"></div></div>
+      </div>
       <div class="rank-qtd">${qtd}</div>
     </div>`).join('');
 }
@@ -438,48 +519,41 @@ function renderDashboard(){
     }
   });
 
+  document.getElementById('stConcluidas').textContent = DADOS_FILTRADOS.length;
+  document.getElementById('stCSla').textContent = cSla;
+  document.getElementById('stSSla').textContent = sSla;
   document.getElementById('mCSla').textContent = cSla;
   document.getElementById('mSSla').textContent = sSla;
 
   const totalSla = cSla + sSla;
   const eficiencia = totalSla ? Math.round(cSla/totalSla*100) : 0;
-  const efEl = document.getElementById('mEficiencia');
-  efEl.textContent = eficiencia + '%';
-  efEl.style.color = eficiencia >= META_EFICIENCIA ? 'var(--green)' : 'var(--red)';
+  const corEficiencia = !totalSla ? 'var(--text-muted)' :
+    (eficiencia >= META_EFICIENCIA ? 'var(--green)' : (eficiencia >= META_EFICIENCIA*0.85 ? 'var(--amber)' : 'var(--red)'));
+  document.getElementById('gEficienciaNum').textContent = totalSla ? eficiencia + '%' : '–';
+  document.getElementById('gEficienciaNum').style.color = corEficiencia;
+  renderGauge('gEficienciaFill', totalSla ? eficiencia : 0, corEficiencia);
   const gapEf = gapContagem(cSla, sSla, META_EFICIENCIA);
-  const gapEfEl = document.getElementById('mEficienciaGap');
-  if(gapEf === 0){
-    gapEfEl.textContent = '✓ Meta batida';
-    gapEfEl.className = 'metric-gap gap-ok';
-  }else{
-    gapEfEl.textContent = `Faltam ${gapEf} atividade(s) dentro do SLA pra bater a meta`;
-    gapEfEl.className = 'metric-gap gap-bad';
-  }
+  document.getElementById('mEficienciaGapTexto').textContent = !totalSla
+    ? 'Sem dados nesse mês'
+    : (gapEf === 0 ? '✓ Meta batida' : `Faltam ${gapEf} atividade(s) dentro do SLA pra bater a meta`);
 
   const mttrMedioMin = contMTTR ? Math.round(somaMTTR/contMTTR) : null;
   const mttrEl = document.getElementById('mMTTR');
   mttrEl.textContent = fmtMin(mttrMedioMin);
-  mttrEl.style.color = (mttrMedioMin!==null && mttrMedioMin<=META_MTTR_MIN) ? 'var(--green)' : 'var(--red)';
+  const faixaMTTR = faixaStatus(mttrMedioMin, META_MTTR_MIN, false);
+  document.getElementById('cardMTTR').className = faixaMTTR ? 'metric-card m-' + faixaMTTR : 'metric-card';
   const diffMTTR = mttrMedioMin!==null ? mttrMedioMin - META_MTTR_MIN : null;
   document.getElementById('mMTTRGapTempo').textContent = diffMTTR===null ? 'Sem dados' :
     (diffMTTR<=0 ? `${fmtMin(Math.abs(diffMTTR))} abaixo da meta` : `+${fmtMin(diffMTTR)} acima da meta`);
-  // Removida a caixa "Faltam X atividades..." deste card: ela usava a mesma
-  // contagem (cSla/sSla) do card de Eficiência, e as duas juntas criavam uma
-  // contradição visual sempre que a MÉDIA estava boa mas havia atividades
-  // pontuais fora da meta (média baixa não significa que todas bateram a meta
-  // individualmente). Essa contagem já é mostrada de forma clara no card de
-  // Eficiência — aqui fica só a comparação da média com a meta, sem duplicar.
-  document.getElementById('mMTTRGapQtd').style.display = 'none';
 
   const mttdMedioMin = contMTTD ? Math.round(somaMTTD/contMTTD) : null;
   const mttdEl = document.getElementById('mMTTD');
   mttdEl.textContent = fmtMin(mttdMedioMin);
-  mttdEl.style.color = (mttdMedioMin!==null && mttdMedioMin<=META_MTTD_MIN) ? 'var(--green)' : 'var(--red)';
+  const faixaMTTD = faixaStatus(mttdMedioMin, META_MTTD_MIN, false);
+  document.getElementById('cardMTTD').className = faixaMTTD ? 'metric-card m-' + faixaMTTD : 'metric-card';
   const diffMTTD = mttdMedioMin!==null ? mttdMedioMin - META_MTTD_MIN : null;
   document.getElementById('mMTTDGapTempo').textContent = diffMTTD===null ? 'Sem dados' :
     (diffMTTD<=0 ? `${fmtMin(Math.abs(diffMTTD))} abaixo da meta` : `+${fmtMin(diffMTTD)} acima da meta`);
-  // Mesmo motivo do MTTR acima: removida a caixa duplicada de contagem.
-  document.getElementById('mMTTDGapQtd').style.display = 'none';
 
   // ── Tabela ──
   const tbody = document.getElementById('tbodyDados');
