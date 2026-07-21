@@ -105,7 +105,7 @@
       <label>Senha</label>
       <input type="password" id="pwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()"/>
     </div>
-    <div class="login-error" id="loginErro">❌ Senha incorreta.</div>
+    <div class="login-error" id="loginErro">Senha incorreta.</div>
     <button class="login-btn" onclick="tryLogin()">Entrar</button>
   </div>
 </div>
@@ -118,8 +118,8 @@
       <div class="hdr-sub">Esteira de Despacho</div>
     </div>
     <div style="flex:1"></div>
-    <a href="painel.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px;margin-right:.5rem">🏠 Painel</a>
-    <a href="dashboard_gestao.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px;margin-right:.5rem">📊 Dashboard</a>
+    <a href="painel.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px;margin-right:.5rem">Painel</a>
+    <a href="dashboard_gestao.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px;margin-right:.5rem">Dashboard</a>
   </div>
 </header>
 
@@ -127,12 +127,12 @@
 
   <!-- COLAR MÁSCARA -->
   <section class="card">
-    <div class="card-header"><h2>📥 Nova Solicitação do NOC</h2></div>
+    <div class="card-header"><h2>Nova Solicitação do NOC</h2></div>
     <div class="card-body">
       <label style="font-size:.68rem;color:var(--text-muted);display:block;margin-bottom:.4rem">Cole aqui a mensagem recebida do NOC no WhatsApp:</label>
       <textarea id="maskInput" placeholder="Solicitação de deslocamento:&#10;Motivo: ...&#10;Cliente: ...&#10;Endereço: ...&#10;..."></textarea>
       <div style="margin-top:.6rem">
-        <button class="btn btn-accent" onclick="processarMascara()">🔍 Processar</button>
+        <button class="btn btn-accent" onclick="processarMascara()">Processar</button>
         <button class="btn btn-outline" onclick="limparMascara()">Limpar</button>
       </div>
 
@@ -159,7 +159,7 @@
           </div>
         </div>
         <div style="margin-top:.8rem">
-          <button class="btn btn-green" onclick="confirmarAtividade()">✅ Adicionar à Esteira</button>
+          <button class="btn btn-green" onclick="confirmarAtividade()">Adicionar à Esteira</button>
         </div>
       </div>
     </div>
@@ -167,7 +167,7 @@
 
   <!-- ESTEIRA -->
   <section class="card">
-    <div class="card-header"><h2>📋 Esteira de Atividades</h2>
+    <div class="card-header"><h2>Esteira de Atividades</h2>
       <div style="flex:1"></div>
       <select id="selLiderAtual" style="margin-right:.5rem;font-size:.75rem;padding:.35rem .6rem">
         <option value="">Você é...</option>
@@ -181,15 +181,15 @@
     <div class="card-body">
       <div class="board" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
         <div>
-          <div class="col-title">⏳ Aguardando Despacho <span class="col-count" id="countAguardando">0</span></div>
+          <div class="col-title">Aguardando Despacho <span class="col-count" id="countAguardando">0</span></div>
           <div id="colAguardando"></div>
         </div>
         <div>
-          <div class="col-title">🚚 Despachadas / Em Campo <span class="col-count" id="countDespachadas">0</span></div>
+          <div class="col-title">Despachadas / Em Campo <span class="col-count" id="countDespachadas">0</span></div>
           <div id="colDespachadas"></div>
         </div>
         <div>
-          <div class="col-title">📡 Aguardando Validação NOC <span class="col-count" id="countValidacao">0</span></div>
+          <div class="col-title">Aguardando Validação NOC <span class="col-count" id="countValidacao">0</span></div>
           <div id="colValidacao"></div>
         </div>
       </div>
@@ -304,7 +304,7 @@ function parseMascara(texto){
 
 function processarMascara(){
   const texto = document.getElementById('maskInput').value;
-  if(!texto.trim()){ showToast('⚠️ Cole a mensagem do NOC primeiro.'); return; }
+  if(!texto.trim()){ showToast('Cole a mensagem do NOC primeiro.'); return; }
   const campos = parseMascara(texto);
 
   document.getElementById('f_motivo').value = campos.motivo;
@@ -320,7 +320,7 @@ function processarMascara(){
   marcarAgendamento(false);
 
   document.getElementById('reviewBox').style.display = 'block';
-  showToast('✅ Campos identificados — confira antes de confirmar.');
+  showToast('Campos identificados — confira antes de confirmar.');
 }
 
 function limparMascara(){
@@ -348,13 +348,13 @@ async function confirmarAtividade(){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(payload) });
     const result = await resp.json();
-    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao salvar.')); return; }
-    showToast('✅ Atividade adicionada à esteira!');
+    if(result.status !== 'ok'){ showToast((result.message||'Erro ao salvar.')); return; }
+    showToast('Atividade adicionada à esteira!');
     limparMascara();
     carregarEsteira();
   }catch(err){
     console.error(err);
-    showToast('❌ Erro ao conectar com o backend.');
+    showToast('Erro ao conectar com o backend.');
   }
 }
 window.confirmarAtividade = confirmarAtividade;
@@ -399,7 +399,7 @@ function renderEsteira(){
       <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
       <div class="meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
-      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">📅 Agendamento</div>' : ''}
+      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
       <div class="acoes">
         <select class="mini" id="sel-empresa-${a.rowIndex}" onchange="atualizarTecnicosDespacho(${a.rowIndex})">
           <option value="">Empresa...</option>
@@ -417,8 +417,8 @@ function renderEsteira(){
           <select class="mini" id="sel-tecnico-apoio-${a.rowIndex}"><option value="">Técnico apoio...</option></select>
         </div>
       </details>
-      <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.4rem" onclick="despachar(${a.rowIndex})">🚚 Despachar</button>
-      <button class="btn" style="width:100%;margin-top:.3rem;padding:.35rem;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;font-size:.68rem" onclick="excluirAtividade(${a.rowIndex})">🗑 Excluir (foi engano)</button>
+      <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.4rem" onclick="despachar(${a.rowIndex})">Despachar</button>
+      <button class="btn" style="width:100%;margin-top:.3rem;padding:.35rem;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;font-size:.68rem" onclick="excluirAtividade(${a.rowIndex})">Excluir (foi engano)</button>
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando despacho.</div>';
 
   const statusLabelMap = { 'DESPACHADA':'Aguardando início', 'INICIADA':'Em deslocamento', 'EM_CAMPO':'Em campo', 'NAO_VALIDADA':'Devolvido p/ técnico' };
@@ -428,8 +428,8 @@ function renderEsteira(){
       <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
       <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br>${statusLabelMap[a['Status']]||a['Status']}</div>
-      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">📅 Agendamento</div>' : ''}
-      ${a['Técnico Apoio'] ? `<div class="meta" style="color:var(--accent)">🤝 Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}${a['Hora Início Apoio']?' ('+a['Hora Início Apoio']+(a['Hora Chegada Apoio']?' → '+a['Hora Chegada Apoio']:'')+')':''}</div>` : ''}
+      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
+      ${a['Técnico Apoio'] ? `<div class="meta" style="color:var(--accent)">Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}${a['Hora Início Apoio']?' ('+a['Hora Início Apoio']+(a['Hora Chegada Apoio']?' → '+a['Hora Chegada Apoio']:'')+')':''}</div>` : ''}
       <button class="btn" style="width:100%;margin-top:.5rem;padding:.35rem;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-size:.68rem" onclick="desfazerDespacho(${a.rowIndex})">↩ Desfazer Despacho</button>
       ${!a['Técnico Apoio'] ? `
       <details style="margin-top:.4rem">
@@ -450,15 +450,15 @@ function renderEsteira(){
     <div class="atv-card" style="border-left:3px solid #ab47bc">
       <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
-      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">📅 Agendamento</div>' : ''}
+      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
       <div class="meta">
         ${a['Empresa']||''} · ${a['Técnico']||''}<br>
         ${a['CEO'] ? `<b>CEO:</b> ${formatarCEO(a['CEO'])}<br>` : ''}
         Início: ${a['Hora Início']||'—'} · Chegada: ${a['Hora Chegada']||'—'}
         ${a['Cidade Falha'] ? `<br><b>Cidade:</b> ${a['Cidade Falha']}` : ''}
-        ${a['GPS Falha'] ? `<br><a href="${a['GPS Falha']}" target="_blank" style="color:var(--accent)">📍 Local da Falha</a>` : ''}
-        ${a['GPS Caixa Nova A'] ? `<br><a href="${a['GPS Caixa Nova A']}" target="_blank" style="color:var(--accent)">📍 ${(a['CEO']==='existente'||a['CEO']==='NOVA/EXISTENTE') ? 'Caixa Nova' : 'Caixa Nova A'}</a>` : ''}
-        ${a['GPS Caixa Nova B'] ? `<br><a href="${a['GPS Caixa Nova B']}" target="_blank" style="color:var(--accent)">📍 Caixa Nova B</a>` : ''}
+        ${a['GPS Falha'] ? `<br><a href="${a['GPS Falha']}" target="_blank" style="color:var(--accent)">Local da Falha</a>` : ''}
+        ${a['GPS Caixa Nova A'] ? `<br><a href="${a['GPS Caixa Nova A']}" target="_blank" style="color:var(--accent)">${(a['CEO']==='existente'||a['CEO']==='NOVA/EXISTENTE') ? 'Caixa Nova' : 'Caixa Nova A'}</a>` : ''}
+        ${a['GPS Caixa Nova B'] ? `<br><a href="${a['GPS Caixa Nova B']}" target="_blank" style="color:var(--accent)">Caixa Nova B</a>` : ''}
       </div>
       <div style="margin-top:.5rem;display:flex;flex-direction:column;gap:.5rem">
         <div>
@@ -483,8 +483,8 @@ function renderEsteira(){
         </div>
       </div>
       <div class="acoes" style="margin-top:.5rem">
-        <button class="btn btn-green" style="flex:1;padding:.4rem" onclick="validar(${a.rowIndex}, true)">✅ Validar</button>
-        <button class="btn" style="flex:1;padding:.4rem;background:#7a1010;color:#fff" onclick="validar(${a.rowIndex}, false)">❌ Não Validar</button>
+        <button class="btn btn-green" style="flex:1;padding:.4rem" onclick="validar(${a.rowIndex}, true)">Validar</button>
+        <button class="btn" style="flex:1;padding:.4rem;background:#7a1010;color:#fff" onclick="validar(${a.rowIndex}, false)">Não Validar</button>
       </div>
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando validação.</div>';
 
@@ -518,14 +518,14 @@ function renderEsteira(){
 
 window.validar = async function(rowIndex, aprovado){
   const validadoPor = document.getElementById('selLiderAtual').value;
-  if(!validadoPor){ showToast('⚠️ Selecione "Você é..." antes de validar.'); return; }
+  if(!validadoPor){ showToast('Selecione "Você é..." antes de validar.'); return; }
 
   let motivo = '';
   let payloadExtra = {};
   if(!aprovado){
     motivo = prompt('Motivo da não validação (o técnico vai ver isso):');
     if(motivo === null) return; // cancelou
-    if(!motivo.trim()){ showToast('⚠️ Informe o motivo da não validação.'); return; }
+    if(!motivo.trim()){ showToast('Informe o motivo da não validação.'); return; }
   } else {
     if(!confirm('Confirma que o NOC validou o sinal e a atividade pode ser fechada?')) return;
     // Manda a versão (possivelmente editada) dos campos junto com a validação
@@ -544,12 +544,12 @@ window.validar = async function(rowIndex, aprovado){
       body: JSON.stringify(Object.assign({ acao:'VALIDAR', rowIndex, aprovado, motivo, validadoPor }, payloadExtra))
     });
     const result = await resp.json();
-    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao validar.')); carregarEsteira(); return; }
-    showToast(aprovado ? '✅ Atividade validada e concluída!' : '↩ Devolvido para o técnico com o motivo.');
+    if(result.status !== 'ok'){ showToast((result.message||'Erro ao validar.')); carregarEsteira(); return; }
+    showToast(aprovado ? 'Atividade validada e concluída!' : '↩ Devolvido para o técnico com o motivo.');
     carregarEsteira();
   }catch(err){
     console.error(err);
-    showToast('❌ Erro ao conectar com o backend.');
+    showToast('Erro ao conectar com o backend.');
   }
 };
 
@@ -561,12 +561,12 @@ window.excluirAtividade = async function(rowIndex){
       body: JSON.stringify({ acao:'EXCLUIR_ATIVIDADE', rowIndex })
     });
     const result = await resp.json();
-    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao excluir.')); carregarEsteira(); return; }
-    showToast('🗑 Atividade excluída.');
+    if(result.status !== 'ok'){ showToast((result.message||'Erro ao excluir.')); carregarEsteira(); return; }
+    showToast('Atividade excluída.');
     carregarEsteira();
   }catch(err){
     console.error(err);
-    showToast('❌ Erro ao conectar com o backend.');
+    showToast('Erro ao conectar com o backend.');
   }
 };
 
@@ -578,12 +578,12 @@ window.desfazerDespacho = async function(rowIndex){
       body: JSON.stringify({ acao:'DESFAZER_DESPACHO', rowIndex })
     });
     const result = await resp.json();
-    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao desfazer.')); carregarEsteira(); return; }
+    if(result.status !== 'ok'){ showToast((result.message||'Erro ao desfazer.')); carregarEsteira(); return; }
     showToast('↩ Despacho desfeito — voltou pra fila.');
     carregarEsteira();
   }catch(err){
     console.error(err);
-    showToast('❌ Erro ao conectar com o backend.');
+    showToast('Erro ao conectar com o backend.');
   }
 };
 
@@ -604,7 +604,7 @@ window.atualizarTecnicosApoio = function(rowIndex){
 window.despachar = async function(rowIndex){
   const empresa = document.getElementById('sel-empresa-'+rowIndex).value;
   const tecnico = document.getElementById('sel-tecnico-'+rowIndex).value;
-  if(!empresa || !tecnico){ showToast('⚠️ Escolha empresa e técnico antes de despachar.'); return; }
+  if(!empresa || !tecnico){ showToast('Escolha empresa e técnico antes de despachar.'); return; }
 
   const selEmpApoio = document.getElementById('sel-empresa-apoio-'+rowIndex);
   const selTecApoio = document.getElementById('sel-tecnico-apoio-'+rowIndex);
@@ -617,12 +617,12 @@ window.despachar = async function(rowIndex){
       body: JSON.stringify({ acao:'DESPACHAR', rowIndex, empresa, tecnico, empresaApoio, tecnicoApoio })
     });
     const result = await resp.json();
-    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao despachar.')); carregarEsteira(); return; }
-    showToast('✅ Atividade despachada!');
+    if(result.status !== 'ok'){ showToast((result.message||'Erro ao despachar.')); carregarEsteira(); return; }
+    showToast('Atividade despachada!');
     carregarEsteira();
   }catch(err){
     console.error(err);
-    showToast('❌ Erro ao conectar com o backend.');
+    showToast('Erro ao conectar com o backend.');
   }
 };
 
@@ -636,7 +636,7 @@ window.atualizarTecnicosApoio2 = function(rowIndex){
 window.adicionarApoio = async function(rowIndex){
   const empresaApoio = document.getElementById('sel-empresa-apoio2-'+rowIndex).value;
   const tecnicoApoio = document.getElementById('sel-tecnico-apoio2-'+rowIndex).value;
-  if(!empresaApoio || !tecnicoApoio){ showToast('⚠️ Escolha empresa e técnico de apoio.'); return; }
+  if(!empresaApoio || !tecnicoApoio){ showToast('Escolha empresa e técnico de apoio.'); return; }
 
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
@@ -644,12 +644,12 @@ window.adicionarApoio = async function(rowIndex){
       body: JSON.stringify({ acao:'DEFINIR_APOIO', rowIndex, empresaApoio, tecnicoApoio })
     });
     const result = await resp.json();
-    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao definir apoio.')); return; }
-    showToast('✅ Equipe de apoio adicionada!');
+    if(result.status !== 'ok'){ showToast((result.message||'Erro ao definir apoio.')); return; }
+    showToast('Equipe de apoio adicionada!');
     carregarEsteira();
   }catch(err){
     console.error(err);
-    showToast('❌ Erro ao conectar com o backend.');
+    showToast('Erro ao conectar com o backend.');
   }
 };
 

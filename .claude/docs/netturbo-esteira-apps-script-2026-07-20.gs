@@ -596,8 +596,9 @@ function salvarOcorrencia(ss, data) {
 }
 
 // ── CÁLCULOS DE TEMPO (MTTR / MTTD) ──────────────────────────────
-// MTTD = Timestamp Despacho → Hora Chegada  (tempo até localizar o problema em campo)
-// MTTR = Hora Chegada → Timestamp Validação (tempo de reparo efetivo em campo)
+// MTTD = Timestamp Despacho → Hora Chegada    (tempo até localizar o problema em campo)
+// MTTR = Timestamp Recebido → Timestamp Validação (tempo total: da entrada em
+//        Aguardando Despacho até a validação — despacho + deslocamento + reparo)
 function toMinutos(hhmm) {
   const [h, m] = hhmm.split(':').map(Number);
   return h * 60 + m;
@@ -612,8 +613,14 @@ function diferencaHoras(inicio, fim) {
   return fmtMinParaHora(f - i);
 }
 
-// Converte "dd/mm/yyyy, HH:MM:SS" (formato salvo em Timestamp Despacho/Validação) num Date
+// Converte "dd/mm/yyyy, HH:MM:SS" (formato salvo em Timestamp Despacho/Validação) num Date.
+// "Timestamp Recebido" não tem @STRING@ forçado na coluna (só Despacho/Validação têm),
+// então o Sheets converte sozinho pro tipo Date — se já vier como Date, usa direto.
+// Usa Object.prototype.toString em vez de "instanceof Date": valores vindos de
+// getDataRange().getValues() (leitura em lote) podem ser um Date de outro "realm"
+// do V8, que falha em "instanceof Date" mesmo sendo um Date de verdade.
 function parseTimestampBR(str) {
+  if (Object.prototype.toString.call(str) === '[object Date]') return str;
   const m = String(str || '').trim().match(/(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/);
   if (!m) return null;
   return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4]), Number(m[5]), Number(m[6] || 0));
@@ -660,7 +667,7 @@ function validarAtividade(ss, data) {
     });
 
     const agora = new Date();
-    const horaTermino = ('0'+agora.getHours()).slice(-2) + ':' + ('0'+agora.getMinutes()).slice(-2);
+    const timestampRecebido = sheet.getRange(rowIndex, idx('Timestamp Recebido')).getValue();
     const timestampDespacho = sheet.getRange(rowIndex, idx('Timestamp Despacho')).getValue();
     const horaChegada = fmtHoraLivre(sheet.getRange(rowIndex, idx('Hora Chegada')).getValue());
 
@@ -674,10 +681,14 @@ function validarAtividade(ss, data) {
       sheet.getRange(rowIndex, idx('MTTD'), 1, 1).setNumberFormat('@STRING@');
       sheet.getRange(rowIndex, idx('MTTD')).setValue(diferencaTimestampAteHora(timestampDespacho, horaChegada));
     }
-    // MTTR = Chegada → Validação (tempo de reparo efetivo em campo)
-    if (horaChegada) {
+    // MTTR = Aguardando Despacho (Timestamp Recebido) → Validação (tempo total do atendimento,
+    // desde a entrada na esteira até a validação — os dois pontos já são timestamps completos
+    // com data, então a diferença é direta, sem precisar de ancoragem/rollover de dia)
+    const inicioRecebido = parseTimestampBR(timestampRecebido);
+    if (inicioRecebido) {
+      const mttrMin = Math.max(0, Math.round((agora.getTime() - inicioRecebido.getTime()) / 60000));
       sheet.getRange(rowIndex, idx('MTTR'), 1, 1).setNumberFormat('@STRING@');
-      sheet.getRange(rowIndex, idx('MTTR')).setValue(diferencaHoras(horaChegada, horaTermino));
+      sheet.getRange(rowIndex, idx('MTTR')).setValue(fmtMinParaHora(mttrMin));
     }
     return resposta('ok', {});
   } else {
@@ -749,14 +760,16 @@ function recalcularMTTRMTTDHistorico() {
     const status = row[HEADERS_ESTEIRA.indexOf('Status')];
     if (status !== 'VALIDADA') return;
 
+    const timestampRecebido = row[HEADERS_ESTEIRA.indexOf('Timestamp Recebido')];
     const timestampDespacho = row[HEADERS_ESTEIRA.indexOf('Timestamp Despacho')];
     const horaChegada = fmtHoraLivre(row[HEADERS_ESTEIRA.indexOf('Hora Chegada')]);
     const timestampValidacao = row[HEADERS_ESTEIRA.indexOf('Timestamp Validação')];
 
+    const recebidoDate = parseTimestampBR(timestampRecebido);
     const despachoDate = parseTimestampBR(timestampDespacho);
     const validacaoDate = parseTimestampBR(timestampValidacao);
 
-    if (!despachoDate || !validacaoDate || !horaChegada) {
+    if (!recebidoDate || !despachoDate || !validacaoDate || !horaChegada) {
       Logger.log('Linha ' + rowIndex + ' pulada (dados incompletos).');
       puladas++;
       return;
@@ -771,12 +784,9 @@ function recalcularMTTRMTTDHistorico() {
     if (chegadaAncoradaDespacho < despachoSemSegundos) chegadaAncoradaDespacho = new Date(chegadaAncoradaDespacho.getTime() + 86400000);
     const mttdMin = Math.max(0, Math.round((chegadaAncoradaDespacho.getTime() - despachoDate.getTime()) / 60000));
 
-    // MTTR = Chegada → Validação (ancora a Chegada no dia da Validação, voltando um dia se necessário;
-    // mesma lógica de ignorar segundos na comparação)
-    let chegadaAncoradaValidacao = new Date(validacaoDate.getFullYear(), validacaoDate.getMonth(), validacaoDate.getDate(), hChegada, mChegada, 0);
-    const validacaoSemSegundos = new Date(validacaoDate.getFullYear(), validacaoDate.getMonth(), validacaoDate.getDate(), validacaoDate.getHours(), validacaoDate.getMinutes(), 0);
-    if (chegadaAncoradaValidacao > validacaoSemSegundos) chegadaAncoradaValidacao = new Date(chegadaAncoradaValidacao.getTime() - 86400000);
-    const mttrMin = Math.max(0, Math.round((validacaoDate.getTime() - chegadaAncoradaValidacao.getTime()) / 60000));
+    // MTTR = Recebido (Aguardando Despacho) → Validação — timestamps completos com
+    // data, diferença direta sem precisar de ancoragem/rollover de dia
+    const mttrMin = Math.max(0, Math.round((validacaoDate.getTime() - recebidoDate.getTime()) / 60000));
 
     sheet.getRange(rowIndex, idx('MTTD'), 1, 1).setNumberFormat('@STRING@');
     sheet.getRange(rowIndex, idx('MTTD')).setValue(fmtMinParaHora(mttdMin));
