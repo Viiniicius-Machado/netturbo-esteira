@@ -33,7 +33,19 @@ const HEADERS_ESTEIRA = [
   'LPU Apoio Relatório PDF',
   // ── Número de identificação da CEO (4 dígitos, único por caixa na empresa) — obrigatório
   // sempre que o técnico usa uma caixa NOVA (tipo 'nova' = A e B, ou 'existente' = só A).
-  'Número CEO A','Número CEO B'
+  'Número CEO A','Número CEO B',
+  // ── LPU Fase 2 (Nota Fiscal + Pagamento) — fecha o ciclo que hoje para em
+  // APROVADO_AGUARDANDO_NF. Uma única NF cobre todas as atividades pendentes da
+  // prestadora no momento do fechamento (titular e apoio juntos); o status só muda
+  // pra 'PAGO' quando a liderança confirma o pagamento (ver medicao.html). Sempre
+  // acrescentar campos novos no FINAL do array — a posição física da coluna na
+  // planilha é definida por adicionarColunasNovas() na ordem em que já existe, então
+  // inserir no meio quebra o mapeamento idx()/HEADERS_ESTEIRA de tudo que vem depois.
+  'LPU NF URL','LPU Timestamp NF','LPU Pago Por','LPU Timestamp Pago',
+  'LPU Apoio NF URL','LPU Apoio Timestamp NF','LPU Apoio Pago Por','LPU Apoio Timestamp Pago',
+  // Reprovação do fechamento pela Medição (NF errada/ilegível/valor divergente etc.) —
+  // distinto de 'LPU Motivo Reprovação' (que é sobre o preenchimento original da LPU).
+  'LPU Motivo Reprovação NF','LPU Apoio Motivo Reprovação NF'
 ];
 
 function garantirAba(ss, nome, headers, corFundo, corTexto) {
@@ -96,6 +108,9 @@ function doPost(e) {
     if (acao === 'VALIDAR_LPU_APROVADOR') return validarLpuAprovador(ss, data);
     if (acao === 'VALIDAR_LPU_MEDICAO')  return validarLpuMedicao(ss, data);
     if (acao === 'DECIDIR_LPU_APOIO')    return decidirLpuApoio(ss, data);
+    if (acao === 'FECHAR_LPU_NF')        return fecharLpuNf(ss, data);
+    if (acao === 'MARCAR_LPU_PAGO')      return marcarLpuPago(ss, data);
+    if (acao === 'REPROVAR_LPU_NF')      return reprovarLpuNf(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -115,6 +130,8 @@ function doGet(e) {
   if (params.acao === 'LISTAR_AGUARDANDO_VALIDACAO') return listarAguardandoValidacao(ss);
   if (params.acao === 'LISTAR_LPU_AGUARDANDO_APROVADOR') return listarLpuAguardandoAprovador(ss);
   if (params.acao === 'LISTAR_LPU_MEDICAO') return listarLpuMedicao(ss);
+  if (params.acao === 'LISTAR_LPU_FECHAMENTO') return listarLpuFechamento(ss, params);
+  if (params.acao === 'LISTAR_LPU_PAGAMENTO') return listarLpuPagamento(ss);
   return resposta('ok', { sistema: 'Netturbo Esteira de Despacho' });
 }
 
@@ -498,7 +515,7 @@ function parseHoraParaMinutos(str) {
 function resumoMensalTecnico(ss, params) {
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet || sheet.getLastRow() < 2) {
-    return resposta('ok', { totalConcluidas: 0, cSla: 0, sSla: 0, eficiencia: 0, mttrMedio: '', mttdMedio: '', tmcMedio: '' });
+    return resposta('ok', { totalConcluidas: 0, cSla: 0, sSla: 0, eficiencia: 0, mttrMedio: '', mttdMedio: '', tmcMedio: '', irrPct: 0, irrRepetidos: 0, irrTotalRompimentos: 0 });
   }
   const data = sheet.getDataRange().getValues();
   data.shift();
@@ -511,12 +528,43 @@ function resumoMensalTecnico(ss, params) {
   const idxMTTR = HEADERS_ESTEIRA.indexOf('MTTR');
   const idxMTTD = HEADERS_ESTEIRA.indexOf('MTTD');
   const idxTMC = HEADERS_ESTEIRA.indexOf('TMC');
+  const idxCliente = HEADERS_ESTEIRA.indexOf('Cliente');
+  const idxOcorrencia = HEADERS_ESTEIRA.indexOf('Ocorrência');
+  const idxTimestampRecebido = HEADERS_ESTEIRA.indexOf('Timestamp Recebido');
 
   const mesAlvo = params.mes || ''; // 'YYYY-MM'
   let totalConcluidas = 0, cSla = 0, sSla = 0;
   let somaMTTR = 0, contMTTR = 0, somaMTTD = 0, contMTTD = 0, somaTMC = 0, contTMC = 0;
 
-  data.forEach(row => {
+  // ── IRR (Índice de Recursos Repetitivos) — visão pessoal ────────────────────────
+  // Repetição = mesmo Cliente com outro ROMPIMENTO validado nos 30 dias seguintes
+  // (varre a planilha TODA, não só as linhas deste técnico, senão não teria como
+  // enxergar se o cliente voltou a chamar depois). A culpa é de quem atendeu ANTES,
+  // não de quem "herdou" o problema depois — se o cliente ligou de novo dentro de 30
+  // dias, é sinal de que o reparo anterior não segurou, então o IRR pesa pra quem fez
+  // aquele reparo. O técnico que atendeu a repetição só é responsabilizado se houver
+  // uma NOVA chamada dentro de 30 dias da visita dele — cada visita só "causa" a
+  // repetição seguinte, nunca herda a culpa da anterior.
+  const porCliente = {};
+  data.forEach((row, i) => {
+    if (row[idxStatus] !== 'VALIDADA' || row[idxOcorrencia] !== 'ROMPIMENTO') return;
+    const cliente = String(row[idxCliente] || '').trim().toUpperCase();
+    const dataRecebido = parseTimestampBR(row[idxTimestampRecebido]);
+    if (!cliente || !dataRecebido) return;
+    (porCliente[cliente] = porCliente[cliente] || []).push({ rowIndex: i + 2, data: dataRecebido });
+  });
+  const causouRepeticao = new Set();
+  Object.values(porCliente).forEach(visitas => {
+    visitas.sort((a, b) => a.data - b.data);
+    for (let i = 1; i < visitas.length; i++) {
+      const dias = (visitas[i].data - visitas[i - 1].data) / 86400000;
+      if (dias <= 30) causouRepeticao.add(visitas[i - 1].rowIndex);
+    }
+  });
+
+  let totalRompimentos = 0, totalRepetidos = 0;
+
+  data.forEach((row, i) => {
     const souTitular = row[idxEmpresa] === params.empresa && row[idxTecnico] === params.tecnico;
     const souApoio = row[idxEmpresaApoio] === params.empresa && row[idxTecnicoApoio] === params.tecnico;
     if (!souTitular && !souApoio) return;
@@ -536,14 +584,23 @@ function resumoMensalTecnico(ss, params) {
     }
     if (mttdMin !== null) { somaMTTD += mttdMin; contMTTD++; }
     if (tmcMin !== null) { somaTMC += tmcMin; contTMC++; }
+
+    if (row[idxOcorrencia] === 'ROMPIMENTO') {
+      totalRompimentos++;
+      if (causouRepeticao.has(i + 2)) totalRepetidos++;
+    }
   });
 
   const eficiencia = (cSla + sSla) ? Math.round(cSla / (cSla + sSla) * 100) : 0;
   const mttrMedio = contMTTR ? fmtMinParaHora(Math.round(somaMTTR / contMTTR)) : '';
   const mttdMedio = contMTTD ? fmtMinParaHora(Math.round(somaMTTD / contMTTD)) : '';
   const tmcMedio = contTMC ? fmtMinParaHora(Math.round(somaTMC / contTMC)) : '';
+  const irrPct = totalRompimentos ? Math.round(totalRepetidos / totalRompimentos * 1000) / 10 : 0;
 
-  return resposta('ok', { totalConcluidas, cSla, sSla, eficiencia, mttrMedio, mttdMedio, tmcMedio });
+  return resposta('ok', {
+    totalConcluidas, cSla, sSla, eficiencia, mttrMedio, mttdMedio, tmcMedio,
+    irrPct, irrRepetidos: totalRepetidos, irrTotalRompimentos: totalRompimentos
+  });
 }
 
 
@@ -973,6 +1030,228 @@ function decidirLpuApoio(ss, data) {
   return resposta('ok', {});
 }
 
+// ══════════════════════════════════════════════════════════════
+//  LPU FASE 2 — Nota Fiscal + Pagamento. Fecha o ciclo que a Fase 1 deixava parado
+//  em APROVADO_AGUARDANDO_NF. Uma única NF cobre TODAS as atividades (titular e
+//  apoio) que a prestadora tiver acumulado nesse status no momento do fechamento —
+//  sem filtro de data, sem status intermediário de "NF recebida": o status só muda
+//  de fato quando a liderança confirma que o pagamento saiu (vai direto pra 'PAGO').
+// ══════════════════════════════════════════════════════════════
+
+// Pasta separada da de fotos/relatório LPU — aqui só ficam os arquivos de Nota Fiscal.
+function getOrCriarPastaNF() {
+  const NOME_PASTA = 'Netturbo Esteira - Notas Fiscais LPU';
+  const pastas = DriveApp.getFoldersByName(NOME_PASTA);
+  if (pastas.hasNext()) return pastas.next();
+  return DriveApp.createFolder(NOME_PASTA);
+}
+
+// ── LPU Fechamento: prestador anexa a NF (fechamento_lpu.html) ──────────────────
+// Acha tudo que está APROVADO_AGUARDANDO_NF sem NF ainda pra essa empresa (titular
+// E apoio, já que uma prestadora emite uma NF só por mês, não uma por papel), sobe
+// o arquivo uma vez só e grava a mesma URL em cada linha alcançada. É essa URL igual
+// em todas as linhas do lote que permite agrupar o "fechamento" na tela da Medição
+// sem precisar de uma aba/entidade nova só pra isso.
+function fecharLpuNf(ss, data) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet || sheet.getLastRow() < 2) return resposta('error', { message: 'Nada pra fechar.' });
+  const empresa = data.empresa;
+  if (!empresa) return resposta('error', { message: 'Empresa ausente.' });
+  if (!data.notaFiscalBase64) return resposta('error', { message: 'Anexe o arquivo da Nota Fiscal.' });
+
+  const col = h => HEADERS_ESTEIRA.indexOf(h);
+  const idx = h => col(h) + 1;
+  const linhas = sheet.getDataRange().getValues();
+  linhas.shift();
+
+  // Localiza as linhas elegíveis ANTES de subir o arquivo, pra não gerar uma NF
+  // órfã no Drive se não houver nada pendente pra essa empresa.
+  const elegiveisTitular = [];
+  const elegiveisApoio = [];
+  linhas.forEach((row, i) => {
+    const rowIndex = i + 2;
+    if (row[col('LPU Empresa Prestadora')] === empresa &&
+        row[col('Status LPU')] === 'APROVADO_AGUARDANDO_NF' &&
+        !row[col('LPU NF URL')]) {
+      elegiveisTitular.push(rowIndex);
+    }
+    if (row[col('LPU Apoio Empresa Prestadora')] === empresa &&
+        row[col('Status LPU Apoio')] === 'APROVADO_AGUARDANDO_NF' &&
+        !row[col('LPU Apoio NF URL')]) {
+      elegiveisApoio.push(rowIndex);
+    }
+  });
+
+  if (!elegiveisTitular.length && !elegiveisApoio.length) {
+    return resposta('error', { message: 'Nenhuma atividade pendente de Nota Fiscal para esta empresa no momento.' });
+  }
+
+  const bruto = String(data.notaFiscalBase64);
+  const partes = bruto.split(',');
+  const base64Puro = partes.length > 1 ? partes[1] : partes[0];
+  const mimeMatch = bruto.match(/^data:([^;]+);base64,/);
+  const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+  const ext = mime === 'application/pdf' ? 'pdf' : (mime.split('/')[1] || 'dat');
+  const bytes = Utilities.base64Decode(base64Puro);
+  const nomeArquivo = 'NF_' + empresa.replace(/[^a-zA-Z0-9]/g, '_') + '_' + new Date().getTime() + '.' + ext;
+  const blob = Utilities.newBlob(bytes, mime, nomeArquivo);
+  const pasta = getOrCriarPastaNF();
+  const arquivo = pasta.createFile(blob);
+  arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  const nfUrl = arquivo.getUrl();
+  const agora = new Date().toLocaleString('pt-BR');
+
+  elegiveisTitular.forEach(rowIndex => {
+    sheet.getRange(rowIndex, idx('LPU NF URL')).setValue(nfUrl);
+    sheet.getRange(rowIndex, idx('LPU Timestamp NF'), 1, 1).setNumberFormat('@STRING@');
+    sheet.getRange(rowIndex, idx('LPU Timestamp NF')).setValue(agora);
+    sheet.getRange(rowIndex, idx('LPU Motivo Reprovação NF')).setValue(''); // limpa motivo de uma reprovação anterior, se tinha
+  });
+  elegiveisApoio.forEach(rowIndex => {
+    sheet.getRange(rowIndex, idx('LPU Apoio NF URL')).setValue(nfUrl);
+    sheet.getRange(rowIndex, idx('LPU Apoio Timestamp NF'), 1, 1).setNumberFormat('@STRING@');
+    sheet.getRange(rowIndex, idx('LPU Apoio Timestamp NF')).setValue(agora);
+    sheet.getRange(rowIndex, idx('LPU Apoio Motivo Reprovação NF')).setValue('');
+  });
+
+  return resposta('ok', { nfUrl: nfUrl, quantidade: elegiveisTitular.length + elegiveisApoio.length });
+}
+
+// ── LPU Fechamento: fila + histórico da prestadora (fechamento_lpu.html) ────────
+// Devolve tudo que está APROVADO_AGUARDANDO_NF (pendente ou já com NF, aguardando
+// pagamento) ou PAGO pra essa empresa, titular e/ou apoio — o front separa em três
+// blocos (pendente de NF / aguardando pagamento / histórico de pagos) olhando pra
+// 'LPU NF URL' e pro status de cada item.
+function listarLpuFechamento(ss, params) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet || sheet.getLastRow() < 2) return resposta('ok', { itens: [] });
+  const empresa = params.empresa;
+
+  const col = h => HEADERS_ESTEIRA.indexOf(h);
+  const data = sheet.getDataRange().getValues();
+  data.shift();
+
+  const itens = [];
+  data.forEach((row, i) => {
+    const statusT = row[col('Status LPU')];
+    const statusA = row[col('Status LPU Apoio')];
+    const souTitular = row[col('LPU Empresa Prestadora')] === empresa && (statusT === 'APROVADO_AGUARDANDO_NF' || statusT === 'PAGO');
+    const souApoio = row[col('LPU Apoio Empresa Prestadora')] === empresa && (statusA === 'APROVADO_AGUARDANDO_NF' || statusA === 'PAGO');
+    if (!souTitular && !souApoio) return;
+
+    const base = { rowIndex: i + 2 };
+    HEADERS_ESTEIRA.forEach((h, j) => { base[h] = (h === 'Data NOC') ? fmtTextoLivre(row[j]) : row[j]; });
+    if (souTitular) itens.push(Object.assign({ tipoLpu: 'titular' }, base));
+    if (souApoio) itens.push(Object.assign({ tipoLpu: 'apoio' }, base));
+  });
+  return resposta('ok', { itens: itens });
+}
+
+// ── LPU Fechamento: fila de pagamento pra Medição (medicao.html) ────────────────
+// Só entra quem já tem NF anexada e ainda está APROVADO_AGUARDANDO_NF (ou seja,
+// passou pelo fechamento do prestador mas a liderança ainda não confirmou o
+// pagamento). O front agrupa por 'LPU NF URL' pra mostrar um card por fechamento
+// em vez de um por atividade, já que o mesmo arquivo cobre o lote inteiro.
+function listarLpuPagamento(ss) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet || sheet.getLastRow() < 2) return resposta('ok', { itens: [] });
+
+  const col = h => HEADERS_ESTEIRA.indexOf(h);
+  const data = sheet.getDataRange().getValues();
+  data.shift();
+
+  const itens = [];
+  data.forEach((row, i) => {
+    const prontoTitular = row[col('Status LPU')] === 'APROVADO_AGUARDANDO_NF' && row[col('LPU NF URL')];
+    const prontoApoio = row[col('Status LPU Apoio')] === 'APROVADO_AGUARDANDO_NF' && row[col('LPU Apoio NF URL')];
+    if (!prontoTitular && !prontoApoio) return;
+
+    const base = { rowIndex: i + 2 };
+    HEADERS_ESTEIRA.forEach((h, j) => { base[h] = (h === 'Data NOC') ? fmtTextoLivre(row[j]) : row[j]; });
+    if (prontoTitular) itens.push(Object.assign({ tipoLpu: 'titular' }, base));
+    if (prontoApoio) itens.push(Object.assign({ tipoLpu: 'apoio' }, base));
+  });
+  return resposta('ok', { itens: itens });
+}
+
+// ── LPU Fechamento: liderança confirma que o pagamento saiu (medicao.html) ──────
+// Marca como PAGO toda linha (titular e/ou apoio) cuja NF URL bate com o fechamento
+// confirmado — é assim que um clique só resolve o lote inteiro, mesmo sem uma
+// entidade "fechamento" separada na planilha.
+function marcarLpuPago(ss, data) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet || sheet.getLastRow() < 2) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
+  const nfUrl = data.nfUrl;
+  if (!nfUrl) return resposta('error', { message: 'nfUrl ausente' });
+
+  const col = h => HEADERS_ESTEIRA.indexOf(h);
+  const idx = h => col(h) + 1;
+  const linhas = sheet.getDataRange().getValues();
+  linhas.shift();
+  const agora = new Date().toLocaleString('pt-BR');
+  let atualizadas = 0;
+
+  linhas.forEach((row, i) => {
+    const rowIndex = i + 2;
+    if (row[col('LPU NF URL')] === nfUrl && row[col('Status LPU')] === 'APROVADO_AGUARDANDO_NF') {
+      sheet.getRange(rowIndex, idx('Status LPU')).setValue('PAGO');
+      sheet.getRange(rowIndex, idx('LPU Pago Por')).setValue(data.pagoPor || '');
+      sheet.getRange(rowIndex, idx('LPU Timestamp Pago'), 1, 1).setNumberFormat('@STRING@');
+      sheet.getRange(rowIndex, idx('LPU Timestamp Pago')).setValue(agora);
+      atualizadas++;
+    }
+    if (row[col('LPU Apoio NF URL')] === nfUrl && row[col('Status LPU Apoio')] === 'APROVADO_AGUARDANDO_NF') {
+      sheet.getRange(rowIndex, idx('Status LPU Apoio')).setValue('PAGO');
+      sheet.getRange(rowIndex, idx('LPU Apoio Pago Por')).setValue(data.pagoPor || '');
+      sheet.getRange(rowIndex, idx('LPU Apoio Timestamp Pago'), 1, 1).setNumberFormat('@STRING@');
+      sheet.getRange(rowIndex, idx('LPU Apoio Timestamp Pago')).setValue(agora);
+      atualizadas++;
+    }
+  });
+
+  if (!atualizadas) return resposta('error', { message: 'Nenhuma atividade encontrada para esse fechamento (pode já ter sido paga).' });
+  return resposta('ok', { atualizadas: atualizadas });
+}
+
+// ── LPU Fechamento: liderança reprova o fechamento (medicao.html) ───────────────
+// NF errada/ilegível/valor divergente etc. Desfaz o fechamento inteiro daquele lote
+// (titular e/ou apoio): limpa a NF URL/timestamp pra ele voltar a aparecer como
+// "Pendente de Fechamento" em fechamento_lpu.html, e grava o motivo pro prestador
+// saber o que corrigir antes de anexar uma NF nova. Não mexe no Status LPU (continua
+// APROVADO_AGUARDANDO_NF) — só desfaz o fechamento, a aprovação da Medição continua valendo.
+function reprovarLpuNf(ss, data) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet || sheet.getLastRow() < 2) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
+  const nfUrl = data.nfUrl;
+  if (!nfUrl) return resposta('error', { message: 'nfUrl ausente' });
+  if (!data.motivo) return resposta('error', { message: 'Informe o motivo da reprovação.' });
+
+  const col = h => HEADERS_ESTEIRA.indexOf(h);
+  const idx = h => col(h) + 1;
+  const linhas = sheet.getDataRange().getValues();
+  linhas.shift();
+  let atualizadas = 0;
+
+  linhas.forEach((row, i) => {
+    const rowIndex = i + 2;
+    if (row[col('LPU NF URL')] === nfUrl && row[col('Status LPU')] === 'APROVADO_AGUARDANDO_NF') {
+      sheet.getRange(rowIndex, idx('LPU NF URL')).setValue('');
+      sheet.getRange(rowIndex, idx('LPU Timestamp NF')).setValue('');
+      sheet.getRange(rowIndex, idx('LPU Motivo Reprovação NF')).setValue(data.motivo);
+      atualizadas++;
+    }
+    if (row[col('LPU Apoio NF URL')] === nfUrl && row[col('Status LPU Apoio')] === 'APROVADO_AGUARDANDO_NF') {
+      sheet.getRange(rowIndex, idx('LPU Apoio NF URL')).setValue('');
+      sheet.getRange(rowIndex, idx('LPU Apoio Timestamp NF')).setValue('');
+      sheet.getRange(rowIndex, idx('LPU Apoio Motivo Reprovação NF')).setValue(data.motivo);
+      atualizadas++;
+    }
+  });
+
+  if (!atualizadas) return resposta('error', { message: 'Nenhuma atividade encontrada para esse fechamento (pode já ter sido processada).' });
+  return resposta('ok', { atualizadas: atualizadas });
+}
+
 // ── LPU: fila do aprovador (index.html) ─────────────────────────────
 // Uma linha da esteira pode gerar até 2 itens na fila (titular e apoio em paralelo,
 // cada um com sua própria empresa/cobrança) — por isso cada item leva um `tipoLpu`
@@ -1141,7 +1420,10 @@ function adicionarColunasNovas() {
     'LPU Apoio Validado Por Aprovador','LPU Apoio Timestamp Aprovador',
     'LPU Apoio Aprovador Medição','LPU Apoio Timestamp Medição','LPU Apoio Motivo Reprovação',
     'LPU Apoio Relatório PDF',
-    'Número CEO A','Número CEO B'
+    'Número CEO A','Número CEO B',
+    'LPU NF URL','LPU Timestamp NF','LPU Pago Por','LPU Timestamp Pago',
+    'LPU Apoio NF URL','LPU Apoio Timestamp NF','LPU Apoio Pago Por','LPU Apoio Timestamp Pago',
+    'LPU Motivo Reprovação NF','LPU Apoio Motivo Reprovação NF'
   ];
   novos.forEach(h => {
     if (headerRow.indexOf(h) === -1) {

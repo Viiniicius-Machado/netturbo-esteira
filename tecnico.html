@@ -198,6 +198,7 @@
       <div class="hdr-sub">Minhas Atividades</div>
     </div>
     <div style="flex:1"></div>
+    <a id="linkFechamentoLpu" class="btn btn-outline" style="text-decoration:none;display:none;align-items:center" href="fechamento_lpu.html">Fechamento LPU</a>
     <a class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center" href="manutencao_preventiva.html">Preventiva</a>
     <button class="btn btn-outline" onclick="carregarAtividades()">↻ Atualizar</button>
   </div>
@@ -253,6 +254,10 @@
       <div class="stat-card" id="cardResumoTMC">
         <div class="stat-value" id="resumoTMC">–</div>
         <div class="stat-label">TMC médio (meta ≤3:00)</div>
+      </div>
+      <div class="stat-card" id="cardResumoIRR">
+        <div class="stat-value" id="resumoIRR">–</div>
+        <div class="stat-label">IRR (meta ≤10%)</div>
       </div>
     </div>
     <details style="margin-top:.8rem">
@@ -332,6 +337,13 @@ function mostrarLogin(){
 window.mostrarReset = mostrarReset;
 window.mostrarLogin = mostrarLogin;
 
+// LPU (e Nota Fiscal) só existe pra prestadoras terceiras — mão de obra própria
+// (NETTURBO) não passa por cobrança.
+function atualizarLinkFechamentoLpu(){
+  const link = document.getElementById('linkFechamentoLpu');
+  if(link) link.style.display = (EMPRESA_LOGADA && EMPRESA_LOGADA !== 'NETTURBO') ? 'inline-flex' : 'none';
+}
+
 async function fazerLogin(){
   const empresa = document.getElementById('selEmpresa').value;
   const tecnico = document.getElementById('selTecnico').value;
@@ -358,6 +370,7 @@ async function fazerLogin(){
     document.getElementById('headerApp').style.display = 'block';
     document.getElementById('app').style.display = 'block';
     document.getElementById('boasVindasNome').textContent = 'Olá, ' + tecnico;
+    atualizarLinkFechamentoLpu();
     if(result.primeiroAcesso){ showToast('Senha pessoal criada com sucesso!'); }
     carregarAtividades();
     inicializarResumoDiario();
@@ -381,6 +394,7 @@ window.fazerLogin = fazerLogin;
     document.getElementById('headerApp').style.display = 'block';
     document.getElementById('app').style.display = 'block';
     document.getElementById('boasVindasNome').textContent = 'Olá, ' + salvo;
+    atualizarLinkFechamentoLpu();
     // setTimeout(...,0): espera a página terminar de carregar TODO o script
     // antes de chamar essas funções — sem isso, dava erro quando o login
     // já estava salvo de uma visita anterior (login automático disparava
@@ -506,6 +520,13 @@ window.buscarResumoMensal = async function(){
     let tmcMin = null;
     if(r.tmcMedio){ const [h,m] = r.tmcMedio.split(':').map(Number); tmcMin = h*60+m; }
     faixaStatusCard('cardResumoTMC', tmcMin, 180, false); // meta: 3:00
+
+    const totalRompimentos = r.irrTotalRompimentos ?? 0;
+    document.getElementById('resumoIRR').textContent = totalRompimentos ? (r.irrPct ?? 0).toFixed(1)+'%' : '—';
+    faixaStatusCard('cardResumoIRR', totalRompimentos ? r.irrPct : null, 10, false); // meta: ≤10%
+    document.getElementById('cardResumoIRR').title = totalRompimentos
+      ? `${r.irrRepetidos ?? 0} de ${totalRompimentos} rompimento(s) que você atendeu tiveram retorno do mesmo cliente em até 30 dias`
+      : 'Sem rompimentos no mês';
   }catch(err){
     console.error(err);
   }

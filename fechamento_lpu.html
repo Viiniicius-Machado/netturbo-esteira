@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Fechamento LPU · Netturbo Esteira</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
+      --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+      --border:#252525;--border-hi:#353535;
+      --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+      --red:#e53935;--amber:#ffa000;--green:#8bc34a;
+      --radius:6px;--radius-lg:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+    .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
+    .login-logo{width:110px;height:auto;object-fit:contain;background:#fff;border-radius:12px;padding:.5rem}
+    .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);text-align:center}
+    .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
+    .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
+    .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
+    .login-field select,.login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.92rem;padding:.7rem .9rem;width:100%}
+    .login-field select:focus,.login-field input:focus{outline:none;border-color:var(--accent)}
+    .login-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+    .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
+    .login-error.visible{display:block}
+    .login-bloqueado{font-size:.85rem;color:var(--text);text-align:center;line-height:1.6}
+
+    header{background:linear-gradient(180deg,#0c160a,#0f0f0f);border-bottom:1px solid #1a2a12;position:sticky;top:0;z-index:100}
+    .header-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.7rem 1.2rem;flex-wrap:wrap}
+    .hdr-logo{height:38px;width:auto;background:#fff;border-radius:6px;padding:.25rem .5rem}
+    .hdr-brand{font-family:'Rajdhani',sans-serif;font-size:1.25rem;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+    .hdr-sub{font-size:.58rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase}
+
+    main{max-width:900px;margin:0 auto;padding:1.3rem 1.2rem 0}
+
+    .btn{padding:.6rem 1.1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.82rem}
+    .btn-accent{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
+    .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+    .btn:disabled{opacity:.5;cursor:default}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
+    .card-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.5rem}
+    .card-body{padding:.9rem 1rem}
+    .col-count{background:var(--surface3);border:1px solid var(--border-hi);border-radius:20px;padding:.15rem .55rem;font-size:.7rem;color:var(--text-dim)}
+
+    .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;margin-bottom:1rem}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);border-radius:var(--radius);padding:.7rem .9rem}
+    .stat-value{font-family:'Rajdhani',sans-serif;font-size:1.5rem;font-weight:700;color:var(--accent);line-height:1.1}
+    .stat-label{font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.2rem}
+
+    .atv-card{background:var(--surface3);border:1px solid var(--border-hi);border-left:3px solid var(--accent);border-radius:var(--radius-lg);padding:.8rem .9rem;margin-bottom:.6rem}
+    .protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.9rem}
+    .cliente{font-size:.8rem;margin-top:.15rem}
+    .meta{font-size:.7rem;color:var(--text-dim);margin-top:.3rem;line-height:1.6}
+    .badge-apoio{background:var(--amber);color:#1a1a1a;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:3px;margin-left:.4rem}
+    .badge-pago{background:var(--green);color:#0a0a0a;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:3px;margin-left:.4rem}
+    .empty-msg{padding:1.3rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+    .aviso-nf-reprovada{margin-bottom:.5rem;font-size:.78rem;font-weight:600;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:8px;padding:.6rem .8rem}
+
+    .fechamento-box{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius-lg);padding:1rem;margin-top:.8rem}
+    .fechamento-box input[type="file"]{width:100%;background:var(--surface2);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.6rem;margin-top:.5rem}
+    .fechamento-hint{font-size:.68rem;color:var(--text-muted);margin-top:.4rem;line-height:1.5}
+  </style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-box" id="boxLogin">
+    <img class="login-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+    <div class="login-heading">
+      <h2>Fechamento LPU</h2>
+      <p>Nota Fiscal e Pagamento · Prestadoras Terceiras</p>
+    </div>
+    <div class="login-field">
+      <label>Empresa</label>
+      <select id="selEmpresa" onchange="atualizarTecnicosLogin()"></select>
+    </div>
+    <div class="login-field">
+      <label>Técnico</label>
+      <select id="selTecnico"></select>
+    </div>
+    <div class="login-field">
+      <label>PIN (fornecido pela liderança)</label>
+      <input type="password" inputmode="numeric" maxlength="4" id="inputPin" placeholder="0000"/>
+    </div>
+    <div class="login-field">
+      <label>Complemento (sua senha pessoal)</label>
+      <input type="password" id="inputComplemento" placeholder="Sua senha" onkeydown="if(event.key==='Enter')fazerLogin()"/>
+    </div>
+    <div class="login-error" id="erroLogin"></div>
+    <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+  </div>
+  <div class="login-box" id="boxBloqueado" style="display:none">
+    <img class="login-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+    <div class="login-heading"><h2>Acesso Restrito</h2></div>
+    <div class="login-bloqueado">Esta tela é exclusiva para prestadoras terceiras.<br>Contas NETTURBO não emitem LPU nem Nota Fiscal.</div>
+  </div>
+</div>
+
+<header id="headerApp" style="display:none">
+  <div class="header-inner">
+    <img class="hdr-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+    <div>
+      <div class="hdr-brand">Fechamento LPU</div>
+      <div class="hdr-sub" id="hdrEmpresa">—</div>
+    </div>
+    <div style="flex:1"></div>
+    <a href="tecnico.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px">← Minhas Atividades</a>
+  </div>
+</header>
+
+<main id="app" style="display:none">
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value" id="stPendenteValor">R$ 0,00</div>
+      <div class="stat-label">Pendente de Nota Fiscal</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stAguardandoValor">R$ 0,00</div>
+      <div class="stat-label">Aguardando Pagamento</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stPagoValor">R$ 0,00</div>
+      <div class="stat-label">Já Pago</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Pendente de Fechamento<div style="flex:1"></div><span class="col-count" id="countPendentes">0</span></div>
+    <div class="card-body">
+      <div id="colPendentes"></div>
+      <div class="fechamento-box" id="boxFechar" style="display:none">
+        <div style="font-size:.78rem;color:var(--text-dim)">Anexe a Nota Fiscal que cobre TODO o valor pendente acima (titular e apoio juntos). Depois de enviada, essas atividades passam pra "Aguardando Pagamento".</div>
+        <input type="file" id="inputNF" accept="application/pdf,image/*"/>
+        <div class="fechamento-hint" id="hintArquivo"></div>
+        <button class="btn btn-accent" style="width:100%;margin-top:.7rem" id="btnFechar" onclick="fecharNF()">Anexar Nota Fiscal e Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Aguardando Pagamento<div style="flex:1"></div><span class="col-count" id="countAguardando">0</span></div>
+    <div class="card-body">
+      <div id="colAguardando"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Histórico de Pagos<div style="flex:1"></div><span class="col-count" id="countPagos">0</span></div>
+    <div class="card-body">
+      <div id="colPagos"></div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+
+let TECH_MAP = {};
+let TECNICO_LOGADO = '';
+let EMPRESA_LOGADA = '';
+let TODOS_ITENS = [];
+
+// Sem NETTURBO na lista — mão de obra própria não passa por cobrança de LPU nem NF.
+function popularEmpresas(){
+  const opts = '<option value="">Selecione...</option>' + Object.keys(TECH_MAP).filter(e => e !== 'NETTURBO').map(e=>`<option value="${e}">${e}</option>`).join('');
+  document.getElementById('selEmpresa').innerHTML = opts;
+}
+
+async function carregarTecnicos(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS');
+    const result = await resp.json();
+    TECH_MAP = result.empresas || {};
+  }catch(err){ console.error(err); }
+  popularEmpresas();
+}
+carregarTecnicos();
+
+window.atualizarTecnicosLogin = function(){
+  const empresa = document.getElementById('selEmpresa').value;
+  const nomes = TECH_MAP[empresa] || [];
+  document.getElementById('selTecnico').innerHTML = '<option value="">Selecione...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
+};
+
+function mostrarErroLogin(msg){
+  const el = document.getElementById('erroLogin');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function liberarApp(){
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('headerApp').style.display = 'block';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('hdrEmpresa').textContent = EMPRESA_LOGADA + ' · ' + TECNICO_LOGADO;
+  carregarFechamento();
+  if(!window._fechAutoRefresh){
+    window._fechAutoRefresh = setInterval(carregarFechamento, 30000);
+  }
+}
+
+window.fazerLogin = async function(){
+  const empresa = document.getElementById('selEmpresa').value;
+  const tecnico = document.getElementById('selTecnico').value;
+  const pin = document.getElementById('inputPin').value.trim();
+  const complemento = document.getElementById('inputComplemento').value;
+  const erroEl = document.getElementById('erroLogin');
+  erroEl.classList.remove('visible');
+
+  if(!empresa || !tecnico || !pin || !complemento){ mostrarErroLogin('Preencha empresa, técnico, PIN e complemento.'); return; }
+  if(empresa === 'NETTURBO'){ mostrarErroLogin('Esta tela é exclusiva para prestadoras terceiras.'); return; }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'LOGIN_TECNICO', empresa, tecnico, pin, complemento })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ mostrarErroLogin(result.message || 'Não foi possível entrar.'); return; }
+
+    TECNICO_LOGADO = tecnico;
+    EMPRESA_LOGADA = empresa;
+    sessionStorage.setItem('esteira_tecnico_logado', tecnico);
+    sessionStorage.setItem('esteira_empresa_logada', empresa);
+    liberarApp();
+  }catch(err){
+    console.error(err);
+    mostrarErroLogin('Erro ao conectar com o servidor.');
+  }
+};
+
+// Reaproveita a sessão já aberta em tecnico.html/PREENCHIMENTO_LPU.html, se houver.
+(function tentarSessaoExistente(){
+  const salvo = sessionStorage.getItem('esteira_tecnico_logado');
+  const salvoEmpresa = sessionStorage.getItem('esteira_empresa_logada');
+  if(salvo && salvoEmpresa){
+    if(salvoEmpresa === 'NETTURBO'){
+      document.getElementById('boxLogin').style.display = 'none';
+      document.getElementById('boxBloqueado').style.display = 'flex';
+      return;
+    }
+    TECNICO_LOGADO = salvo;
+    EMPRESA_LOGADA = salvoEmpresa;
+    liberarApp();
+  }
+})();
+
+// ── DADOS ────────────────────────────────────────────────────
+function pfxLpu(a){ return a.tipoLpu === 'apoio' ? 'LPU Apoio ' : 'LPU '; }
+function campoLpu(a, campo){ return a[pfxLpu(a) + campo]; }
+function statusLpu(a){ return a[a.tipoLpu === 'apoio' ? 'Status LPU Apoio' : 'Status LPU']; }
+
+async function carregarFechamento(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_LPU_FECHAMENTO&empresa=' + encodeURIComponent(EMPRESA_LOGADA));
+    const result = await resp.json();
+    TODOS_ITENS = result.itens || [];
+    renderFechamento();
+  }catch(err){
+    console.error(err);
+  }
+}
+window.carregarFechamento = carregarFechamento;
+
+function fmtMoeda(v){
+  return 'R$ ' + Number(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+function cardAtividade(a, opts){
+  opts = opts || {};
+  const badgeApoio = a.tipoLpu === 'apoio' ? '<span class="badge-apoio">APOIO</span>' : '';
+  const badgeExtra = opts.badge || '';
+  return `<div class="atv-card">
+    <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${badgeApoio}${badgeExtra}</div>
+    <div class="cliente">${a['Cliente']||'—'}</div>
+    <div class="meta">
+      <b>Total:</b> ${fmtMoeda(campoLpu(a,'Total'))}<br>
+      <b>Aprovado na Medição em:</b> ${campoLpu(a,'Timestamp Medição')||'—'}
+      ${opts.extra || ''}
+    </div>
+  </div>`;
+}
+
+function renderFechamento(){
+  const pendentes = TODOS_ITENS.filter(a => statusLpu(a)==='APROVADO_AGUARDANDO_NF' && !campoLpu(a,'NF URL'));
+  const aguardando = TODOS_ITENS.filter(a => statusLpu(a)==='APROVADO_AGUARDANDO_NF' && campoLpu(a,'NF URL'));
+  const pagos = TODOS_ITENS.filter(a => statusLpu(a)==='PAGO');
+
+  const somaValor = lista => lista.reduce((s,a) => s + Number(campoLpu(a,'Total')||0), 0);
+  document.getElementById('stPendenteValor').textContent = fmtMoeda(somaValor(pendentes));
+  document.getElementById('stAguardandoValor').textContent = fmtMoeda(somaValor(aguardando));
+  document.getElementById('stPagoValor').textContent = fmtMoeda(somaValor(pagos));
+
+  document.getElementById('countPendentes').textContent = pendentes.length;
+  document.getElementById('countAguardando').textContent = aguardando.length;
+  document.getElementById('countPagos').textContent = pagos.length;
+
+  document.getElementById('colPendentes').innerHTML = pendentes.length
+    ? pendentes.map(a => {
+        const motivoNF = campoLpu(a,'Motivo Reprovação NF');
+        const aviso = motivoNF ? `<div class="aviso-nf-reprovada">NF devolvida pela Medição: ${motivoNF}</div>` : '';
+        return aviso + cardAtividade(a);
+      }).join('')
+    : '<div class="empty-msg">Nenhuma atividade pendente de Nota Fiscal no momento.</div>';
+  document.getElementById('boxFechar').style.display = pendentes.length ? 'block' : 'none';
+
+  document.getElementById('colAguardando').innerHTML = aguardando.length
+    ? aguardando.map(a => cardAtividade(a, { extra: `<br><a href="${campoLpu(a,'NF URL')}" target="_blank" style="color:var(--accent)">Ver Nota Fiscal enviada</a> · ${campoLpu(a,'Timestamp NF')||''}` })).join('')
+    : '<div class="empty-msg">Nenhum fechamento aguardando confirmação de pagamento.</div>';
+
+  document.getElementById('colPagos').innerHTML = pagos.length
+    ? pagos.map(a => cardAtividade(a, { badge: '<span class="badge-pago">PAGO</span>', extra: `<br><b>Pago em:</b> ${campoLpu(a,'Timestamp Pago')||'—'}` })).join('')
+    : '<div class="empty-msg">Nenhum pagamento no histórico ainda.</div>';
+}
+
+document.getElementById('inputNF').addEventListener?.('change', function(){});
+
+function lerArquivoComoBase64(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+window.fecharNF = async function(){
+  const input = document.getElementById('inputNF');
+  const file = input.files && input.files[0];
+  if(!file){ showToast('Selecione o arquivo da Nota Fiscal (PDF ou foto).'); return; }
+
+  const btn = document.getElementById('btnFechar');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  try{
+    const base64 = await lerArquivoComoBase64(file);
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'FECHAR_LPU_NF', empresa: EMPRESA_LOGADA, fechadoPor: TECNICO_LOGADO, notaFiscalBase64: base64 })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message || 'Erro ao fechar.'); btn.disabled = false; btn.textContent = 'Anexar Nota Fiscal e Fechar'; return; }
+    showToast(`Nota Fiscal enviada! ${result.quantidade} atividade(s) fechada(s).`);
+    input.value = '';
+    carregarFechamento();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }finally{
+    btn.disabled = false; btn.textContent = 'Anexar Nota Fiscal e Fechar';
+  }
+};
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:999;max-width:90vw';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.style.display='none'; }, 3800);
+}
+</script>
+</body>
+</html>

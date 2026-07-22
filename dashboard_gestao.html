@@ -284,6 +284,21 @@
     </div>
   </div>
 
+  <div class="card">
+    <div class="card-header">IRR — Índice de Recursos Repetitivos</div>
+    <div class="card-body">
+      <div class="metric-row">
+        <div class="metric-card clicavel" id="cardIRR" onclick="abrirDetalheIndicador('IRR')">
+          <div class="metric-title">IRR (Meta ≤10%)</div>
+          <div class="metric-big" id="mIRR">–</div>
+          <div class="metric-sub" id="mIRRGapTexto"></div>
+          <div class="metric-sub" id="mIRRContagem" style="margin-top:.3rem"></div>
+          <div class="metric-hint">Toque para ver os clientes com atendimento repetido</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- DETALHE DE INDICADOR (MTTR/MTTD/TMC) — 3 mais rápidas e 3 mais críticas do período/filtro atual -->
   <div class="detalhe-overlay" id="detalheOverlay" onclick="if(event.target===this) fecharDetalheIndicador()">
     <div class="detalhe-panel">
@@ -323,6 +338,7 @@ const META_EFICIENCIA = 70;   // %
 const META_MTTR_MIN = 240;    // 4:00 (Recebido → Validação: tempo total do atendimento)
 const META_MTTD_MIN = 60;     // 1:00 (Despacho → Chegada: tempo de resposta/deslocamento)
 const META_TMC_MIN = 180;     // 3:00 (Chegada → Pedido de Validação: tempo de execução em campo)
+const META_IRR_PCT = 10;      // IRR (Índice de Recursos Repetitivos) — meta ≤10%
 
 let FILTRO_TIPO_ATIVO = 'TODOS'; // 'TODOS' | 'ROMPIMENTO' | 'MASSIVA' — filtra só o card de Eficiência/MTTR/MTTD/TMC
 
@@ -423,6 +439,142 @@ function contarPorCampo(dados, campo){
     cont[val] = (cont[val]||0) + 1;
   });
   return Object.entries(cont).sort((a,b)=>b[1]-a[1]).slice(0,5);
+}
+
+// ── IRR (Índice de Recursos Repetitivos) ──────────────────────────
+// Repetição = mesmo Cliente com outro ROMPIMENTO validado nos 30 dias anteriores
+// (usa Timestamp Recebido, a data em que a falha foi reportada). A base de cálculo
+// é só ROMPIMENTO — outros tipos (MASSIVA, PREVENTIVA etc.) não entram na conta.
+// 'Timestamp Recebido' vem como Date puro (sem @STRING@ no Apps Script) e chega no
+// front como string ISO via JSON — new Date(iso) reconstrói o instante certo.
+function parseDataAmpla(val){
+  if(!val) return null;
+  if(val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  const iso = new Date(val);
+  if(!isNaN(iso.getTime())) return iso;
+  const m = String(val).match(/(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2})?:?(\d{2})?/);
+  if(!m) return null;
+  const d = new Date(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]||0), Number(m[5]||0));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Compara local de duas atividades: Endereço como critério principal, GPS Falha
+// como desempate quando o Endereço estiver vazio em algum dos dois lados.
+function mesmoLocal(a1, a2){
+  const e1 = String(a1['Endereço']||'').trim().toUpperCase();
+  const e2 = String(a2['Endereço']||'').trim().toUpperCase();
+  if(e1 && e2) return e1 === e2;
+  const g1 = String(a1['GPS Falha']||'').trim();
+  const g2 = String(a2['GPS Falha']||'').trim();
+  if(g1 && g2) return g1 === g2;
+  return false;
+}
+
+// Agrupa TODOS os ROMPIMENTOs validados (histórico completo, não só o mês filtrado
+// — uma repetição pode cruzar virada de mês) por Cliente, ordena por data e monta
+// cadeias de visitas com intervalo ≤30 dias entre uma e a seguinte. A partir da 2ª
+// visita de cada cadeia (i>0), a visita conta como "repetição" — e a repetição é
+// atribuída à visita mais recente (quem "herdou" o problema), não à primeira.
+function montarClustersIRR(){
+  const rompimentos = TODAS_ATIVIDADES
+    .filter(a => a['Status']==='VALIDADA' && a['Ocorrência']==='ROMPIMENTO' && a['Cliente'] && a['Timestamp Recebido'])
+    .map(a => ({ a, data: parseDataAmpla(a['Timestamp Recebido']) }))
+    .filter(x => x.data);
+
+  const porCliente = {};
+  rompimentos.forEach(x => {
+    const chave = String(x.a['Cliente']).trim().toUpperCase();
+    (porCliente[chave] = porCliente[chave] || []).push(x);
+  });
+
+  const clusters = [];
+  Object.values(porCliente).forEach(visitas => {
+    visitas.sort((x,y) => x.data - y.data);
+    let clusterAtual = [visitas[0]];
+    for(let i=1;i<visitas.length;i++){
+      const dias = (visitas[i].data - visitas[i-1].data) / 86400000;
+      if(dias <= 30){
+        clusterAtual.push(visitas[i]);
+      }else{
+        if(clusterAtual.length >= 2) clusters.push(clusterAtual);
+        clusterAtual = [visitas[i]];
+      }
+    }
+    if(clusterAtual.length >= 2) clusters.push(clusterAtual);
+  });
+  return clusters;
+}
+
+// Mapa rowIndex -> { repetida, cluster, posicao } pra consulta rápida na hora de
+// render (card + tabela de detalhe) sem refazer a clusterização várias vezes.
+function montarMapaRepeticaoIRR(){
+  const mapa = {};
+  montarClustersIRR().forEach(cluster => {
+    cluster.forEach((v,i) => { mapa[v.a.rowIndex] = { repetida: i>0, cluster, posicao: i }; });
+  });
+  return mapa;
+}
+
+let MAPA_IRR = {};
+
+function renderIRR(){
+  MAPA_IRR = montarMapaRepeticaoIRR();
+  const rompimentosDoMes = DADOS_FILTRADOS.filter(a=>a['Ocorrência']==='ROMPIMENTO');
+  const totalRompimentos = rompimentosDoMes.length;
+  const repetidosDoMes = rompimentosDoMes.filter(a => MAPA_IRR[a.rowIndex] && MAPA_IRR[a.rowIndex].repetida).length;
+  const irrPct = totalRompimentos ? (repetidosDoMes/totalRompimentos*100) : 0;
+
+  document.getElementById('mIRR').textContent = totalRompimentos ? irrPct.toFixed(1)+'%' : '–';
+  const faixaIRR = totalRompimentos ? faixaStatus(irrPct, META_IRR_PCT, false) : '';
+  document.getElementById('cardIRR').className = 'metric-card clicavel' + (faixaIRR ? ' m-'+faixaIRR : '');
+  const diffIRR = totalRompimentos ? irrPct - META_IRR_PCT : null;
+  document.getElementById('mIRRGapTexto').textContent = diffIRR===null ? 'Sem rompimentos nesse mês' :
+    (diffIRR<=0 ? `${Math.abs(diffIRR).toFixed(1)}% abaixo da meta` : `+${diffIRR.toFixed(1)}% acima da meta`);
+  document.getElementById('mIRRContagem').textContent = totalRompimentos
+    ? `${repetidosDoMes} repetido(s) de ${totalRompimentos} rompimento(s)` : '';
+}
+
+function abrirDetalheIRR(){
+  const rompimentosDoMes = DADOS_FILTRADOS.filter(a=>a['Ocorrência']==='ROMPIMENTO');
+  const repetidosDoMes = rompimentosDoMes.filter(a => MAPA_IRR[a.rowIndex] && MAPA_IRR[a.rowIndex].repetida);
+
+  // Um cluster pode ter mais de uma visita repetida dentro do mês filtrado — mostra
+  // o cluster (histórico completo da cadeia) só uma vez, não uma vez por repetição.
+  const clustersUnicos = [];
+  const vistos = new Set();
+  repetidosDoMes.forEach(a=>{
+    const cluster = MAPA_IRR[a.rowIndex].cluster;
+    if(vistos.has(cluster)) return;
+    vistos.add(cluster);
+    clustersUnicos.push(cluster);
+  });
+
+  document.getElementById('detalheTitulo').textContent = 'IRR — Clientes com Atendimento Repetido (≤30 dias)';
+  if(!clustersUnicos.length){
+    document.getElementById('detalheBody').innerHTML = '<div class="empty-msg">Nenhum atendimento repetido nesse mês.</div>';
+  }else{
+    document.getElementById('detalheBody').innerHTML = clustersUnicos.map(cluster => {
+      const cliente = cluster[0].a['Cliente'] || '—';
+      const linhas = cluster.map((v,i) => {
+        const anterior = i>0 ? cluster[i-1].a : null;
+        const localTexto = !anterior ? 'Primeiro atendimento do ciclo'
+          : mesmoLocal(v.a, anterior)
+            ? '<span style="color:var(--red);font-weight:700">⚠ Atenção — mesmo local do atendimento anterior</span>'
+            : 'Local diferente do atendimento anterior';
+        return `<div class="destaque-item">
+          <div class="destaque-topo">
+            <span class="destaque-protocolo">${v.a['Protocolo O&M']||v.a['Protocolo NOC']||'—'}</span>
+            <span class="destaque-data">${v.data.toLocaleDateString('pt-BR')}</span>
+          </div>
+          <div class="destaque-cliente">Técnico: ${v.a['Técnico']||'—'} (${v.a['Empresa']||'—'})</div>
+          <div class="destaque-causa">Causa: ${v.a['Causa']||'Sem causa registrada'}</div>
+          <div class="destaque-causa" style="margin-top:.2rem">${localTexto}</div>
+        </div>`;
+      }).join('');
+      return `<div class="detalhe-secao-title">${cliente} — ${cluster.length} atendimentos em ≤30 dias</div>${linhas}`;
+    }).join('');
+  }
+  document.getElementById('detalheOverlay').classList.add('open');
 }
 
 // Monta as top 3 mais rápidas (menor tempo) e as top 3 mais críticas
@@ -573,6 +725,7 @@ const INDICADOR_DETALHE_CFG = {
 };
 
 window.abrirDetalheIndicador = function(indicador){
+  if(indicador === 'IRR'){ abrirDetalheIRR(); return; }
   const cfg = INDICADOR_DETALHE_CFG[indicador];
   if(!cfg) return;
   const dados = FILTRO_TIPO_ATIVO === 'TODOS' ? DADOS_FILTRADOS : DADOS_FILTRADOS.filter(a=>a['Ocorrência']===FILTRO_TIPO_ATIVO);
@@ -627,6 +780,7 @@ function renderDashboard(){
   document.getElementById('stSSla').textContent = sSlaGeral;
 
   renderBlocoEficiencia();
+  renderIRR();
 
   // ── Tabela ──
   const tbody = document.getElementById('tbodyDados');

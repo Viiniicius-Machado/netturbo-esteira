@@ -121,6 +121,15 @@
       <div class="hdr-sub">LPU · Aprovação Final e Fechamento Financeiro</div>
     </div>
     <div style="flex:1"></div>
+    <div style="display:flex;flex-direction:column;gap:.15rem">
+      <label for="selValidador" style="font-size:.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Validando como</label>
+      <select id="selValidador" onchange="salvarValidador()" style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.4rem .6rem">
+        <option value="">Selecione...</option>
+        <option value="Pamela Silva">Pamela Silva</option>
+        <option value="Mariana Cruz">Mariana Cruz</option>
+        <option value="Giselle Silva">Giselle Silva</option>
+      </select>
+    </div>
     <a href="painel.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px">Painel</a>
   </div>
 </header>
@@ -132,6 +141,14 @@
     <div class="card-header">Fila — Aguardando Validação Medição<div style="flex:1"></div><span class="col-count" id="countFila">0</span></div>
     <div class="card-body">
       <div id="colFila"></div>
+    </div>
+  </div>
+
+  <!-- FECHAMENTOS COM NF ANEXADA, AGUARDANDO CONFIRMAÇÃO DE PAGAMENTO (LPU Fase 2) -->
+  <div class="card">
+    <div class="card-header">Fechamentos Aguardando Pagamento<div style="flex:1"></div><span class="col-count" id="countPagamentos">0</span></div>
+    <div class="card-body">
+      <div id="colPagamentos"></div>
     </div>
   </div>
 
@@ -207,26 +224,55 @@
 <script>
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 const LEADERSHIP_PASSWORD = "Manutencao@101";
-const APROVADOR_MEDICAO = "Vinicius Gabriel de Oliveira Machado";
 
-// "Instalação CLIENTE" é a única categoria CAPEX (implantação nova) — as outras 6 são
-// OPEX (manutenção/melhoria/retirada/preventiva sobre rede já existente). Mesmo
-// classificador visto no dashboard de referência (Print/Screenshot_2.png).
+// A senha de acesso é compartilhada pelo time da Medição — este seletor identifica
+// quem de fato está validando/confirmando cada ação, pra ficar registrado na
+// planilha (Aprovador Medição / Pago Por) em vez de sempre um nome fixo.
+let VALIDADOR_MEDICAO = '';
+
+function salvarValidador(){
+  VALIDADOR_MEDICAO = document.getElementById('selValidador').value;
+  sessionStorage.setItem('medicao_validador', VALIDADOR_MEDICAO);
+}
+window.salvarValidador = salvarValidador;
+
+function exigirValidador(){
+  if(!VALIDADOR_MEDICAO){
+    showToast('Selecione quem está validando (canto superior direito) antes de continuar.');
+    return false;
+  }
+  return true;
+}
+
+// "Instalação CLIENTE" e "Instalação REDE" são CAPEX (implantação/construção nova) —
+// as outras são OPEX (manutenção/melhoria/retirada/preventiva/consultoria sobre rede
+// já existente). Classificador confirmado com a liderança em 2026-07-22
+// (Print/Screenshot_1.png).
 const CAPEX_OPEX = {
   '3.1.1.2.05.0005 - Serviços de Instalação CLIENTE - IMPLANTAÇÃO': 'CAPEX',
-  '3.1.1.2.05.0007 - Serviços de Instalação REDE - CONSTRUÇÃO DE REDE': 'OPEX',
+  '3.1.1.2.05.0007 - Serviços de Instalação REDE - CONSTRUÇÃO DE REDE': 'CAPEX',
   '3.1.1.2.05.0103 - Serviços de Melhoria REDE - REPARO PROGRAMADO DE REDE': 'OPEX',
   '3.1.1.2.05.0008 - Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)': 'OPEX',
   '3.1.1.2.05.0006 - Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)': 'OPEX',
   '3.1.1.2.05.0101 - Serviços Preventivos': 'OPEX',
-  '3.1.1.2.05.0102 - Serviços de Retirada': 'OPEX'
+  '3.1.1.2.05.0102 - Serviços de Retirada': 'OPEX',
+  '3.1.1.2.05.0008 - Serviços de Melhoria de REDE': 'OPEX',
+  '3.1.1.2.05.0008 - Consultoria de Regularização': 'OPEX'
 };
 
 // Orçamento mensal por Descrição Contábil (teto de gasto definido pela liderança).
 // Só aparece a seção "Orçamento do Mês" pras descrições que estiverem aqui — outras
-// descrições sem orçamento definido simplesmente não geram card nenhum.
+// descrições sem orçamento definido simplesmente não geram card nenhum. Valores
+// confirmados em 2026-07-22 (Print/Screenshot_1.png).
 const ORCAMENTOS_DESCRICAO = {
-  '3.1.1.2.05.0008 - Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)': 100000
+  '3.1.1.2.05.0008 - Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)': 100000,
+  '3.1.1.2.05.0006 - Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)': 13000,
+  '3.1.1.2.05.0101 - Serviços Preventivos': 42000,
+  '3.1.1.2.05.0008 - Consultoria de Regularização': 15000,
+  '3.1.1.2.05.0008 - Serviços de Melhoria de REDE': 8000,
+  '3.1.1.2.05.0102 - Serviços de Retirada': 0,
+  '3.1.1.2.05.0005 - Serviços de Instalação CLIENTE - IMPLANTAÇÃO': 110000,
+  '3.1.1.2.05.0007 - Serviços de Instalação REDE - CONSTRUÇÃO DE REDE': 5000
 };
 
 let TODOS_ITENS = [];
@@ -238,9 +284,15 @@ function tryLogin(){
     document.getElementById('app').style.display = 'block';
     const hoje = new Date();
     document.getElementById('mesFiltro').value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0');
+    const validadorSalvo = sessionStorage.getItem('medicao_validador');
+    if(validadorSalvo){
+      VALIDADOR_MEDICAO = validadorSalvo;
+      document.getElementById('selValidador').value = validadorSalvo;
+    }
     carregarMedicao();
+    carregarPagamentos();
     if(!window._medAutoRefresh){
-      window._medAutoRefresh = setInterval(carregarMedicao, 30000);
+      window._medAutoRefresh = setInterval(()=>{ carregarMedicao(); carregarPagamentos(); }, 30000);
     }
   }else{
     const e = document.getElementById('loginErro');
@@ -307,6 +359,7 @@ function renderFila(){
 }
 
 window.validarMedicao = async function(rowIndex, aprovado, tipoLpu){
+  if(!exigirValidador()) return;
   let motivo = '';
   if(!aprovado){
     motivo = prompt('Motivo da reprovação (o técnico vai ver isso e precisa corrigir):');
@@ -319,12 +372,108 @@ window.validarMedicao = async function(rowIndex, aprovado, tipoLpu){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'VALIDAR_LPU_MEDICAO', rowIndex, aprovado, motivo, validadoPor: APROVADOR_MEDICAO, tipoLpu })
+      body: JSON.stringify({ acao:'VALIDAR_LPU_MEDICAO', rowIndex, aprovado, motivo, validadoPor: VALIDADOR_MEDICAO, tipoLpu })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao validar.'); carregarMedicao(); return; }
     showToast(aprovado ? 'LPU aprovada na Medição!' : 'LPU devolvida para o técnico com o motivo.');
     carregarMedicao();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+};
+
+// ── FECHAMENTOS AGUARDANDO PAGAMENTO (LPU Fase 2) ───────────────
+// LISTAR_LPU_PAGAMENTO só devolve quem já tem NF anexada e ainda está
+// APROVADO_AGUARDANDO_NF. Uma NF cobre um lote inteiro (titular e/ou apoio, de uma
+// ou mais atividades) — como todas as linhas do lote compartilham a mesma
+// 'LPU NF URL', agrupar por essa URL reconstrói o fechamento sem precisar de uma
+// aba/entidade nova só pra isso.
+let ITENS_PAGAMENTO = [];
+
+async function carregarPagamentos(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_LPU_PAGAMENTO');
+    const result = await resp.json();
+    ITENS_PAGAMENTO = result.itens || [];
+    renderPagamentos();
+  }catch(err){
+    console.error(err);
+  }
+}
+window.carregarPagamentos = carregarPagamentos;
+
+function renderPagamentos(){
+  const grupos = {};
+  ITENS_PAGAMENTO.forEach(a => {
+    const nfUrl = campoLpu(a, 'NF URL');
+    if(!nfUrl) return;
+    (grupos[nfUrl] = grupos[nfUrl] || []).push(a);
+  });
+  const chaves = Object.keys(grupos);
+  document.getElementById('countPagamentos').textContent = chaves.length;
+
+  const col = document.getElementById('colPagamentos');
+  col.innerHTML = chaves.length ? chaves.map(nfUrl => {
+    const itens = grupos[nfUrl];
+    const primeiro = itens[0];
+    const empresaFallback = primeiro.tipoLpu === 'apoio' ? primeiro['Empresa Apoio'] : primeiro['Empresa'];
+    const empresa = campoLpu(primeiro,'Empresa Prestadora') || empresaFallback || 'Empresa não identificada';
+    const total = itens.reduce((s,a) => s + Number(campoLpu(a,'Total')||0), 0);
+    const nfUrlEscapada = nfUrl.replace(/'/g, "\\'");
+
+    return `<div class="atv-card">
+      <div class="protocolo">${empresa}</div>
+      <div class="meta">
+        <b>${itens.length}</b> atividade(s) neste fechamento · <b>Total:</b> ${fmtMoeda(total)}<br>
+        <a href="${nfUrl}" target="_blank" style="color:var(--accent)">Ver Nota Fiscal</a> · ${campoLpu(primeiro,'Timestamp NF')||'—'}
+      </div>
+      <div class="acoes" style="margin-top:.6rem">
+        <button class="btn btn-green" style="flex:1" onclick="confirmarPagamento('${nfUrlEscapada}')">Confirmar Pagamento</button>
+        <button class="btn btn-red" style="flex:1" onclick="reprovarFechamento('${nfUrlEscapada}')">Reprovar</button>
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty-msg">Nenhum fechamento aguardando confirmação de pagamento.</div>';
+}
+
+window.confirmarPagamento = async function(nfUrl){
+  if(!exigirValidador()) return;
+  if(!confirm('Confirma que o pagamento deste fechamento já saiu? Isso marca todas as atividades do lote como PAGO.')) return;
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'MARCAR_LPU_PAGO', nfUrl, pagoPor: VALIDADOR_MEDICAO })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao confirmar pagamento.'); carregarPagamentos(); return; }
+    showToast(`Pagamento confirmado! ${result.atualizadas} atividade(s) marcada(s) como PAGO.`);
+    carregarPagamentos();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+};
+
+// Devolve o fechamento inteiro (NF errada/ilegível/valor divergente etc.) — desfaz a
+// NF anexada, as atividades voltam a aparecer como "Pendente de Fechamento" em
+// fechamento_lpu.html com o motivo visível, sem mexer na aprovação da Medição em si.
+window.reprovarFechamento = async function(nfUrl){
+  if(!exigirValidador()) return;
+  const motivo = prompt('Motivo da reprovação (o prestador vai ver isso e precisa reenviar a NF):');
+  if(motivo === null) return;
+  if(!motivo.trim()){ showToast('Informe o motivo da reprovação.'); return; }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'REPROVAR_LPU_NF', nfUrl, motivo })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao reprovar.'); carregarPagamentos(); return; }
+    showToast(`Fechamento devolvido ao prestador. ${result.atualizadas} atividade(s) voltaram para Pendente de Fechamento.`);
+    carregarPagamentos();
   }catch(err){
     console.error(err);
     showToast('Erro ao conectar com o backend.');
@@ -423,7 +572,7 @@ function renderOrcamentos(doMes){
       .filter(a => a[a.tipoLpu==='apoio' ? 'Status LPU Apoio' : 'Status LPU'] === 'APROVADO_AGUARDANDO_NF')
       .reduce((s,a) => s + Number(campoLpu(a,'Total')||0), 0);
     const saldo = orcamento - comprometido;
-    const pct = orcamento ? (comprometido/orcamento*100) : 0;
+    const pct = orcamento > 0 ? (comprometido/orcamento*100) : (comprometido > 0 ? 100 : 0);
     const pctBarra = Math.min(100, pct);
     const cor = pct >= 100 ? 'var(--red)' : pct >= 85 ? '#ffa000' : 'var(--accent)';
 
