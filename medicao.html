@@ -78,6 +78,16 @@
     .orcamento-linhas > div{display:flex;justify-content:space-between;gap:.5rem;font-size:.72rem;color:var(--text-muted)}
     .orcamento-linhas b{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.82rem;color:var(--text)}
 
+    .capexopex-bar-wrap{margin-bottom:1.1rem}
+    .capexopex-bar{height:18px;border-radius:9px;overflow:hidden;display:flex;border:1px solid var(--border-hi)}
+    .capexopex-bar .seg{display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;white-space:nowrap;overflow:hidden;transition:width .3s}
+    .capexopex-bar .seg-capex{background:var(--purple);color:#fff}
+    .capexopex-bar .seg-opex{background:var(--accent);color:#0a1400}
+    .capexopex-legend{display:flex;gap:1.2rem;margin-top:.45rem;font-size:.75rem;color:var(--text-dim)}
+    .capexopex-legend span{display:inline-flex;align-items:center;gap:.4rem}
+    .capexopex-legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+    .capexopex-legend b{font-family:'Rajdhani',sans-serif;color:var(--text)}
+
     .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
     table{width:100%;border-collapse:collapse;font-size:.75rem}
     thead th{text-align:left;padding:.6rem .7rem;color:var(--text-muted);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2)}
@@ -174,6 +184,14 @@
     <div class="stat-card">
       <div class="stat-value" id="stOpex">R$ 0,00</div>
       <div class="stat-label">OPEX</div>
+    </div>
+  </div>
+
+  <div class="capexopex-bar-wrap" id="capexOpexBarWrap" style="display:none">
+    <div class="capexopex-bar" id="capexOpexBar"></div>
+    <div class="capexopex-legend">
+      <span><i style="background:var(--purple)"></i>CAPEX <b id="capexOpexPctCapex">0%</b></span>
+      <span><i style="background:var(--accent)"></i>OPEX <b id="capexOpexPctOpex">0%</b></span>
     </div>
   </div>
 
@@ -510,6 +528,7 @@ function renderDashboard(){
   });
   document.getElementById('stCapex').textContent = fmtMoeda(capex);
   document.getElementById('stOpex').textContent = fmtMoeda(opex);
+  renderCapexOpexBar(capex, opex);
 
   renderOrcamentos(doMes);
 
@@ -523,9 +542,15 @@ function renderDashboard(){
   renderRankingValor('rankPrestadora', porPrestadora);
   renderRankingValor('rankDescricao', porDescricao);
 
-  // Tabela CAPEX/OPEX
+  // Tabela CAPEX/OPEX — agrupa por classificação primeiro (CAPEX antes de OPEX),
+  // valor decrescente dentro de cada grupo, pra reforçar visualmente a mesma
+  // separação que a barra CAPEX/OPEX já mostra acima.
   const tbCO = document.getElementById('tbodyCapexOpex');
-  const linhasCO = Object.keys(porDescricao).sort((a,b)=>porDescricao[b]-porDescricao[a]).map(desc => {
+  const linhasCO = Object.keys(porDescricao).sort((a,b) => {
+    const classeA = CAPEX_OPEX[a] || 'OPEX', classeB = CAPEX_OPEX[b] || 'OPEX';
+    if(classeA !== classeB) return classeA === 'CAPEX' ? -1 : 1;
+    return porDescricao[b] - porDescricao[a];
+  }).map(desc => {
     const classe = CAPEX_OPEX[desc] || 'OPEX';
     return `<tr class="capexopex-row"><td>${classe}</td><td>${desc}</td><td>${fmtMoeda(porDescricao[desc])}</td></tr>`;
   }).join('');
@@ -549,6 +574,40 @@ function renderDashboard(){
       <td style="text-align:right">${fmtMoeda(Number(campoLpu(a,'Total')||0))}</td>
     </tr>`;
   }).join('') : '<tr><td colspan="5" class="empty-msg">Sem LPUs geradas neste mês.</td></tr>';
+}
+
+// ── BARRA CAPEX/OPEX ────────────────────────────────────────────
+// Mostra a proporção CAPEX x OPEX numa barra empilhada de 2 segmentos em vez de só
+// os 2 números soltos do stat-row — a pergunta "qual fatia é maior" fica visual em
+// vez de exigir conta de cabeça. Barra empilhada, não pizza: mesma informação num
+// espaço bem mais fino (ver auditoria de interface de 2026-07-22).
+function renderCapexOpexBar(capex, opex){
+  const wrap = document.getElementById('capexOpexBarWrap');
+  const total = capex + opex;
+  if(total <= 0){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const pctCapex = capex / total * 100;
+  const pctOpex = 100 - pctCapex;
+  document.getElementById('capexOpexPctCapex').textContent = pctCapex.toFixed(0) + '% · ' + fmtMoeda(capex);
+  document.getElementById('capexOpexPctOpex').textContent = pctOpex.toFixed(0) + '% · ' + fmtMoeda(opex);
+
+  const bar = document.getElementById('capexOpexBar');
+  bar.innerHTML = '';
+  if(capex > 0){
+    const segCapex = document.createElement('div');
+    segCapex.className = 'seg seg-capex';
+    segCapex.style.width = pctCapex + '%';
+    segCapex.textContent = pctCapex >= 12 ? pctCapex.toFixed(0)+'%' : '';
+    bar.appendChild(segCapex);
+  }
+  if(opex > 0){
+    const segOpex = document.createElement('div');
+    segOpex.className = 'seg seg-opex';
+    segOpex.style.width = pctOpex + '%';
+    segOpex.textContent = pctOpex >= 12 ? pctOpex.toFixed(0)+'%' : '';
+    bar.appendChild(segOpex);
+  }
 }
 
 // ── ORÇAMENTO POR DESCRIÇÃO CONTÁBIL ────────────────────────────

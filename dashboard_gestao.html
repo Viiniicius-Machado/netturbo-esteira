@@ -65,16 +65,11 @@
     .card-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
     .card-body{padding:.75rem .9rem}
 
-    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(76px,1fr));gap:.4rem}
-    .kpi-box{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.4rem .3rem;text-align:center}
-    .kpi-num{font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:700;color:var(--text)}
-    .kpi-label{font-size:.52rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-top:.1rem}
-
-    .metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
-    .metric-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:1.1rem}
-    .metric-title{font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
-    .metric-big{font-family:'Rajdhani',sans-serif;font-size:2.2rem;font-weight:700}
-    .metric-sub{font-size:.72rem;color:var(--text-dim);margin-top:.4rem;line-height:1.5}
+    .metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.7rem}
+    .metric-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.8rem}
+    .metric-title{font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+    .metric-big{font-family:'Rajdhani',sans-serif;font-size:1.8rem;font-weight:700}
+    .metric-sub{font-size:.7rem;color:var(--text-dim);margin-top:.35rem;line-height:1.45}
     .metric-card.m-ok{border-color:rgba(139,195,74,.4)}
     .metric-card.m-warn{border-color:rgba(255,160,0,.4)}
     .metric-card.m-bad{border-color:rgba(229,57,53,.4)}
@@ -210,13 +205,13 @@
     <div class="card" style="margin-bottom:0;flex:1">
       <div class="card-header">Ocorrências no Mês (concluídas)</div>
       <div class="card-body">
-        <div class="kpi-grid" id="kpiOcorrencias"></div>
+        <div id="kpiOcorrencias"></div>
       </div>
     </div>
     <div class="card" style="margin-bottom:0;flex:1">
       <div class="card-header">Produção por Empresa (mão de obra)</div>
       <div class="card-body">
-        <div class="kpi-grid" id="kpiEmpresas"></div>
+        <div id="kpiEmpresas"></div>
       </div>
     </div>
   </div>
@@ -237,7 +232,7 @@
   </div>
 
   <div class="card">
-    <div class="card-header">SLA, Eficiência e Tempos Médios</div>
+    <div class="card-header">SLA, Eficiência, Tempos Médios e IRR</div>
     <div class="card-body">
       <div class="tipo-tabs" id="tipoTabs">
         <button type="button" class="tipo-tab active" data-tipo="TODOS" onclick="selecionarFiltroTipo('TODOS')">Todos</button>
@@ -259,6 +254,7 @@
             <div class="metric-sub" style="margin-top:.3rem">
               <span style="color:var(--green)">● C/SLA <b id="mCSla">–</b></span>
               &nbsp;&nbsp;<span style="color:var(--red)">● S/SLA <b id="mSSla">–</b></span>
+              <span style="color:var(--text-muted)"> (aba selecionada)</span>
             </div>
           </div>
         </div>
@@ -280,19 +276,10 @@
           <div class="metric-sub" id="mTMCGapTempo"></div>
           <div class="metric-hint">Toque para ver as 3 mais rápidas / 3 mais críticas</div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">IRR — Índice de Recursos Repetitivos</div>
-    <div class="card-body">
-      <div class="metric-row">
         <div class="metric-card clicavel" id="cardIRR" onclick="abrirDetalheIndicador('IRR')">
           <div class="metric-title">IRR (Meta ≤10%)</div>
           <div class="metric-big" id="mIRR">–</div>
           <div class="metric-sub" id="mIRRGapTexto"></div>
-          <div class="metric-sub" id="mIRRContagem" style="margin-top:.3rem"></div>
           <div class="metric-hint">Toque para ver os clientes com atendimento repetido</div>
         </div>
       </div>
@@ -441,6 +428,15 @@ function contarPorCampo(dados, campo){
   return Object.entries(cont).sort((a,b)=>b[1]-a[1]).slice(0,5);
 }
 
+// Mesma ideia de contarPorCampo, mas pra uma lista FIXA de categorias (Ocorrências,
+// Empresas) — mantém categorias com contagem zero em vez de descartar, já que aqui
+// o objetivo é comparar todas as categorias conhecidas, não só as mais frequentes.
+function montarRankingFixo(dados, campo, categorias){
+  return categorias
+    .map(cat => [cat, dados.filter(a=>a[campo]===cat).length])
+    .sort((a,b)=>b[1]-a[1]);
+}
+
 // ── IRR (Índice de Recursos Repetitivos) ──────────────────────────
 // Repetição = mesmo Cliente com outro ROMPIMENTO validado nos 30 dias anteriores
 // (usa Timestamp Recebido, a data em que a falha foi reportada). A base de cálculo
@@ -529,9 +525,7 @@ function renderIRR(){
   document.getElementById('cardIRR').className = 'metric-card clicavel' + (faixaIRR ? ' m-'+faixaIRR : '');
   const diffIRR = totalRompimentos ? irrPct - META_IRR_PCT : null;
   document.getElementById('mIRRGapTexto').textContent = diffIRR===null ? 'Sem rompimentos nesse mês' :
-    (diffIRR<=0 ? `${Math.abs(diffIRR).toFixed(1)}% abaixo da meta` : `+${diffIRR.toFixed(1)}% acima da meta`);
-  document.getElementById('mIRRContagem').textContent = totalRompimentos
-    ? `${repetidosDoMes} repetido(s) de ${totalRompimentos} rompimento(s)` : '';
+    `${repetidosDoMes}/${totalRompimentos} rompimento(s) · ${diffIRR<=0 ? Math.abs(diffIRR).toFixed(1)+'% abaixo da meta' : '+'+diffIRR.toFixed(1)+'% acima da meta'}`;
 }
 
 function abrirDetalheIRR(){
@@ -751,19 +745,11 @@ function renderDashboard(){
   const mes = document.getElementById('mesFiltro').value;
   DADOS_FILTRADOS = TODAS_ATIVIDADES.filter(a => a['Status']==='VALIDADA' && mesDeTimestamp(a['Timestamp Validação'])===mes);
 
-  // ── Ocorrências ──
-  const kpiOc = document.getElementById('kpiOcorrencias');
-  kpiOc.innerHTML = TIPOS.map(t=>{
-    const n = DADOS_FILTRADOS.filter(a=>a['Ocorrência']===t).length;
-    return `<div class="kpi-box"><div class="kpi-num">${n}</div><div class="kpi-label">${t}</div></div>`;
-  }).join('');
-
-  // ── Produção por empresa ──
-  const kpiEmp = document.getElementById('kpiEmpresas');
-  kpiEmp.innerHTML = EMPRESAS.map(emp=>{
-    const n = DADOS_FILTRADOS.filter(a=>a['Empresa']===emp).length;
-    return `<div class="kpi-box"><div class="kpi-num">${n}</div><div class="kpi-label">${emp}</div></div>`;
-  }).join('');
+  // ── Ocorrências e Produção por Empresa — mesma barra-ranking de Cidades/Causas,
+  // só que com a lista fixa de categorias (mesmo as com contagem zero), em vez do
+  // top 5 filtrado de contarPorCampo.
+  renderRanking('kpiOcorrencias', montarRankingFixo(DADOS_FILTRADOS, 'Ocorrência', TIPOS));
+  renderRanking('kpiEmpresas', montarRankingFixo(DADOS_FILTRADOS, 'Empresa', EMPRESAS));
 
   // ── Ranking de cidades e causas mais comuns ──
   renderRanking('rankCidades', contarPorCampo(DADOS_FILTRADOS, 'Cidade Falha'));
