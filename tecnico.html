@@ -198,6 +198,7 @@
       <div class="hdr-sub">Minhas Atividades</div>
     </div>
     <div style="flex:1"></div>
+    <a class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center" href="manutencao_preventiva.html">Preventiva</a>
     <button class="btn btn-outline" onclick="carregarAtividades()">↻ Atualizar</button>
   </div>
 </header>
@@ -205,10 +206,10 @@
 <main id="app" style="display:none">
   <div class="atv-card" style="margin-bottom:1rem;text-align:center">
     <div id="boasVindasNome" style="font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:700;letter-spacing:.04em;color:var(--accent)"></div>
-    <div style="font-size:.72rem;color:var(--text-dim);margin-top:.35rem;line-height:1.5">⚠️ Faça sua APR (Análise Preliminar de Risco). Operar de modo seguro salva vidas.</div>
+    <div style="font-size:.72rem;color:var(--text-dim);margin-top:.35rem;line-height:1.5">Faça sua APR (Análise Preliminar de Risco). Operar de modo seguro salva vidas.</div>
   </div>
   <div class="atv-card" style="margin-bottom:1rem">
-    <div class="resumo-titulo">📊 Resumo do Mês</div>
+    <div class="resumo-titulo">Resumo do Mês</div>
     <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
       <input type="month" id="mesResumo" style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.45rem .6rem"/>
       <button class="btn btn-accent" onclick="buscarResumoMensal()">Buscar</button>
@@ -248,6 +249,10 @@
       <div class="stat-card" id="cardResumoMTTD">
         <div class="stat-value" id="resumoMTTD">–</div>
         <div class="stat-label">MTTD médio (meta ≤1:00)</div>
+      </div>
+      <div class="stat-card" id="cardResumoTMC">
+        <div class="stat-value" id="resumoTMC">–</div>
+        <div class="stat-label">TMC médio (meta ≤3:00)</div>
       </div>
     </div>
     <details style="margin-top:.8rem">
@@ -353,7 +358,7 @@ async function fazerLogin(){
     document.getElementById('headerApp').style.display = 'block';
     document.getElementById('app').style.display = 'block';
     document.getElementById('boasVindasNome').textContent = 'Olá, ' + tecnico;
-    if(result.primeiroAcesso){ showToast('✅ Senha pessoal criada com sucesso!'); }
+    if(result.primeiroAcesso){ showToast('Senha pessoal criada com sucesso!'); }
     carregarAtividades();
     inicializarResumoDiario();
     iniciarAutoRefresh();
@@ -496,6 +501,11 @@ window.buscarResumoMensal = async function(){
     let mttdMin = null;
     if(r.mttdMedio){ const [h,m] = r.mttdMedio.split(':').map(Number); mttdMin = h*60+m; }
     faixaStatusCard('cardResumoMTTD', mttdMin, 60, false); // meta: 1:00
+
+    document.getElementById('resumoTMC').textContent = r.tmcMedio || '—';
+    let tmcMin = null;
+    if(r.tmcMedio){ const [h,m] = r.tmcMedio.split(':').map(Number); tmcMin = h*60+m; }
+    faixaStatusCard('cardResumoTMC', tmcMin, 180, false); // meta: 3:00
   }catch(err){
     console.error(err);
   }
@@ -503,7 +513,7 @@ window.buscarResumoMensal = async function(){
 
 function mostrarErroLogin(msg){
   const el = document.getElementById('erroLogin');
-  el.textContent = '❌ ' + msg;
+  el.textContent = '' + msg;
   el.classList.add('visible');
 }
 
@@ -516,7 +526,7 @@ async function fazerReset(){
   erroEl.classList.remove('visible');
 
   if(!empresa || !tecnico || !pin || !novoComplemento){
-    erroEl.textContent = '❌ Preencha empresa, técnico, PIN e a nova senha.';
+    erroEl.textContent = 'Preencha empresa, técnico, PIN e a nova senha.';
     erroEl.classList.add('visible');
     return;
   }
@@ -528,15 +538,15 @@ async function fazerReset(){
     });
     const result = await resp.json();
     if(result.status !== 'ok'){
-      erroEl.textContent = '❌ ' + (result.message || 'Não foi possível redefinir.');
+      erroEl.textContent = '' + (result.message || 'Não foi possível redefinir.');
       erroEl.classList.add('visible');
       return;
     }
-    showToast('✅ Senha redefinida! Faça login com a senha nova.');
+    showToast('Senha redefinida! Faça login com a senha nova.');
     mostrarLogin();
   }catch(err){
     console.error(err);
-    erroEl.textContent = '❌ Erro ao conectar com o servidor.';
+    erroEl.textContent = 'Erro ao conectar com o servidor.';
     erroEl.classList.add('visible');
   }
 }
@@ -555,8 +565,8 @@ async function carregarAtividades(){
 }
 
 const CONFIG_CAUSAS = {
-  'ROMPIMENTO':['Rompimento Troca de Poste','Rompimento Carga Alta','Rompimento Vandalismo','Rompimento Acidente em Via','Rompimento Queimadas','Rompimento Parcial','Rompimento Descarga Elétrica','Rompimento Poda Árvore','Rompimento Subterrâneo','Degradação Rede Externa','Degradação Rede Externa (Atenuação)','Visita Cliente (Rompimento Interno)','Improdutiva Chamado Improcedente','Improdutiva Cliente','Improdutiva Clima / Fator Externo','Improdutiva Comercial','Improdutiva Delivery','Improdutiva Documentação (APR/NR)','Improdutiva Documentação (ART/DWG)','Improdutiva Infraestrutura (Rede)','Improdutiva Last Mile','Improdutiva Logística','Improdutiva NOC','Improdutiva OEM','Improdutiva Terceiro (DER/Cia Elétrica)','Improdutiva Validação','🐛 Insetos'],
-  'MASSIVA':['Rompimento Troca de Poste','Rompimento Carga Alta','Rompimento Vandalismo','Rompimento Acidente em Via','Rompimento Queimadas','Rompimento Parcial','Rompimento Descarga Elétrica','Rompimento Poda Árvore','Rompimento Subterrâneo','Degradação Rede Externa','Degradação Rede Externa (Atenuação)','Visita Cliente (Rompimento Interno)','Improdutiva Chamado Improcedente','Improdutiva Cliente','Improdutiva Clima / Fator Externo','Improdutiva Comercial','Improdutiva Delivery','Improdutiva Documentação (APR/NR)','Improdutiva Documentação (ART/DWG)','Improdutiva Infraestrutura (Rede)','Improdutiva Last Mile','Improdutiva Logística','Improdutiva NOC','Improdutiva OEM','Improdutiva Terceiro (DER/Cia Elétrica)','Improdutiva Validação','🐛 Insetos'],
+  'ROMPIMENTO':['Rompimento Troca de Poste','Rompimento Carga Alta','Rompimento Vandalismo','Rompimento Acidente em Via','Rompimento Queimadas','Rompimento Parcial','Rompimento Descarga Elétrica','Rompimento Poda Árvore','Rompimento Subterrâneo','Degradação Rede Externa','Degradação Rede Externa (Atenuação)','Visita Cliente (Rompimento Interno)','Improdutiva Chamado Improcedente','Improdutiva Cliente','Improdutiva Clima / Fator Externo','Improdutiva Comercial','Improdutiva Delivery','Improdutiva Documentação (APR/NR)','Improdutiva Documentação (ART/DWG)','Improdutiva Infraestrutura (Rede)','Improdutiva Last Mile','Improdutiva Logística','Improdutiva NOC','Improdutiva OEM','Improdutiva Terceiro (DER/Cia Elétrica)','Improdutiva Validação','Insetos'],
+  'MASSIVA':['Rompimento Troca de Poste','Rompimento Carga Alta','Rompimento Vandalismo','Rompimento Acidente em Via','Rompimento Queimadas','Rompimento Parcial','Rompimento Descarga Elétrica','Rompimento Poda Árvore','Rompimento Subterrâneo','Degradação Rede Externa','Degradação Rede Externa (Atenuação)','Visita Cliente (Rompimento Interno)','Improdutiva Chamado Improcedente','Improdutiva Cliente','Improdutiva Clima / Fator Externo','Improdutiva Comercial','Improdutiva Delivery','Improdutiva Documentação (APR/NR)','Improdutiva Documentação (ART/DWG)','Improdutiva Infraestrutura (Rede)','Improdutiva Last Mile','Improdutiva Logística','Improdutiva NOC','Improdutiva OEM','Improdutiva Terceiro (DER/Cia Elétrica)','Improdutiva Validação','Insetos'],
   'ACOMPANHAMENTO CPFL':[], 'PREVENTIVA':[], 'AGENDAMENTO':['SEM ACESSO','GTD','TRANSMISSÃO']
 };
 
@@ -580,26 +590,26 @@ function renderAtividades(atividades){
 
     if(status === 'DESPACHADA'){
       statusLabel = 'Aguardando início'; statusClass = 'st-despachada';
-      corpo = `<button class="btn-acao btn-iniciar" onclick="marcarAcao(${a.rowIndex})">▶ Iniciar Atividade</button>`;
+      corpo = `<button class="btn-acao btn-iniciar" onclick="marcarAcao(${a.rowIndex})">Iniciar Atividade</button>`;
     } else if(status === 'INICIADA'){
       statusLabel = 'Em deslocamento (início: '+ (a['Hora Início']||'—') +')'; statusClass = 'st-iniciada';
-      corpo = `<button class="btn-acao btn-chegada" onclick="marcarAcao(${a.rowIndex})">📍 Cheguei no Local</button>`;
+      corpo = renderPrevisaoChegada(a) + `<button class="btn-acao btn-chegada" onclick="marcarAcao(${a.rowIndex})">Cheguei no Local</button>`;
     } else if(status === 'EM_CAMPO' || status === 'NAO_VALIDADA'){
       statusLabel = status === 'NAO_VALIDADA' ? 'Devolvido — precisa de ajuste' : ('Em campo (chegada: ' + (a['Hora Chegada']||'—') + ')');
       statusClass = status === 'NAO_VALIDADA' ? 'st-iniciada' : 'st-em-campo';
-      const avisoMotivo = status === 'NAO_VALIDADA' ? `<div class="aviso-naovalidado">⚠️ NOC não validou: ${a['Motivo Não Validado']||'sem motivo informado'}</div>` : '';
+      const avisoMotivo = status === 'NAO_VALIDADA' ? `<div class="aviso-naovalidado">NOC não validou: ${a['Motivo Não Validado']||'sem motivo informado'}</div>` : '';
       corpo = avisoMotivo + renderFormOcorrencia(a);
     } else if(status === 'AGUARDANDO_VALIDACAO'){
       statusLabel = 'Aguardando validação do NOC'; statusClass = 'st-iniciada';
       corpo = `<button class="btn-acao btn-concluido" disabled>Aguardando a liderança validar com o NOC...</button>`;
     } else if(status === 'VALIDADA'){
-      statusLabel = 'Concluída e validada ✅'; statusClass = 'st-em-campo';
-      corpo = '';
+      statusLabel = 'Concluída e validada'; statusClass = 'st-em-campo';
+      corpo = renderBlocoLpu(a);
     } else {
       statusLabel = status; statusClass = 'st-despachada';
     }
 
-    const infoApoio = a['Técnico Apoio'] ? `<div class="atv-meta" style="color:var(--accent)">🤝 Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}</div>` : '';
+    const infoApoio = a['Técnico Apoio'] ? `<div class="atv-meta" style="color:var(--accent)">Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}</div>` : '';
 
     return `<div class="atv-card">
       <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
@@ -621,41 +631,237 @@ function renderAtividades(atividades){
         CEO_STATE[a.rowIndex] = ceoCodigo;
         renderLocalCeoExtra(a.rowIndex, ceoCodigo, a);
       }
+      // Restaura o que o técnico já tinha digitado antes do app fechar/celular ficar
+      // parado (sobrepõe o que veio do servidor acima, já que é mais recente) e liga
+      // o listener que salva o rascunho a cada mudança no formulário.
+      restaurarRascunho(a.rowIndex);
+      const formEl = document.getElementById('form-'+a.rowIndex);
+      if(formEl && !formEl.dataset.rascunhoLigado){
+        formEl.dataset.rascunhoLigado = '1';
+        formEl.addEventListener('input', ()=>salvarRascunho(a.rowIndex));
+        formEl.addEventListener('click', ()=>setTimeout(()=>salvarRascunho(a.rowIndex), 0));
+      }
     }
   });
 }
 
+// ── RASCUNHO LOCAL DO FORMULÁRIO ────────────────────────────────
+// O celular do técnico pode ficar parado/em segundo plano tempo suficiente pra o
+// navegador descartar a aba e recarregar do zero — sem isso, tudo que já tinha sido
+// preenchido em campo (tipo, causa, GPS, materiais, solução, melhoria) se perdia.
+// Guarda em localStorage (sobrevive a reload, diferente de variável em memória) e só
+// é limpo quando a ocorrência é enviada com sucesso.
+function chaveRascunho(rowIndex){ return 'rfo_rascunho_' + rowIndex; }
+
+function salvarRascunho(rowIndex){
+  const formEl = document.getElementById('form-'+rowIndex);
+  if(!formEl) return;
+  const chipAtivo = document.querySelector(`#chips-${rowIndex} .chip.active`);
+  const causaAtiva = document.querySelector(`#causas-${rowIndex} .causa-item.active`);
+  const causaLivreEl = document.getElementById('causaLivre-'+rowIndex);
+  const ceoAtivo = document.querySelector(`#ceo-opts-${rowIndex} .ceo-opt.active`);
+
+  const draft = {
+    tipo: chipAtivo ? chipAtivo.dataset.tipo : '',
+    causaLivre: causaLivreEl ? causaLivreEl.value : null,
+    causa: causaAtiva ? causaAtiva.dataset.causa : null,
+    solucao: (document.getElementById('solucao-'+rowIndex)||{}).value || '',
+    melhoria: (document.getElementById('melhoria-'+rowIndex)||{}).value || '',
+    materiais: MATERIAIS_STATE[rowIndex] || null,
+    ceo: ceoAtivo ? ceoAtivo.dataset.ceo : (CEO_STATE[rowIndex] || null),
+    numeroCeoA: pegarNumeroCeo(rowIndex,'A'),
+    numeroCeoB: pegarNumeroCeo(rowIndex,'B'),
+    gps: {}
+  };
+  ['falha','ceoA','ceoB'].forEach(key=>{
+    const manualEl = document.getElementById(`gpsmanual-${rowIndex}-${key}`);
+    const valEl = document.getElementById(`gpsval-${rowIndex}-${key}`);
+    draft.gps[key] = {
+      link: GPS_STATE[rowIndex+'-'+key] || '',
+      coords: GPS_COORDS[rowIndex+'-'+key] || null,
+      cidade: GPS_CIDADE_STATE[rowIndex+'-'+key] || '',
+      manualVisivel: manualEl ? (manualEl.style.display !== 'none') : false,
+      manualValor: manualEl ? manualEl.value : '',
+      valTexto: valEl ? valEl.textContent : ''
+    };
+  });
+
+  try{ localStorage.setItem(chaveRascunho(rowIndex), JSON.stringify(draft)); }catch(e){}
+}
+
+function limparRascunho(rowIndex){
+  try{ localStorage.removeItem(chaveRascunho(rowIndex)); }catch(e){}
+}
+
+function restaurarGpsVisual(rowIndex, key, g){
+  if(!g) return;
+  const valEl = document.getElementById(`gpsval-${rowIndex}-${key}`);
+  if(valEl && g.valTexto) valEl.textContent = g.valTexto;
+  const manualEl = document.getElementById(`gpsmanual-${rowIndex}-${key}`);
+  if(manualEl){
+    manualEl.value = g.manualValor || '';
+    if(g.manualVisivel) manualEl.style.display = 'block';
+  }
+}
+
+function restaurarRascunho(rowIndex){
+  let draft;
+  try{ draft = JSON.parse(localStorage.getItem(chaveRascunho(rowIndex))); }catch(e){ draft = null; }
+  if(!draft) return;
+
+  if(draft.tipo) selecionarTipo(rowIndex, draft.tipo); // já mostra/some o bloco CEO e recarrega as causas
+  if(draft.causaLivre){
+    const el = document.getElementById('causaLivre-'+rowIndex);
+    if(el) el.value = draft.causaLivre;
+  } else if(draft.causa){
+    selecionarCausa(rowIndex, draft.causa);
+  }
+  const solEl = document.getElementById('solucao-'+rowIndex);
+  if(solEl) solEl.value = draft.solucao || '';
+  const melEl = document.getElementById('melhoria-'+rowIndex);
+  if(melEl) melEl.value = draft.melhoria || '';
+
+  if(draft.materiais){
+    MATERIAIS_STATE[rowIndex] = draft.materiais;
+    if(draft.materiais.usaMat === true) document.getElementById('mat-sim-'+rowIndex)?.classList.add('on-yes');
+    if(draft.materiais.usaMat === false) document.getElementById('mat-nao-'+rowIndex)?.classList.add('on-no');
+    renderListaMateriais(rowIndex);
+  }
+
+  const g = draft.gps || {};
+  if(g.falha){
+    if(g.falha.link) GPS_STATE[rowIndex+'-falha'] = g.falha.link;
+    if(g.falha.coords) GPS_COORDS[rowIndex+'-falha'] = g.falha.coords;
+    if(g.falha.cidade) GPS_CIDADE_STATE[rowIndex+'-falha'] = g.falha.cidade;
+    restaurarGpsVisual(rowIndex, 'falha', g.falha);
+  }
+
+  if(draft.ceo){
+    selecionarCEO(rowIndex, draft.ceo); // recria o bloco de local-ceo-extra (A/B)
+    ['ceoA','ceoB'].forEach(key=>{
+      if(!g[key]) return;
+      if(g[key].link) GPS_STATE[rowIndex+'-'+key] = g[key].link;
+      if(g[key].coords) GPS_COORDS[rowIndex+'-'+key] = g[key].coords;
+      if(g[key].cidade) GPS_CIDADE_STATE[rowIndex+'-'+key] = g[key].cidade;
+      restaurarGpsVisual(rowIndex, key, g[key]);
+    });
+    if(draft.numeroCeoA){ const elA = document.getElementById('numceo-'+rowIndex+'-A'); if(elA) elA.value = draft.numeroCeoA; }
+    if(draft.numeroCeoB){ const elB = document.getElementById('numceo-'+rowIndex+'-B'); if(elB) elB.value = draft.numeroCeoB; }
+  }
+}
+
+// Atividade validada de empresa terceira entra no sub-processo de cobrança (LPU) e,
+// em vez de sumir da tela, mostra em que etapa está — até a Medição aprovar (aí some,
+// igual antes). NETTURBO não passa por isso (Status LPU nunca é setado pra eles).
+function renderBlocoLpu(a){
+  const statusLpu = a['Status LPU'] || '';
+  const avisoMotivo = (statusLpu === 'PENDENTE_PREENCHIMENTO' && a['LPU Motivo Reprovação'])
+    ? `<div class="aviso-naovalidado">LPU devolvida: ${a['LPU Motivo Reprovação']}</div>` : '';
+
+  if(statusLpu === 'PENDENTE_PREENCHIMENTO'){
+    return avisoMotivo + `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Pendente de Preenchimento LPU</div>
+      <a class="btn-acao btn-validar" style="display:block;text-align:center;text-decoration:none" href="PREENCHIMENTO_LPU.html?rowIndex=${a.rowIndex}">Preencher LPU</a>`;
+  }
+  if(statusLpu === 'AGUARDANDO_APROVADOR'){
+    return `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Aguardando Validação do Aprovador</div>`;
+  }
+  if(statusLpu === 'AGUARDANDO_MEDICAO'){
+    return `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Aguardando Validação Medição</div>`;
+  }
+  return '';
+}
+
 // Card simplificado pra quem é equipe de apoio — só o próprio clock de
 // início/chegada, sem formulário de ocorrência (isso continua com o titular).
+// Quando a atividade já foi validada, o clock-in fica pra trás e entra o
+// sub-processo de LPU do apoio (que pode ser de empresa diferente da titular).
 function renderCardApoio(a){
+  if(a['Status'] === 'VALIDADA'){
+    return renderCardApoioValidada(a);
+  }
+
   let botao = '';
   let formMateriais = '';
   if(!a['Hora Início Apoio']){
-    botao = `<button class="btn-acao btn-iniciar" onclick="marcarAcaoApoio(${a.rowIndex})">▶ Iniciar Atividade</button>`;
+    botao = `<button class="btn-acao btn-iniciar" onclick="marcarAcaoApoio(${a.rowIndex})">Iniciar Atividade</button>`;
   } else if(!a['Hora Chegada Apoio']){
-    botao = `<button class="btn-acao btn-chegada" onclick="marcarAcaoApoio(${a.rowIndex})">📍 Cheguei no Local</button>`;
+    botao = `<button class="btn-acao btn-chegada" onclick="marcarAcaoApoio(${a.rowIndex})">Cheguei no Local</button>`;
   } else {
     botao = `<button class="btn-acao btn-concluido" disabled>Sua parte concluída — titular finaliza o restante</button>`;
     formMateriais = `
       <div style="margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--border)">
         <label style="font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">Usou material seu nessa atividade? (registro pessoal, não vai pra validação)</label>
         <div class="toggle-row" style="margin-top:.4rem">
-          <button type="button" class="toggle-btn" id="mat-sim-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, true)">✅ Sim</button>
-          <button type="button" class="toggle-btn" id="mat-nao-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, false)">❌ Não</button>
+          <button type="button" class="toggle-btn" id="mat-sim-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, true)">Sim</button>
+          <button type="button" class="toggle-btn" id="mat-nao-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, false)">Não</button>
         </div>
         <div id="listamat-${a.rowIndex}"></div>
-        <button class="btn-acao btn-validar" style="margin-top:.6rem" onclick="salvarECopiarApoio(${a.rowIndex})">💾 Salvar e Copiar Relatório</button>
+        <button class="btn-acao btn-validar" style="margin-top:.6rem" onclick="salvarECopiarApoio(${a.rowIndex})">Salvar e Copiar Relatório</button>
       </div>`;
   }
   return `<div class="atv-card">
     <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
     <div class="atv-cliente">${a['Cliente']||'—'}</div>
     <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>Titular: ${a['Técnico']||'—'} (${a['Empresa']||''})</div>
-    <span class="atv-status st-despachada">🤝 Você é EQUIPE DE APOIO</span>
+    <span class="atv-status st-despachada">Você é EQUIPE DE APOIO</span>
     ${botao}
     ${formMateriais}
   </div>`;
 }
+
+// Card do apoio depois que a atividade foi validada: entra o sub-processo de LPU
+// do apoio, igual o da titular, mas com um passo a mais no início — o apoio precisa
+// dizer se teve cobrança própria (pode ser empresa diferente da titular) antes de
+// preencher qualquer coisa.
+function renderCardApoioValidada(a){
+  const statusLpuApoio = a['Status LPU Apoio'] || '';
+  let corpo = '';
+
+  if(statusLpuApoio === 'PENDENTE_DECISAO'){
+    corpo = `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Definir cobrança da sua LPU</div>
+      <div class="atv-meta" style="margin-top:.4rem">Essa atividade teve cobrança pela sua empresa de apoio?</div>
+      <div style="display:flex;gap:.5rem;margin-top:.5rem">
+        <button type="button" class="btn-acao btn-validar" style="flex:1" onclick="decidirLpuApoio(${a.rowIndex}, true)">Sim, tem cobrança</button>
+        <button type="button" class="btn-acao" style="flex:1;background:#7a1010;color:#fff" onclick="decidirLpuApoio(${a.rowIndex}, false)">Não tem cobrança</button>
+      </div>`;
+  } else if(statusLpuApoio === 'PENDENTE_PREENCHIMENTO'){
+    const avisoMotivo = a['LPU Apoio Motivo Reprovação']
+      ? `<div class="aviso-naovalidado">LPU devolvida: ${a['LPU Apoio Motivo Reprovação']}</div>` : '';
+    corpo = avisoMotivo + `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Pendente de Preenchimento LPU</div>
+      <a class="btn-acao btn-validar" style="display:block;text-align:center;text-decoration:none" href="PREENCHIMENTO_LPU.html?rowIndex=${a.rowIndex}&tipoLpu=apoio">Preencher LPU</a>`;
+  } else if(statusLpuApoio === 'AGUARDANDO_APROVADOR'){
+    corpo = `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Aguardando Validação do Aprovador</div>`;
+  } else if(statusLpuApoio === 'AGUARDANDO_MEDICAO'){
+    corpo = `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Aguardando Validação Medição</div>`;
+  } else {
+    return ''; // SEM_COBRANCA / APROVADO_AGUARDANDO_NF: já saiu da lista no backend, mas por segurança não renderiza nada
+  }
+
+  return `<div class="atv-card">
+    <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
+    <div class="atv-cliente">${a['Cliente']||'—'}</div>
+    <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>Titular: ${a['Técnico']||'—'} (${a['Empresa']||''})</div>
+    <span class="atv-status st-despachada">Você é EQUIPE DE APOIO</span>
+    ${corpo}
+  </div>`;
+}
+
+// Registra a decisão de cobrança do apoio: se não teve, a atividade some da tela
+// (sem gerar LPU nenhuma); se teve, libera o preenchimento igual o fluxo da titular.
+window.decidirLpuApoio = async function(rowIndex, temCobranca){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'DECIDIR_LPU_APOIO', rowIndex, temCobranca })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao registrar a decisão.'); return; }
+    carregarAtividades();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o servidor.');
+  }
+};
 
 // Salva os materiais no backend (vai pro resumo/Excel da liderança) e, se
 // a gravação der certo, já copia o texto formatado pro técnico colar no
@@ -669,10 +875,10 @@ window.salvarECopiarApoio = async function(rowIndex){
       body: JSON.stringify({ acao:'SALVAR_MATERIAIS_APOIO', rowIndex, materiaisApoio: materiais })
     });
     const result = await resp.json();
-    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao salvar.')); return; }
+    if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao salvar.')); return; }
   }catch(err){
     console.error(err);
-    showToast('❌ Erro ao conectar com o servidor.');
+    showToast('Erro ao conectar com o servidor.');
     return;
   }
 
@@ -694,7 +900,7 @@ window.salvarECopiarApoio = async function(rowIndex){
     }
   }catch(e){ copiarFallback(t); }
 
-  showToast('✅ Salvo e copiado! Cole no seu grupo.');
+  showToast('Salvo e copiado! Cole no seu grupo.');
 };
 
 function renderFormOcorrencia(a){
@@ -730,8 +936,8 @@ function renderFormOcorrencia(a){
       <div>
         <label>Houve uso de material?</label>
         <div class="toggle-row">
-          <button type="button" class="toggle-btn" id="mat-sim-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, true)">✅ Sim</button>
-          <button type="button" class="toggle-btn" id="mat-nao-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, false)">❌ Não</button>
+          <button type="button" class="toggle-btn" id="mat-sim-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, true)">Sim</button>
+          <button type="button" class="toggle-btn" id="mat-nao-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, false)">Não</button>
         </div>
         <div id="listamat-${a.rowIndex}"></div>
       </div>
@@ -743,15 +949,29 @@ function renderFormOcorrencia(a){
         <label>Melhoria de Rede</label>
         <textarea id="melhoria-${a.rowIndex}" placeholder="O que foi feito para melhorar a rede...">${a['Melhoria']||''}</textarea>
       </div>
-      <button class="btn-acao btn-validar" onclick="solicitarValidacao(${a.rowIndex})">✅ Solicitar Validação NOC</button>
+      <button class="btn-acao btn-validar" onclick="solicitarValidacao(${a.rowIndex})">Solicitar Validação NOC</button>
     </div>
   `;
+}
+
+// Campo pro técnico informar uma estimativa de chegada antes de bater "Cheguei no
+// Local" — serve pra despacho repassar ao cliente sem precisar ligar pro técnico.
+function renderPrevisaoChegada(a){
+  const previsaoAtual = a['Previsão Chegada'] || '';
+  return `
+    <div class="gps-block" style="margin-top:.6rem">
+      <label style="font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">Previsão de Chegada${previsaoAtual?' (informada: '+previsaoAtual+')':''}</label>
+      <div style="display:flex;gap:.4rem;margin-top:.4rem">
+        <input type="time" id="previsao-${a.rowIndex}" value="${previsaoAtual}" style="flex:1;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.5rem"/>
+        <button type="button" class="btn btn-outline" style="white-space:nowrap" onclick="informarPrevisao(${a.rowIndex})">Informar</button>
+      </div>
+    </div>`;
 }
 
 function gpsWidget(rowIndex, key, valorSalvo){
   return `
     <div class="gps-block">
-      <button type="button" class="btn-gps" onclick="capturarGPS(${rowIndex},'${key}')">📍 Capturar GPS</button>
+      <button type="button" class="btn-gps" onclick="capturarGPS(${rowIndex},'${key}')">Capturar GPS</button>
       <div class="gps-valor" id="gpsval-${rowIndex}-${key}">${valorSalvo||''}</div>
       <div class="link-manual" onclick="alternarManual(${rowIndex},'${key}')">Sem sinal de GPS? Digitar endereço manualmente</div>
       <input type="text" id="gpsmanual-${rowIndex}-${key}" placeholder="Endereço manual..." style="display:none;margin-top:.4rem"/>
@@ -793,7 +1013,7 @@ window.atualizarMatLivre = function(rowIndex, idx, val){ MATERIAIS_STATE[rowInde
 window.adicionarMatExtra = function(rowIndex){
   const nome = document.getElementById('matextra-n-'+rowIndex).value.trim();
   const qtd = document.getElementById('matextra-q-'+rowIndex).value;
-  if(!nome){ showToast('⚠️ Informe o nome do material.'); return; }
+  if(!nome){ showToast('Informe o nome do material.'); return; }
   MATERIAIS_STATE[rowIndex].itens.push({ n:nome, q:qtd||'1', livre:true });
   renderListaMateriais(rowIndex);
 };
@@ -829,24 +1049,41 @@ window.selecionarCEO = function(rowIndex, ceo){
 // - "existente-existente": nenhuma caixa nova, não mostra nada
 // - "existente" (Nova → Existente): 1 caixa nova só
 // - "nova" (Nova → Nova): 2 caixas novas
+function numeroCeoWidget(rowIndex, key, valorSalvo){
+  return `<input type="text" id="numceo-${rowIndex}-${key}" inputmode="numeric" maxlength="4" placeholder="0000" value="${valorSalvo||''}" style="margin-top:.4rem;max-width:140px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.5rem" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,4)"/>`;
+}
+
+// Toda caixa NOVA (tipo 'nova' = A e B, 'existente' = só A) tem que ter o número de
+// identificação (4 dígitos, único por CEO na empresa) — sem isso não dá pra saber qual
+// caixa física foi usada depois, só a localização não é suficiente.
 function renderLocalCeoExtra(rowIndex, ceo, atividade){
   const cont = document.getElementById('local-ceo-extra-'+rowIndex);
   if(!cont) return;
   const valA = (atividade && atividade['GPS Caixa Nova A']) || '';
   const valB = (atividade && atividade['GPS Caixa Nova B']) || '';
+  const numA = (atividade && atividade['Número CEO A']) || '';
+  const numB = (atividade && atividade['Número CEO B']) || '';
 
   if(ceo === 'nova'){
     cont.style.display = 'block';
     cont.innerHTML = `
-      <div><label>Localização Caixa Nova A</label>${gpsWidget(rowIndex,'ceoA', valA)}</div>
-      <div style="margin-top:.5rem"><label>Localização Caixa Nova B</label>${gpsWidget(rowIndex,'ceoB', valB)}</div>`;
+      <div><label>Localização Caixa Nova A</label>${gpsWidget(rowIndex,'ceoA', valA)}
+        <label style="margin-top:.4rem;display:block">Número da CEO A (4 dígitos)</label>${numeroCeoWidget(rowIndex,'A', numA)}</div>
+      <div style="margin-top:.5rem"><label>Localização Caixa Nova B</label>${gpsWidget(rowIndex,'ceoB', valB)}
+        <label style="margin-top:.4rem;display:block">Número da CEO B (4 dígitos)</label>${numeroCeoWidget(rowIndex,'B', numB)}</div>`;
   }else if(ceo === 'existente'){
     cont.style.display = 'block';
-    cont.innerHTML = `<div><label>Localização da Caixa Nova</label>${gpsWidget(rowIndex,'ceoA', valA)}</div>`;
+    cont.innerHTML = `<div><label>Localização da Caixa Nova</label>${gpsWidget(rowIndex,'ceoA', valA)}
+      <label style="margin-top:.4rem;display:block">Número da CEO (4 dígitos)</label>${numeroCeoWidget(rowIndex,'A', numA)}</div>`;
   }else{
     cont.style.display = 'none';
     cont.innerHTML = '';
   }
+}
+
+function pegarNumeroCeo(rowIndex, key){
+  const el = document.getElementById('numceo-'+rowIndex+'-'+key);
+  return el ? el.value.trim() : '';
 }
 
 window.capturarGPS = function(rowIndex, key){
@@ -864,8 +1101,8 @@ window.capturarGPS = function(rowIndex, key){
       if(outra){
         const dist = distanciaMetros(lat, lon, outra.lat, outra.lon);
         if(dist < 15){
-          val.textContent = '⚠️ Muito perto da Caixa ' + (outraKey==='ceoA'?'A':'B') + ' já capturada (' + dist.toFixed(1) + 'm) — vá até a outra caixa antes de capturar.';
-          showToast('⚠️ GPS muito próximo da outra caixa — confira se você já se moveu até o local certo.');
+          val.textContent = 'Muito perto da Caixa ' + (outraKey==='ceoA'?'A':'B') + ' já capturada (' + dist.toFixed(1) + 'm) — vá até a outra caixa antes de capturar.';
+          showToast('GPS muito próximo da outra caixa — confira se você já se moveu até o local certo.');
           return;
         }
       }
@@ -875,7 +1112,8 @@ window.capturarGPS = function(rowIndex, key){
     const link = 'https://maps.google.com/?q='+latF+','+lonF;
     GPS_STATE[rowIndex+'-'+key] = link;
     GPS_COORDS[rowIndex+'-'+key] = { lat, lon };
-    val.textContent = '📍 ' + latF + ', ' + lonF + ' · buscando cidade...';
+    val.textContent = '' + latF + ', ' + lonF + ' · buscando cidade...';
+    salvarRascunho(rowIndex); // captura assíncrona — o clique original já passou, salva aqui direto
 
     // Busca o nome da cidade a partir das coordenadas (mesma técnica já usada no RFO Técnico)
     fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lon)
@@ -883,10 +1121,12 @@ window.capturarGPS = function(rowIndex, key){
       .then(g=>{
         const cidade = (g && g.address) ? (g.address.city || g.address.town || g.address.village || '') : '';
         GPS_CIDADE_STATE[rowIndex+'-'+key] = cidade;
-        val.textContent = '📍 ' + latF + ', ' + lonF + (cidade ? ' · ' + cidade : '');
+        val.textContent = '' + latF + ', ' + lonF + (cidade ? ' · ' + cidade : '');
+        salvarRascunho(rowIndex);
       })
       .catch(()=>{
-        val.textContent = '📍 ' + latF + ', ' + lonF;
+        val.textContent = '' + latF + ', ' + lonF;
+        salvarRascunho(rowIndex);
       });
   }, ()=>{
     val.textContent = 'Não foi possível capturar sinal — use o campo manual abaixo.';
@@ -962,20 +1202,20 @@ window.solicitarValidacao = async function(rowIndex){
   const melhoria = document.getElementById('melhoria-'+rowIndex).value.trim();
   const estadoMat = MATERIAIS_STATE[rowIndex];
 
-  if(!tipo){ showToast('⚠️ Selecione o tipo de ocorrência.'); return; }
+  if(!tipo){ showToast('Selecione o tipo de ocorrência.'); return; }
   // Causa é obrigatória, exceto pra ACOMPANHAMENTO CPFL e PREVENTIVA (mesma regra do RFO Técnico original)
   if(tipo !== 'ACOMPANHAMENTO CPFL' && tipo !== 'PREVENTIVA' && !causa){
-    showToast('⚠️ Selecione a Causa Principal.'); return;
+    showToast('Selecione a Causa Principal.'); return;
   }
-  if(!estadoMat || estadoMat.usaMat === null || estadoMat.usaMat === undefined){ showToast('⚠️ Informe se houve uso de material.'); return; }
-  if(!solucao){ showToast('⚠️ Preencha a Solução Realizada.'); return; }
-  if(!melhoria){ showToast('⚠️ Preencha a Melhoria de Rede.'); return; }
+  if(!estadoMat || estadoMat.usaMat === null || estadoMat.usaMat === undefined){ showToast('Informe se houve uso de material.'); return; }
+  if(!solucao){ showToast('Preencha a Solução Realizada.'); return; }
+  if(!melhoria){ showToast('Preencha a Melhoria de Rede.'); return; }
 
   const isFibra = (tipo === 'ROMPIMENTO' || tipo === 'MASSIVA');
   let ceo = '';
   if(isFibra){
     ceo = CEO_STATE[rowIndex];
-    if(!ceo){ showToast('⚠️ Selecione o Tipo de CEO Utilizado.'); return; }
+    if(!ceo){ showToast('Selecione o Tipo de CEO Utilizado.'); return; }
   }
   const gpsFalha = pegarGPS(rowIndex,'falha');
   const gpsCeoA = (ceo === 'nova' || ceo === 'existente') ? pegarGPS(rowIndex,'ceoA') : '';
@@ -983,26 +1223,36 @@ window.solicitarValidacao = async function(rowIndex){
   const cidadeFalha = GPS_CIDADE_STATE[rowIndex+'-falha'] || '';
 
   if(ceo === 'nova' && gpsCeoA && gpsCeoB && gpsCeoA.trim().toLowerCase() === gpsCeoB.trim().toLowerCase()){
-    showToast('⚠️ Localização da Caixa A e Caixa B estão idênticas — confira antes de enviar.');
+    showToast('Localização da Caixa A e Caixa B estão idênticas — confira antes de enviar.');
     return;
   }
+
+  // Toda caixa NOVA precisa do número de identificação (4 dígitos) — sem isso a
+  // Medição/liderança não consegue saber depois qual CEO física foi usada.
+  const numeroCeoA = (ceo === 'nova' || ceo === 'existente') ? pegarNumeroCeo(rowIndex,'A') : '';
+  const numeroCeoB = (ceo === 'nova') ? pegarNumeroCeo(rowIndex,'B') : '';
+  if(ceo === 'nova' || ceo === 'existente'){
+    if(!/^\d{4}$/.test(numeroCeoA)){ showToast('Informe o Número da CEO' + (ceo==='nova'?' A':'') + ' (4 dígitos).'); return; }
+  }
+  if(ceo === 'nova' && !/^\d{4}$/.test(numeroCeoB)){ showToast('Informe o Número da CEO B (4 dígitos).'); return; }
 
   const materiais = montarStringMateriais(rowIndex);
 
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, cidadeFalha })
+      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha })
     });
     const result = await resp.json();
-    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao salvar.')); return; }
+    if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao salvar.')); return; }
 
-    copiarRelatorioWhats(rowIndex, { tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, cidadeFalha });
-    showToast('✅ Enviado e copiado! Cole no grupo do WhatsApp.');
+    copiarRelatorioWhats(rowIndex, { tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha });
+    limparRascunho(rowIndex);
+    showToast('Enviado e copiado! Cole no grupo do WhatsApp.');
     carregarAtividades();
   }catch(err){
     console.error(err);
-    showToast('❌ Erro ao conectar com o servidor.');
+    showToast('Erro ao conectar com o servidor.');
   }
 };
 
@@ -1022,7 +1272,9 @@ function copiarRelatorioWhats(rowIndex, campos){
   if(ceoLabel) t += '*CEO:* ' + ceoLabel + '\n';
   if(campos.gpsFalha) t += '*LOCAL DA FALHA:* ' + campos.gpsFalha + '\n';
   if(campos.gpsCeoA) t += (campos.ceo === 'existente' ? '*CAIXA NOVA:* ' : '*CAIXA NOVA A:* ') + campos.gpsCeoA + '\n';
+  if(campos.numeroCeoA) t += (campos.ceo === 'existente' ? '*Nº CEO:* ' : '*Nº CEO A:* ') + campos.numeroCeoA + '\n';
   if(campos.gpsCeoB) t += '*CAIXA NOVA B:* ' + campos.gpsCeoB + '\n';
+  if(campos.numeroCeoB) t += '*Nº CEO B:* ' + campos.numeroCeoB + '\n';
   t += '\n*MATERIAIS:*\n' + campos.materiais + '\n';
   t += '\n*SOLUÇÃO:*\n' + campos.solucao + '\n';
   t += '\n*MELHORIA NA REDE:*\n' + campos.melhoria;
@@ -1053,12 +1305,31 @@ window.marcarAcao = async function(rowIndex){
       body: JSON.stringify({ acao:'MARCAR_INICIO_CHEGADA', rowIndex })
     });
     const result = await resp.json();
-    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao registrar.')); return; }
-    showToast(result.etapa === 'inicio' ? '✅ Início registrado: ' + result.hora : '✅ Chegada registrada: ' + result.hora);
+    if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao registrar.')); return; }
+    showToast(result.etapa === 'inicio' ? 'Início registrado: ' + result.hora : 'Chegada registrada: ' + result.hora);
     carregarAtividades();
   }catch(err){
     console.error(err);
-    showToast('❌ Erro ao conectar com o servidor.');
+    showToast('Erro ao conectar com o servidor.');
+  }
+};
+
+window.informarPrevisao = async function(rowIndex){
+  const input = document.getElementById('previsao-'+rowIndex);
+  const previsao = input ? input.value : '';
+  if(!previsao){ showToast('Informe um horário de previsão.'); return; }
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'INFORMAR_PREVISAO_CHEGADA', rowIndex, previsao })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao salvar.')); return; }
+    showToast('Previsão de chegada informada: ' + previsao);
+    carregarAtividades();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o servidor.');
   }
 };
 
@@ -1069,12 +1340,12 @@ window.marcarAcaoApoio = async function(rowIndex){
       body: JSON.stringify({ acao:'MARCAR_INICIO_CHEGADA_APOIO', rowIndex })
     });
     const result = await resp.json();
-    if(result.status !== 'ok'){ showToast('❌ ' + (result.message||'Erro ao registrar.')); return; }
-    showToast(result.etapa === 'inicio' ? '✅ Início registrado: ' + result.hora : '✅ Chegada registrada: ' + result.hora);
+    if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao registrar.')); return; }
+    showToast(result.etapa === 'inicio' ? 'Início registrado: ' + result.hora : 'Chegada registrada: ' + result.hora);
     carregarAtividades();
   }catch(err){
     console.error(err);
-    showToast('❌ Erro ao conectar com o servidor.');
+    showToast('Erro ao conectar com o servidor.');
   }
 };
 

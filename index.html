@@ -196,6 +196,17 @@
     </div>
   </section>
 
+  <!-- LPU — APROVADOR (cobrança de prestadoras terceiras, depois da validação técnica) -->
+  <section class="card">
+    <div class="card-header"><h2>LPU — Aguardando Validação do Aprovador</h2>
+      <div style="flex:1"></div>
+      <span class="col-count" id="countLpuAprovador">0</span>
+    </div>
+    <div class="card-body">
+      <div id="colLpuAprovador"></div>
+    </div>
+  </section>
+
 </main>
 <div id="toast"></div>
 
@@ -428,6 +439,7 @@ function renderEsteira(){
       <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
       <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br>${statusLabelMap[a['Status']]||a['Status']}</div>
+      ${a['Status']==='INICIADA' && a['Previsão Chegada'] ? `<div class="meta" style="color:var(--accent)">Previsão de chegada: ${a['Previsão Chegada']}</div>` : ''}
       ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
       ${a['Técnico Apoio'] ? `<div class="meta" style="color:var(--accent)">Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}${a['Hora Início Apoio']?' ('+a['Hora Início Apoio']+(a['Hora Chegada Apoio']?' → '+a['Hora Chegada Apoio']:'')+')':''}</div>` : ''}
       <button class="btn" style="width:100%;margin-top:.5rem;padding:.35rem;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-size:.68rem" onclick="desfazerDespacho(${a.rowIndex})">↩ Desfazer Despacho</button>
@@ -514,7 +526,80 @@ function renderEsteira(){
       if(el) el.value = edicoesEmAndamento[id];
     }
   });
+
+  renderLpuAprovador();
 }
+
+// ── LPU — APROVADOR (cobrança de prestadoras terceiras, após validação técnica) ──
+// LISTAR_ESTEIRA já traz as colunas de LPU (titular e apoio) junto com o resto (mesmo
+// ATIVIDADES carregado por carregarEsteira) — não precisa de uma segunda chamada ao
+// backend. Uma mesma atividade pode gerar até 2 cards (titular e apoio em paralelo,
+// cada um com sua própria empresa/cobrança) — por isso o filtro monta uma lista
+// combinada com `tipoLpu` marcado em cada item.
+function renderLpuAprovador(){
+  const pendentes = [];
+  ATIVIDADES.forEach(a=>{
+    if(a['Status LPU'] === 'AGUARDANDO_APROVADOR') pendentes.push(Object.assign({tipoLpu:'titular'}, a));
+    if(a['Status LPU Apoio'] === 'AGUARDANDO_APROVADOR') pendentes.push(Object.assign({tipoLpu:'apoio'}, a));
+  });
+  document.getElementById('countLpuAprovador').textContent = pendentes.length;
+
+  const col = document.getElementById('colLpuAprovador');
+  col.innerHTML = pendentes.length ? pendentes.map(a => {
+    const pfx = a.tipoLpu === 'apoio' ? 'LPU Apoio ' : 'LPU ';
+    const empresaFallback = a.tipoLpu === 'apoio' ? a['Empresa Apoio'] : a['Empresa'];
+    const tecnicoFallback = a.tipoLpu === 'apoio' ? a['Técnico Apoio'] : a['Técnico'];
+    const badgeApoio = a.tipoLpu === 'apoio' ? `<span style="background:#ffa000;color:#1a1a1a;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:3px;margin-left:.4rem">APOIO</span>` : '';
+    const pdfBtn = a[pfx+'Relatório PDF']
+      ? `<a class="btn btn-outline" style="text-decoration:none;text-align:center;flex:1;padding:.4rem" href="${a[pfx+'Relatório PDF']}" target="_blank">Visualizar Relatório PDF</a>`
+      : `<span style="color:var(--text-muted);font-size:.72rem">Relatório PDF não disponível</span>`;
+
+    return `<div class="atv-card" style="border-left:3px solid #ffa000">
+      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${badgeApoio}</div>
+      <div class="cliente">${a['Cliente']||'—'}</div>
+      <div class="meta">
+        ${a[pfx+'Empresa Prestadora']||empresaFallback||''} · ${a[pfx+'Técnicos']||tecnicoFallback||''}<br>
+        <b>Descrição Contábil:</b> ${a[pfx+'Descrição Contábil']||'—'}<br>
+        <b>Total:</b> R$ ${Number(a[pfx+'Total']||0).toFixed(2)}<br>
+        <b>Preenchido em:</b> ${a[pfx+'Timestamp Preenchimento']||'—'}<br>
+        <b>Assinatura Prestador:</b> ${a[pfx+'Assinatura Prestador']||'—'}
+      </div>
+      <div style="margin-top:.5rem">${pdfBtn}</div>
+      <div class="acoes" style="margin-top:.5rem">
+        <button class="btn btn-green" style="flex:1;padding:.4rem" onclick="validarLpuAprovador(${a.rowIndex}, true, '${a.tipoLpu}')">Validar</button>
+        <button class="btn" style="flex:1;padding:.4rem;background:#7a1010;color:#fff" onclick="validarLpuAprovador(${a.rowIndex}, false, '${a.tipoLpu}')">Não Validar</button>
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty-msg">Nenhuma LPU aguardando validação do aprovador.</div>';
+}
+
+window.validarLpuAprovador = async function(rowIndex, aprovado, tipoLpu){
+  const validadoPor = document.getElementById('selLiderAtual').value;
+  if(!validadoPor){ showToast('Selecione "Você é..." antes de validar.'); return; }
+
+  let motivo = '';
+  if(!aprovado){
+    motivo = prompt('Motivo da não validação da LPU (o técnico vai ver isso e precisa corrigir):');
+    if(motivo === null) return;
+    if(!motivo.trim()){ showToast('Informe o motivo da não validação.'); return; }
+  } else {
+    if(!confirm('Confirma a aprovação desta LPU? Ela vai seguir para a Medição.')) return;
+  }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'VALIDAR_LPU_APROVADOR', rowIndex, aprovado, motivo, validadoPor, tipoLpu })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao validar a LPU.'); carregarEsteira(); return; }
+    showToast(aprovado ? 'LPU aprovada — seguiu para a Medição!' : 'LPU devolvida para o técnico com o motivo.');
+    carregarEsteira();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+};
 
 window.validar = async function(rowIndex, aprovado){
   const validadoPor = document.getElementById('selLiderAtual').value;

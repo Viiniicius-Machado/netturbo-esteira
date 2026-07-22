@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Medição · Netturbo Esteira</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
+      --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+      --border:#252525;--border-hi:#353535;
+      --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+      --red:#e53935;--amber:#ffa000;--green:#8bc34a;--purple:#ab47bc;
+      --radius:6px;--radius-lg:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+    .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
+    .login-logo{width:120px;height:auto;object-fit:contain;background:#fff;border-radius:12px;padding:.6rem}
+    .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);text-align:center}
+    .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
+    .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
+    .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
+    .login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.92rem;padding:.7rem .9rem;width:100%}
+    .login-field input:focus{outline:none;border-color:var(--accent)}
+    .login-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+    .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
+    .login-error.visible{display:block}
+
+    header{background:linear-gradient(180deg,#0c160a,#0f0f0f);border-bottom:1px solid #1a2a12;position:sticky;top:0;z-index:100}
+    .header-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.7rem 1.2rem;flex-wrap:wrap}
+    .hdr-logo{height:38px;width:auto;background:#fff;border-radius:6px;padding:.25rem .5rem}
+    .hdr-brand{font-family:'Rajdhani',sans-serif;font-size:1.25rem;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+    .hdr-sub{font-size:.58rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase}
+
+    main{max-width:1400px;margin:0 auto;padding:1.3rem 1.2rem 0}
+
+    .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.1rem}
+    .toolbar input[type="month"]{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem}
+    .btn{padding:.6rem 1.1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.82rem}
+    .btn-accent{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
+    .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+    .btn-green{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
+    .btn-red{background:#7a1010;color:#fff}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
+    .card-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.5rem}
+    .card-body{padding:.9rem 1rem}
+    .col-count{background:var(--surface3);border:1px solid var(--border-hi);border-radius:20px;padding:.15rem .55rem;font-size:.7rem;color:var(--text-dim)}
+
+    .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;margin-bottom:1.1rem}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);border-radius:var(--radius);padding:.7rem .9rem}
+    .stat-value{font-family:'Rajdhani',sans-serif;font-size:1.7rem;font-weight:700;color:var(--accent);line-height:1.1}
+    .stat-label{font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.2rem}
+
+    .metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1rem}
+
+    .rank-item{display:flex;align-items:center;gap:.6rem;padding:.42rem 0;border-top:1px solid var(--border)}
+    .rank-item:first-child{border-top:none}
+    .rank-main{flex:1;min-width:0}
+    .rank-nome{font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;justify-content:space-between;gap:.5rem}
+    .rank-bar-track{height:6px;background:var(--surface2);border-radius:3px;margin-top:.3rem;overflow:hidden}
+    .rank-bar-fill{height:100%;background:var(--accent);border-radius:3px}
+    .rank-valor{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.85rem;color:var(--accent);white-space:nowrap}
+
+    .orcamento-item{padding:.8rem 0;border-top:1px solid var(--border)}
+    .orcamento-item:first-child{border-top:none;padding-top:0}
+    .orcamento-desc{font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:.4rem}
+    .orcamento-bar-track{height:9px;background:var(--surface2);border-radius:5px;overflow:hidden}
+    .orcamento-bar-fill{height:100%;border-radius:5px;transition:width .3s}
+    .orcamento-linhas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.4rem .8rem;margin-top:.55rem}
+    .orcamento-linhas > div{display:flex;justify-content:space-between;gap:.5rem;font-size:.72rem;color:var(--text-muted)}
+    .orcamento-linhas b{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.82rem;color:var(--text)}
+
+    .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
+    table{width:100%;border-collapse:collapse;font-size:.75rem}
+    thead th{text-align:left;padding:.6rem .7rem;color:var(--text-muted);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2)}
+    tbody td{padding:.5rem .7rem;border-bottom:1px solid var(--border)}
+    tbody tr:hover{background:var(--surface2)}
+    .capexopex-row td:last-child{text-align:right;font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent)}
+    .capexopex-total td{background:var(--surface2);font-weight:700}
+    .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+
+    .atv-card{background:var(--surface3);border:1px solid var(--border-hi);border-left:3px solid var(--purple);border-radius:var(--radius-lg);padding:.9rem 1rem;margin-bottom:.8rem}
+    .protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.95rem}
+    .cliente{font-size:.85rem;margin-top:.15rem}
+    .meta{font-size:.72rem;color:var(--text-dim);margin-top:.4rem;line-height:1.6}
+    .edit-label{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+    .acoes{display:flex;gap:.5rem}
+  </style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-box">
+    <img class="login-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+    <div class="login-heading">
+      <h2>Medição</h2>
+      <p>LPU · Aprovação Final e Fechamento Financeiro</p>
+    </div>
+    <div class="login-field">
+      <label>Senha</label>
+      <input type="password" id="pwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()"/>
+    </div>
+    <div class="login-error" id="loginErro">Senha incorreta.</div>
+    <button class="login-btn" onclick="tryLogin()">Entrar</button>
+  </div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <img class="hdr-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+    <div>
+      <div class="hdr-brand">Medição</div>
+      <div class="hdr-sub">LPU · Aprovação Final e Fechamento Financeiro</div>
+    </div>
+    <div style="flex:1"></div>
+    <a href="painel.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px">Painel</a>
+  </div>
+</header>
+
+<main id="app" style="display:none">
+
+  <!-- FILA — AGUARDANDO VALIDAÇÃO MEDIÇÃO -->
+  <div class="card">
+    <div class="card-header">Fila — Aguardando Validação Medição<div style="flex:1"></div><span class="col-count" id="countFila">0</span></div>
+    <div class="card-body">
+      <div id="colFila"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD FINANCEIRO -->
+  <div class="toolbar">
+    <input type="month" id="mesFiltro" onchange="renderDashboard()"/>
+    <button class="btn btn-outline" onclick="carregarMedicao()">↻ Atualizar</button>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value" id="stTotalMes">R$ 0,00</div>
+      <div class="stat-label">Total LPUs geradas no mês</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stQtdMes">0</div>
+      <div class="stat-label">Atividades faturadas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stCapex">R$ 0,00</div>
+      <div class="stat-label">CAPEX</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stOpex">R$ 0,00</div>
+      <div class="stat-label">OPEX</div>
+    </div>
+  </div>
+
+  <div class="card" id="cardOrcamentos" style="display:none">
+    <div class="card-header">Orçamento do Mês por Descrição Contábil</div>
+    <div class="card-body"><div id="orcamentoBox"></div></div>
+  </div>
+
+  <div class="metric-row">
+    <div class="card">
+      <div class="card-header">Valor por Prestadora</div>
+      <div class="card-body"><div id="rankPrestadora"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">Valor por Descrição Contábil</div>
+      <div class="card-body"><div id="rankDescricao"></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CAPEX / OPEX por Descrição Contábil</div>
+    <div class="card-body">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Classificação</th><th>Descrição Contábil</th><th style="text-align:right">Valor</th></tr></thead>
+          <tbody id="tbodyCapexOpex"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Descritivo das Atividades</div>
+    <div class="card-body">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Prestadora</th><th>Técnico</th><th>Cliente</th><th style="text-align:right">Valor</th></tr></thead>
+          <tbody id="tbodyAtividades"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+const LEADERSHIP_PASSWORD = "Manutencao@101";
+const APROVADOR_MEDICAO = "Vinicius Gabriel de Oliveira Machado";
+
+// "Instalação CLIENTE" é a única categoria CAPEX (implantação nova) — as outras 6 são
+// OPEX (manutenção/melhoria/retirada/preventiva sobre rede já existente). Mesmo
+// classificador visto no dashboard de referência (Print/Screenshot_2.png).
+const CAPEX_OPEX = {
+  '3.1.1.2.05.0005 - Serviços de Instalação CLIENTE - IMPLANTAÇÃO': 'CAPEX',
+  '3.1.1.2.05.0007 - Serviços de Instalação REDE - CONSTRUÇÃO DE REDE': 'OPEX',
+  '3.1.1.2.05.0103 - Serviços de Melhoria REDE - REPARO PROGRAMADO DE REDE': 'OPEX',
+  '3.1.1.2.05.0008 - Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)': 'OPEX',
+  '3.1.1.2.05.0006 - Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)': 'OPEX',
+  '3.1.1.2.05.0101 - Serviços Preventivos': 'OPEX',
+  '3.1.1.2.05.0102 - Serviços de Retirada': 'OPEX'
+};
+
+// Orçamento mensal por Descrição Contábil (teto de gasto definido pela liderança).
+// Só aparece a seção "Orçamento do Mês" pras descrições que estiverem aqui — outras
+// descrições sem orçamento definido simplesmente não geram card nenhum.
+const ORCAMENTOS_DESCRICAO = {
+  '3.1.1.2.05.0008 - Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)': 100000
+};
+
+let TODOS_ITENS = [];
+
+function tryLogin(){
+  const val = document.getElementById('pwdInput').value;
+  if(val === LEADERSHIP_PASSWORD){
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    const hoje = new Date();
+    document.getElementById('mesFiltro').value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0');
+    carregarMedicao();
+    if(!window._medAutoRefresh){
+      window._medAutoRefresh = setInterval(carregarMedicao, 30000);
+    }
+  }else{
+    const e = document.getElementById('loginErro');
+    e.classList.add('visible');
+    document.getElementById('pwdInput').value = '';
+    setTimeout(()=>e.classList.remove('visible'), 3000);
+  }
+}
+window.tryLogin = tryLogin;
+
+async function carregarMedicao(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_LPU_MEDICAO');
+    const result = await resp.json();
+    TODOS_ITENS = result.itens || [];
+    renderFila();
+    renderDashboard();
+  }catch(err){
+    console.error(err);
+  }
+}
+window.carregarMedicao = carregarMedicao;
+
+// LISTAR_LPU_MEDICAO devolve um item por sub-processo LPU ativo (titular e/ou apoio,
+// já separados com `tipoLpu` em cada um) — esses helpers escolhem o prefixo de coluna
+// certo ('LPU ' ou 'LPU Apoio ') pra não repetir esse if em cada função abaixo.
+function pfxLpu(a){ return a.tipoLpu === 'apoio' ? 'LPU Apoio ' : 'LPU '; }
+function campoLpu(a, campo){ return a[pfxLpu(a) + campo]; }
+
+// ── FILA ACIONÁVEL ────────────────────────────────────────────
+function renderFila(){
+  const fila = TODOS_ITENS.filter(a => {
+    const statusCol = a.tipoLpu === 'apoio' ? 'Status LPU Apoio' : 'Status LPU';
+    return a[statusCol] === 'AGUARDANDO_MEDICAO';
+  });
+  document.getElementById('countFila').textContent = fila.length;
+
+  const col = document.getElementById('colFila');
+  col.innerHTML = fila.length ? fila.map(a => {
+    const empresaFallback = a.tipoLpu === 'apoio' ? a['Empresa Apoio'] : a['Empresa'];
+    const tecnicoFallback = a.tipoLpu === 'apoio' ? a['Técnico Apoio'] : a['Técnico'];
+    const badgeApoio = a.tipoLpu === 'apoio' ? `<span style="background:#ffa000;color:#1a1a1a;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:3px;margin-left:.4rem">APOIO</span>` : '';
+    const pdfBtn = campoLpu(a, 'Relatório PDF')
+      ? `<a class="btn btn-outline" style="text-decoration:none;text-align:center;flex:1;padding:.4rem" href="${campoLpu(a, 'Relatório PDF')}" target="_blank">Visualizar Relatório PDF</a>`
+      : `<span style="color:var(--text-muted);font-size:.72rem">Relatório PDF não disponível</span>`;
+
+    return `<div class="atv-card">
+      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${badgeApoio}</div>
+      <div class="cliente">${a['Cliente']||'—'}</div>
+      <div class="meta">
+        ${campoLpu(a,'Empresa Prestadora')||empresaFallback||''} · ${campoLpu(a,'Técnicos')||tecnicoFallback||''}<br>
+        <b>Descrição Contábil:</b> ${campoLpu(a,'Descrição Contábil')||'—'}<br>
+        <b>Total:</b> R$ ${Number(campoLpu(a,'Total')||0).toFixed(2)}<br>
+        <b>Aprovado pelo despacho:</b> ${campoLpu(a,'Validado Por Aprovador')||'—'} em ${campoLpu(a,'Timestamp Aprovador')||'—'}<br>
+        <b>Assinatura Prestador:</b> ${campoLpu(a,'Assinatura Prestador')||'—'}
+      </div>
+      <div style="margin-top:.5rem">${pdfBtn}</div>
+      <div class="acoes" style="margin-top:.6rem">
+        <button class="btn btn-green" style="flex:1" onclick="validarMedicao(${a.rowIndex}, true, '${a.tipoLpu}')">Aprovar</button>
+        <button class="btn btn-red" style="flex:1" onclick="validarMedicao(${a.rowIndex}, false, '${a.tipoLpu}')">Reprovar</button>
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty-msg">Nenhuma LPU aguardando validação da Medição.</div>';
+}
+
+window.validarMedicao = async function(rowIndex, aprovado, tipoLpu){
+  let motivo = '';
+  if(!aprovado){
+    motivo = prompt('Motivo da reprovação (o técnico vai ver isso e precisa corrigir):');
+    if(motivo === null) return;
+    if(!motivo.trim()){ showToast('Informe o motivo da reprovação.'); return; }
+  } else {
+    if(!confirm('Confirma a aprovação final desta LPU? Ela vai ficar "Aprovado aguardando Nota Fiscal" e sair da tela do técnico.')) return;
+  }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'VALIDAR_LPU_MEDICAO', rowIndex, aprovado, motivo, validadoPor: APROVADOR_MEDICAO, tipoLpu })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao validar.'); carregarMedicao(); return; }
+    showToast(aprovado ? 'LPU aprovada na Medição!' : 'LPU devolvida para o técnico com o motivo.');
+    carregarMedicao();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+};
+
+// ── DASHBOARD FINANCEIRO ──────────────────────────────────────
+// Conta tudo que já teve LPU gerada (Total > 0) no mês de referência, titular e apoio
+// juntos — independente da etapa atual — mesmo critério do dashboard de referência
+// ("Corresponde ao valor de LPU's geradas").
+function renderDashboard(){
+  const mes = document.getElementById('mesFiltro').value;
+  const doMes = TODOS_ITENS.filter(a => {
+    if(!campoLpu(a,'Total') || !campoLpu(a,'Timestamp Preenchimento')) return false;
+    const ts = String(campoLpu(a,'Timestamp Preenchimento')); // "dd/mm/aaaa, HH:MM:SS"
+    const dataParte = ts.split(',')[0].trim(); // "dd/mm/aaaa"
+    const partes = dataParte.split('/');
+    if(partes.length !== 3) return false;
+    const mesAno = partes[2] + '-' + partes[1];
+    return mesAno === mes;
+  });
+
+  const totalMes = doMes.reduce((s,a) => s + Number(campoLpu(a,'Total')||0), 0);
+  document.getElementById('stTotalMes').textContent = fmtMoeda(totalMes);
+  document.getElementById('stQtdMes').textContent = doMes.length;
+
+  let capex = 0, opex = 0;
+  const porDescricao = {};
+  doMes.forEach(a => {
+    const desc = campoLpu(a,'Descrição Contábil') || 'Não informado';
+    const valor = Number(campoLpu(a,'Total')||0);
+    porDescricao[desc] = (porDescricao[desc]||0) + valor;
+    if(CAPEX_OPEX[desc] === 'CAPEX') capex += valor; else opex += valor;
+  });
+  document.getElementById('stCapex').textContent = fmtMoeda(capex);
+  document.getElementById('stOpex').textContent = fmtMoeda(opex);
+
+  renderOrcamentos(doMes);
+
+  const porPrestadora = {};
+  doMes.forEach(a => {
+    const empresaFallback = a.tipoLpu === 'apoio' ? a['Empresa Apoio'] : a['Empresa'];
+    const emp = campoLpu(a,'Empresa Prestadora') || empresaFallback || 'Não informado';
+    porPrestadora[emp] = (porPrestadora[emp]||0) + Number(campoLpu(a,'Total')||0);
+  });
+
+  renderRankingValor('rankPrestadora', porPrestadora);
+  renderRankingValor('rankDescricao', porDescricao);
+
+  // Tabela CAPEX/OPEX
+  const tbCO = document.getElementById('tbodyCapexOpex');
+  const linhasCO = Object.keys(porDescricao).sort((a,b)=>porDescricao[b]-porDescricao[a]).map(desc => {
+    const classe = CAPEX_OPEX[desc] || 'OPEX';
+    return `<tr class="capexopex-row"><td>${classe}</td><td>${desc}</td><td>${fmtMoeda(porDescricao[desc])}</td></tr>`;
+  }).join('');
+  tbCO.innerHTML = linhasCO
+    ? linhasCO + `<tr class="capexopex-total"><td colspan="2">Total Geral</td><td style="text-align:right">${fmtMoeda(totalMes)}</td></tr>`
+    : '<tr><td colspan="3" class="empty-msg">Sem LPUs geradas neste mês.</td></tr>';
+
+  // Tabela detalhada de atividades
+  const tbAt = document.getElementById('tbodyAtividades');
+  const ordenadas = [...doMes].sort((a,b) => String(campoLpu(a,'Timestamp Preenchimento')).localeCompare(String(campoLpu(b,'Timestamp Preenchimento'))));
+  tbAt.innerHTML = ordenadas.length ? ordenadas.map(a => {
+    const empresaFallback = a.tipoLpu === 'apoio' ? a['Empresa Apoio'] : a['Empresa'];
+    const tecnicoFallback = a.tipoLpu === 'apoio' ? a['Técnico Apoio'] : a['Técnico'];
+    const badgeApoio = a.tipoLpu === 'apoio' ? ' (Apoio)' : '';
+    return `
+    <tr>
+      <td>${String(campoLpu(a,'Timestamp Preenchimento')||'').split(',')[0]}</td>
+      <td>${(campoLpu(a,'Empresa Prestadora')||empresaFallback||'—') + badgeApoio}</td>
+      <td>${campoLpu(a,'Técnicos')||tecnicoFallback||'—'}</td>
+      <td>${a['Cliente']||'—'}</td>
+      <td style="text-align:right">${fmtMoeda(Number(campoLpu(a,'Total')||0))}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="5" class="empty-msg">Sem LPUs geradas neste mês.</td></tr>';
+}
+
+// ── ORÇAMENTO POR DESCRIÇÃO CONTÁBIL ────────────────────────────
+// Comprometido = soma de tudo que já foi preenchido no mês pra essa descrição, em
+// qualquer etapa (mesmo critério do resto do dashboard) — é a projeção de gasto.
+// Aprovado = só o que já passou pela Medição (APROVADO_AGUARDANDO_NF) — é o número
+// "confirmado". As duas barras contra o mesmo orçamento dão a visão de controle:
+// comprometido mostra pra onde o mês está indo, aprovado mostra o que já é certo.
+function renderOrcamentos(doMes){
+  const box = document.getElementById('orcamentoBox');
+  const card = document.getElementById('cardOrcamentos');
+  const chaves = Object.keys(ORCAMENTOS_DESCRICAO);
+  if(!chaves.length){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  box.innerHTML = chaves.map(desc => {
+    const orcamento = ORCAMENTOS_DESCRICAO[desc];
+    const doMesDesc = doMes.filter(a => campoLpu(a,'Descrição Contábil') === desc);
+    const comprometido = doMesDesc.reduce((s,a) => s + Number(campoLpu(a,'Total')||0), 0);
+    const aprovado = doMesDesc
+      .filter(a => a[a.tipoLpu==='apoio' ? 'Status LPU Apoio' : 'Status LPU'] === 'APROVADO_AGUARDANDO_NF')
+      .reduce((s,a) => s + Number(campoLpu(a,'Total')||0), 0);
+    const saldo = orcamento - comprometido;
+    const pct = orcamento ? (comprometido/orcamento*100) : 0;
+    const pctBarra = Math.min(100, pct);
+    const cor = pct >= 100 ? 'var(--red)' : pct >= 85 ? '#ffa000' : 'var(--accent)';
+
+    return `
+      <div class="orcamento-item">
+        <div class="orcamento-desc">${desc}</div>
+        <div class="orcamento-bar-track"><div class="orcamento-bar-fill" style="width:${pctBarra}%;background:${cor}"></div></div>
+        <div class="orcamento-linhas">
+          <div><span>Orçamento</span><b>${fmtMoeda(orcamento)}</b></div>
+          <div><span>Comprometido (preenchidas)</span><b style="color:${cor}">${fmtMoeda(comprometido)} · ${pct.toFixed(0)}%</b></div>
+          <div><span>Aprovado (Medição)</span><b>${fmtMoeda(aprovado)}</b></div>
+          <div><span>Saldo projetado</span><b style="color:${saldo<0?'var(--red)':'var(--text)'}">${fmtMoeda(saldo)}</b></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// Barra horizontal de valor (mesma ideia do "ranking" do dashboard_gestao.html,
+// só que somando R$ em vez de contar ocorrências).
+function renderRankingValor(elId, mapaValores){
+  const el = document.getElementById(elId);
+  const entradas = Object.entries(mapaValores).sort((a,b) => b[1]-a[1]);
+  if(!entradas.length){ el.innerHTML = '<div class="empty-msg">Sem dados neste mês.</div>'; return; }
+  const max = entradas[0][1] || 1;
+  el.innerHTML = entradas.map(([nome,valor]) => `
+    <div class="rank-item">
+      <div class="rank-main">
+        <div class="rank-nome"><span>${nome}</span><span class="rank-valor">${fmtMoeda(valor)}</span></div>
+        <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${Math.max(2, valor/max*100)}%"></div></div>
+      </div>
+    </div>`).join('');
+}
+
+function fmtMoeda(v){
+  return 'R$ ' + Number(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:999;white-space:nowrap';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.style.display='none'; }, 3200);
+}
+</script>
+</body>
+</html>

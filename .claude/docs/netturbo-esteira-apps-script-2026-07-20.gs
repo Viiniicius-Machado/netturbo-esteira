@@ -15,7 +15,25 @@ const HEADERS_ESTEIRA = [
   'Timestamp Validação','Validado Por','Motivo Não Validado',
   'MTTR','MTTD','Melhoria','CEO','GPS Falha','GPS Caixa Nova A','GPS Caixa Nova B',
   'Empresa Apoio','Técnico Apoio','Hora Início Apoio','Hora Chegada Apoio','Materiais Apoio',
-  'Agendamento'
+  'Agendamento','TMC','Previsão Chegada',
+  // ── Sub-processo LPU (cobrança de prestadoras terceiras, após a validação técnica) ──
+  'Status LPU','LPU Empresa Prestadora','LPU CNPJ','LPU Técnicos','LPU Descrição Contábil',
+  'LPU Itens','LPU Total','LPU Observações','LPU Fotos','LPU Assinatura Prestador',
+  'LPU Timestamp Preenchimento','LPU Validado Por Aprovador','LPU Timestamp Aprovador',
+  'LPU Aprovador Medição','LPU Timestamp Medição','LPU Motivo Reprovação','LPU Relatório PDF',
+  // ── Mesmo sub-processo LPU, espelhado pra equipe de apoio (pode ser de empresa
+  // diferente da titular e precisa de cobrança separada). 'Status LPU Apoio' tem um
+  // estágio a mais no início: PENDENTE_DECISAO (apoio ainda não disse se teve cobrança)
+  // → SEM_COBRANCA (fim, sem LPU) ou PENDENTE_PREENCHIMENTO (segue o mesmo fluxo da titular).
+  'Status LPU Apoio','LPU Apoio Empresa Prestadora','LPU Apoio CNPJ','LPU Apoio Técnicos',
+  'LPU Apoio Descrição Contábil','LPU Apoio Itens','LPU Apoio Total','LPU Apoio Observações',
+  'LPU Apoio Assinatura Prestador','LPU Apoio Timestamp Preenchimento',
+  'LPU Apoio Validado Por Aprovador','LPU Apoio Timestamp Aprovador',
+  'LPU Apoio Aprovador Medição','LPU Apoio Timestamp Medição','LPU Apoio Motivo Reprovação',
+  'LPU Apoio Relatório PDF',
+  // ── Número de identificação da CEO (4 dígitos, único por caixa na empresa) — obrigatório
+  // sempre que o técnico usa uma caixa NOVA (tipo 'nova' = A e B, ou 'existente' = só A).
+  'Número CEO A','Número CEO B'
 ];
 
 function garantirAba(ss, nome, headers, corFundo, corTexto) {
@@ -72,7 +90,12 @@ function doPost(e) {
     if (acao === 'RESET_COMPLEMENTO')    return resetComplemento(ss, data);
     if (acao === 'MARCAR_INICIO_CHEGADA')return marcarInicioOuChegada(ss, data);
     if (acao === 'SALVAR_OCORRENCIA')    return salvarOcorrencia(ss, data);
+    if (acao === 'INFORMAR_PREVISAO_CHEGADA') return informarPrevisaoChegada(ss, data);
     if (acao === 'VALIDAR')              return validarAtividade(ss, data);
+    if (acao === 'SALVAR_LPU_ATIVIDADE') return salvarLpuAtividade(ss, data);
+    if (acao === 'VALIDAR_LPU_APROVADOR') return validarLpuAprovador(ss, data);
+    if (acao === 'VALIDAR_LPU_MEDICAO')  return validarLpuMedicao(ss, data);
+    if (acao === 'DECIDIR_LPU_APOIO')    return decidirLpuApoio(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -90,6 +113,8 @@ function doGet(e) {
   if (params.acao === 'RESUMO_DIARIO_TECNICO') return resumoDiarioTecnico(ss, params);
   if (params.acao === 'RESUMO_MENSAL_TECNICO') return resumoMensalTecnico(ss, params);
   if (params.acao === 'LISTAR_AGUARDANDO_VALIDACAO') return listarAguardandoValidacao(ss);
+  if (params.acao === 'LISTAR_LPU_AGUARDANDO_APROVADOR') return listarLpuAguardandoAprovador(ss);
+  if (params.acao === 'LISTAR_LPU_MEDICAO') return listarLpuMedicao(ss);
   return resposta('ok', { sistema: 'Netturbo Esteira de Despacho' });
 }
 
@@ -255,6 +280,8 @@ function desfazerDespacho(ss, data) {
   sheet.getRange(rowIndex, idx('GPS Falha')).setValue('');
   sheet.getRange(rowIndex, idx('GPS Caixa Nova A')).setValue('');
   sheet.getRange(rowIndex, idx('GPS Caixa Nova B')).setValue('');
+  sheet.getRange(rowIndex, idx('Número CEO A')).setValue('');
+  sheet.getRange(rowIndex, idx('Número CEO B')).setValue('');
   sheet.getRange(rowIndex, idx('Cidade Falha')).setValue('');
   sheet.getRange(rowIndex, idx('Motivo Não Validado')).setValue('');
 
@@ -390,6 +417,8 @@ function listarAtividadesTecnico(ss, params) {
   const idxTecnicoApoio = HEADERS_ESTEIRA.indexOf('Técnico Apoio');
   const idxHoraInicioApoio = HEADERS_ESTEIRA.indexOf('Hora Início Apoio');
   const idxHoraChegadaApoio = HEADERS_ESTEIRA.indexOf('Hora Chegada Apoio');
+  const idxStatusLpu = HEADERS_ESTEIRA.indexOf('Status LPU');
+  const idxStatusLpuApoio = HEADERS_ESTEIRA.indexOf('Status LPU Apoio');
 
   const atividades = [];
   data.forEach((row, i) => {
@@ -397,7 +426,22 @@ function listarAtividadesTecnico(ss, params) {
     const souApoio = row[idxEmpresaApoio] === params.empresa && row[idxTecnicoApoio] === params.tecnico;
     if (!souTitular && !souApoio) return;
     if (row[idxStatus] === 'AGUARDANDO_DESPACHO') return; // não é dele ainda
-    if (row[idxStatus] === 'VALIDADA') return; // já concluída — some da lista ativa, entra só no resumo diário
+    if (row[idxStatus] === 'VALIDADA') {
+      // Só continua na lista ativa se ainda tiver um sub-processo de LPU em andamento —
+      // da titular pra quem é titular, do apoio pra quem é apoio (cada papel segue o
+      // próprio Status LPU, já que podem ser empresas diferentes com cobranças distintas).
+      // Sem LPU (ex: NETTURBO, ou apoio que disse "sem cobrança") ou já passou de Medição
+      // → some, como sempre foi, e entra só no resumo diário/mensal.
+      if (souTitular) {
+        const statusLpu = row[idxStatusLpu];
+        const lpuAindaAtivo = ['PENDENTE_PREENCHIMENTO','AGUARDANDO_APROVADOR','AGUARDANDO_MEDICAO'].includes(statusLpu);
+        if (!lpuAindaAtivo) return;
+      } else {
+        const statusLpuApoio = row[idxStatusLpuApoio];
+        const lpuApoioAindaAtivo = ['PENDENTE_DECISAO','PENDENTE_PREENCHIMENTO','AGUARDANDO_APROVADOR','AGUARDANDO_MEDICAO'].includes(statusLpuApoio);
+        if (!lpuApoioAindaAtivo) return;
+      }
+    }
 
     const obj = { rowIndex: i + 2, papel: souTitular ? 'titular' : 'apoio' };
     HEADERS_ESTEIRA.forEach((h, j) => {
@@ -450,11 +494,11 @@ function parseHoraParaMinutos(str) {
   return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
-// ── RESUMO MENSAL DO TÉCNICO (fechamento por mês: C/SLA, S/SLA, eficiência, MTTR/MTTD médios) ──
+// ── RESUMO MENSAL DO TÉCNICO (fechamento por mês: C/SLA, S/SLA, eficiência, MTTR/MTTD/TMC médios) ──
 function resumoMensalTecnico(ss, params) {
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet || sheet.getLastRow() < 2) {
-    return resposta('ok', { totalConcluidas: 0, cSla: 0, sSla: 0, eficiencia: 0, mttrMedio: '', mttdMedio: '' });
+    return resposta('ok', { totalConcluidas: 0, cSla: 0, sSla: 0, eficiencia: 0, mttrMedio: '', mttdMedio: '', tmcMedio: '' });
   }
   const data = sheet.getDataRange().getValues();
   data.shift();
@@ -466,10 +510,11 @@ function resumoMensalTecnico(ss, params) {
   const idxValidacao = HEADERS_ESTEIRA.indexOf('Timestamp Validação');
   const idxMTTR = HEADERS_ESTEIRA.indexOf('MTTR');
   const idxMTTD = HEADERS_ESTEIRA.indexOf('MTTD');
+  const idxTMC = HEADERS_ESTEIRA.indexOf('TMC');
 
   const mesAlvo = params.mes || ''; // 'YYYY-MM'
   let totalConcluidas = 0, cSla = 0, sSla = 0;
-  let somaMTTR = 0, contMTTR = 0, somaMTTD = 0, contMTTD = 0;
+  let somaMTTR = 0, contMTTR = 0, somaMTTD = 0, contMTTD = 0, somaTMC = 0, contTMC = 0;
 
   data.forEach(row => {
     const souTitular = row[idxEmpresa] === params.empresa && row[idxTecnico] === params.tecnico;
@@ -483,19 +528,22 @@ function resumoMensalTecnico(ss, params) {
     totalConcluidas++;
     const mttrMin = parseHoraParaMinutos(fmtHoraLivre(row[idxMTTR]));
     const mttdMin = parseHoraParaMinutos(fmtHoraLivre(row[idxMTTD]));
+    const tmcMin = parseHoraParaMinutos(fmtHoraLivre(row[idxTMC]));
 
     if (mttrMin !== null) {
       somaMTTR += mttrMin; contMTTR++;
       if (mttrMin <= 240) cSla++; else sSla++;
     }
     if (mttdMin !== null) { somaMTTD += mttdMin; contMTTD++; }
+    if (tmcMin !== null) { somaTMC += tmcMin; contTMC++; }
   });
 
   const eficiencia = (cSla + sSla) ? Math.round(cSla / (cSla + sSla) * 100) : 0;
   const mttrMedio = contMTTR ? fmtMinParaHora(Math.round(somaMTTR / contMTTR)) : '';
   const mttdMedio = contMTTD ? fmtMinParaHora(Math.round(somaMTTD / contMTTD)) : '';
+  const tmcMedio = contTMC ? fmtMinParaHora(Math.round(somaTMC / contTMC)) : '';
 
-  return resposta('ok', { totalConcluidas, cSla, sSla, eficiencia, mttrMedio, mttdMedio });
+  return resposta('ok', { totalConcluidas, cSla, sSla, eficiencia, mttrMedio, mttdMedio, tmcMedio });
 }
 
 
@@ -588,10 +636,43 @@ function salvarOcorrencia(ss, data) {
   sheet.getRange(rowIndex, idx('GPS Falha')).setValue(data.gpsFalha || '');
   sheet.getRange(rowIndex, idx('GPS Caixa Nova A')).setValue(data.gpsCeoA || '');
   sheet.getRange(rowIndex, idx('GPS Caixa Nova B')).setValue(data.gpsCeoB || '');
+  sheet.getRange(rowIndex, idx('Número CEO A'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(rowIndex, idx('Número CEO A')).setValue(data.numeroCeoA || '');
+  sheet.getRange(rowIndex, idx('Número CEO B'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(rowIndex, idx('Número CEO B')).setValue(data.numeroCeoB || '');
   sheet.getRange(rowIndex, idx('Cidade Falha')).setValue(data.cidadeFalha || '');
   sheet.getRange(rowIndex, idx('Status')).setValue('AGUARDANDO_VALIDACAO');
   sheet.getRange(rowIndex, idx('Motivo Não Validado')).setValue('');
 
+  // TMC (Tempo Médio de Campo) = Hora Chegada → agora (momento em que o técnico pede
+  // validação) — fecha aqui mesmo, sem esperar a liderança validar depois (diferente do MTTR).
+  const horaChegadaTMC = fmtHoraLivre(sheet.getRange(rowIndex, idx('Hora Chegada')).getValue());
+  if (horaChegadaTMC) {
+    const agoraTMC = new Date();
+    const horaAgoraTMC = ('0'+agoraTMC.getHours()).slice(-2) + ':' + ('0'+agoraTMC.getMinutes()).slice(-2);
+    sheet.getRange(rowIndex, idx('TMC'), 1, 1).setNumberFormat('@STRING@');
+    sheet.getRange(rowIndex, idx('TMC')).setValue(diferencaHoras(horaChegadaTMC, horaAgoraTMC));
+  }
+
+  return resposta('ok', {});
+}
+
+// ── INFORMAR PREVISÃO DE CHEGADA (técnico informa uma estimativa de horário antes
+// de chegar no local — pra despacho repassar ao cliente mais rápido) ────────────
+function informarPrevisaoChegada(ss, data) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
+
+  const horaChegadaAtual = sheet.getRange(rowIndex, idx('Hora Chegada')).getValue();
+  if (horaChegadaAtual) {
+    return resposta('error', { message: 'Esta atividade já chegou no local.' });
+  }
+
+  sheet.getRange(rowIndex, idx('Previsão Chegada'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(rowIndex, idx('Previsão Chegada')).setValue(data.previsao || '');
   return resposta('ok', {});
 }
 
@@ -690,6 +771,24 @@ function validarAtividade(ss, data) {
       sheet.getRange(rowIndex, idx('MTTR'), 1, 1).setNumberFormat('@STRING@');
       sheet.getRange(rowIndex, idx('MTTR')).setValue(fmtMinParaHora(mttrMin));
     }
+
+    // Empresas terceiras entram no sub-processo de cobrança (LPU) — a atividade volta
+    // pra tela do técnico com "Pendente de Preenchimento LPU" em vez de simplesmente
+    // sumir. NETTURBO (mão de obra própria, sem cobrança por LPU) não entra nesse fluxo.
+    const empresaAtividade = sheet.getRange(rowIndex, idx('Empresa')).getValue();
+    if (empresaAtividade !== 'NETTURBO') {
+      sheet.getRange(rowIndex, idx('Status LPU')).setValue('PENDENTE_PREENCHIMENTO');
+    }
+
+    // Independente da titular: se teve equipe de apoio de empresa terceira, ela também
+    // pode ter cobrança própria (empresa de apoio pode ser diferente da titular). Em vez
+    // de assumir, pergunta pro apoio se teve cobrança — PENDENTE_DECISAO em vez de já
+    // pular pro preenchimento.
+    const empresaApoio = sheet.getRange(rowIndex, idx('Empresa Apoio')).getValue();
+    if (empresaApoio && empresaApoio !== 'NETTURBO') {
+      sheet.getRange(rowIndex, idx('Status LPU Apoio')).setValue('PENDENTE_DECISAO');
+    }
+
     return resposta('ok', {});
   } else {
     sheet.getRange(rowIndex, idx('Status')).setValue('NAO_VALIDADA');
@@ -719,6 +818,224 @@ function listarAguardandoValidacao(ss) {
     atividades.push(obj);
   });
   return resposta('ok', { atividades: atividades });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LPU — cobrança de prestadoras terceiras após a validação técnica.
+//  Fluxo: Status LPU vazio (NETTURBO, sem cobrança por LPU) OU
+//  PENDENTE_PREENCHIMENTO → AGUARDANDO_APROVADOR → AGUARDANDO_MEDICAO →
+//  APROVADO_AGUARDANDO_NF (Fase 2, ainda não implementada: Nota Fiscal + Pago).
+//  Reprovação em qualquer etapa volta pra PENDENTE_PREENCHIMENTO com motivo.
+// ══════════════════════════════════════════════════════════════
+
+// Cria (uma vez) ou reaproveita a pasta do Drive onde ficam as fotos anexadas nas LPUs.
+function getOrCriarPastaLPU() {
+  const NOME_PASTA = 'Netturbo Esteira - Fotos LPU';
+  const pastas = DriveApp.getFoldersByName(NOME_PASTA);
+  if (pastas.hasNext()) return pastas.next();
+  return DriveApp.createFolder(NOME_PASTA);
+}
+
+// ── LPU: técnico (titular OU apoio, via data.tipoLpu) preenche a cobrança de uma
+// atividade já validada. Os dois papéis passam pela mesma função — só muda o prefixo
+// das colunas gravadas ('LPU ' pra titular, 'LPU Apoio ' pro apoio), já que o resto
+// do fluxo (itens, PDF, aprovações) é idêntico.
+function salvarLpuAtividade(ss, data) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
+  const ehApoio = data.tipoLpu === 'apoio';
+  const prefixo = ehApoio ? 'LPU Apoio ' : 'LPU ';
+  const colStatus = ehApoio ? 'Status LPU Apoio' : 'Status LPU';
+
+  const statusLpuAtual = sheet.getRange(rowIndex, idx(colStatus)).getValue();
+  if (statusLpuAtual !== 'PENDENTE_PREENCHIMENTO') {
+    return resposta('error', { message: 'Esta LPU não está mais pendente de preenchimento (alguém já processou).' });
+  }
+
+  // O relatório (identificação + itens + assinatura + fotos, já formatado) vem pronto
+  // em PDF do front-end — sobe pro Drive uma vez só. É nele que o aprovador e a Medição
+  // olham as fotos, em vez de abrir uma por uma numa lista solta.
+  let relatorioPdfUrl = '';
+  if (data.relatorioPdfBase64) {
+    try {
+      const partes = String(data.relatorioPdfBase64).split(',');
+      const base64Puro = partes.length > 1 ? partes[1] : partes[0];
+      const bytes = Utilities.base64Decode(base64Puro);
+      const blob = Utilities.newBlob(bytes, 'application/pdf', 'LPU_' + (ehApoio ? 'APOIO_' : '') + rowIndex + '.pdf');
+      const pasta = getOrCriarPastaLPU();
+      const arquivo = pasta.createFile(blob);
+      arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      relatorioPdfUrl = arquivo.getUrl();
+    } catch (e) {
+      // Não deixa problema no PDF derrubar o envio inteiro — os dados brutos (itens,
+      // total) já ficam salvos mesmo sem o relatório.
+    }
+  }
+
+  const itens = Array.isArray(data.itens) ? data.itens : [];
+  const totalGeral = itens.reduce((soma, item) => soma + (Number(item.total) || 0), 0);
+
+  sheet.getRange(rowIndex, idx(prefixo + 'Empresa Prestadora')).setValue(data.empresaPrestadora || '');
+  sheet.getRange(rowIndex, idx(prefixo + 'CNPJ')).setValue(data.cnpj || '');
+  sheet.getRange(rowIndex, idx(prefixo + 'Técnicos')).setValue(data.tecnicos || '');
+  sheet.getRange(rowIndex, idx(prefixo + 'Descrição Contábil')).setValue(data.descricaoContabil || '');
+  sheet.getRange(rowIndex, idx(prefixo + 'Itens'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(rowIndex, idx(prefixo + 'Itens')).setValue(JSON.stringify(itens));
+  sheet.getRange(rowIndex, idx(prefixo + 'Total')).setValue(totalGeral);
+  sheet.getRange(rowIndex, idx(prefixo + 'Observações')).setValue(data.observacoes || '');
+  sheet.getRange(rowIndex, idx(prefixo + 'Relatório PDF')).setValue(relatorioPdfUrl);
+  sheet.getRange(rowIndex, idx(prefixo + 'Assinatura Prestador')).setValue(data.assinaturaPrestador || '');
+  sheet.getRange(rowIndex, idx(prefixo + 'Timestamp Preenchimento'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(rowIndex, idx(prefixo + 'Timestamp Preenchimento')).setValue(new Date().toLocaleString('pt-BR'));
+  sheet.getRange(rowIndex, idx(prefixo + 'Motivo Reprovação')).setValue(''); // limpa motivo de uma reprovação anterior, se tinha
+  sheet.getRange(rowIndex, idx(colStatus)).setValue('AGUARDANDO_APROVADOR');
+
+  return resposta('ok', {});
+}
+
+// ── LPU: despacho aprova/reprova (index.html) — titular e apoio via data.tipoLpu ──
+function validarLpuAprovador(ss, data) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
+  const ehApoio = data.tipoLpu === 'apoio';
+  const prefixo = ehApoio ? 'LPU Apoio ' : 'LPU ';
+  const colStatus = ehApoio ? 'Status LPU Apoio' : 'Status LPU';
+
+  const statusLpuAtual = sheet.getRange(rowIndex, idx(colStatus)).getValue();
+  if (statusLpuAtual !== 'AGUARDANDO_APROVADOR') {
+    return resposta('error', { message: 'Esta LPU não está mais aguardando o aprovador (alguém já processou).' });
+  }
+
+  if (data.aprovado) {
+    sheet.getRange(rowIndex, idx(prefixo + 'Validado Por Aprovador')).setValue(data.validadoPor || '');
+    sheet.getRange(rowIndex, idx(prefixo + 'Timestamp Aprovador'), 1, 1).setNumberFormat('@STRING@');
+    sheet.getRange(rowIndex, idx(prefixo + 'Timestamp Aprovador')).setValue(new Date().toLocaleString('pt-BR'));
+    sheet.getRange(rowIndex, idx(colStatus)).setValue('AGUARDANDO_MEDICAO');
+  } else {
+    sheet.getRange(rowIndex, idx(prefixo + 'Motivo Reprovação')).setValue(data.motivo || '');
+    sheet.getRange(rowIndex, idx(colStatus)).setValue('PENDENTE_PREENCHIMENTO'); // volta pro técnico corrigir
+  }
+  return resposta('ok', {});
+}
+
+// ── LPU: Medição aprova/reprova (medicao.html) — titular e apoio via data.tipoLpu ──
+function validarLpuMedicao(ss, data) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
+  const ehApoio = data.tipoLpu === 'apoio';
+  const prefixo = ehApoio ? 'LPU Apoio ' : 'LPU ';
+  const colStatus = ehApoio ? 'Status LPU Apoio' : 'Status LPU';
+
+  const statusLpuAtual = sheet.getRange(rowIndex, idx(colStatus)).getValue();
+  if (statusLpuAtual !== 'AGUARDANDO_MEDICAO') {
+    return resposta('error', { message: 'Esta LPU não está mais aguardando a Medição (alguém já processou).' });
+  }
+
+  if (data.aprovado) {
+    sheet.getRange(rowIndex, idx(prefixo + 'Aprovador Medição')).setValue(data.validadoPor || '');
+    sheet.getRange(rowIndex, idx(prefixo + 'Timestamp Medição'), 1, 1).setNumberFormat('@STRING@');
+    sheet.getRange(rowIndex, idx(prefixo + 'Timestamp Medição')).setValue(new Date().toLocaleString('pt-BR'));
+    sheet.getRange(rowIndex, idx(colStatus)).setValue('APROVADO_AGUARDANDO_NF');
+    // A partir daqui a obra some da tela do técnico daquele papel (listarAtividadesTecnico
+    // só mantém ativo até AGUARDANDO_MEDICAO) — o valor passa a contar só no
+    // fechamento financeiro (Fase 2, Nota Fiscal + Pago — ainda não implementada).
+  } else {
+    sheet.getRange(rowIndex, idx(prefixo + 'Motivo Reprovação')).setValue(data.motivo || '');
+    sheet.getRange(rowIndex, idx(colStatus)).setValue('PENDENTE_PREENCHIMENTO'); // volta pro técnico corrigir
+  }
+  return resposta('ok', {});
+}
+
+// ── LPU Apoio: decide se teve cobrança própria (empresa de apoio pode ser diferente
+// da titular). Se não teve, some da tela sem gerar LPU nenhuma. ─────────────────────
+function decidirLpuApoio(ss, data) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
+
+  const statusAtual = sheet.getRange(rowIndex, idx('Status LPU Apoio')).getValue();
+  if (statusAtual !== 'PENDENTE_DECISAO') {
+    return resposta('error', { message: 'Esta decisão de cobrança já foi tomada (alguém já processou).' });
+  }
+
+  sheet.getRange(rowIndex, idx('Status LPU Apoio')).setValue(data.temCobranca ? 'PENDENTE_PREENCHIMENTO' : 'SEM_COBRANCA');
+  return resposta('ok', {});
+}
+
+// ── LPU: fila do aprovador (index.html) ─────────────────────────────
+// Uma linha da esteira pode gerar até 2 itens na fila (titular e apoio em paralelo,
+// cada um com sua própria empresa/cobrança) — por isso cada item leva um `tipoLpu`
+// pra o front saber de qual conjunto de colunas ler e pra qual ação de validar mandar.
+function listarLpuAguardandoAprovador(ss) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet || sheet.getLastRow() < 2) return resposta('ok', { itens: [] });
+
+  const data = sheet.getDataRange().getValues();
+  data.shift();
+  const idxStatusLpu = HEADERS_ESTEIRA.indexOf('Status LPU');
+  const idxStatusLpuApoio = HEADERS_ESTEIRA.indexOf('Status LPU Apoio');
+
+  const itens = [];
+  data.forEach((row, i) => {
+    const precisaTitular = row[idxStatusLpu] === 'AGUARDANDO_APROVADOR';
+    const precisaApoio = row[idxStatusLpuApoio] === 'AGUARDANDO_APROVADOR';
+    if (!precisaTitular && !precisaApoio) return;
+
+    const base = { rowIndex: i + 2 };
+    HEADERS_ESTEIRA.forEach((h, j) => {
+      if (h === 'Data NOC') base[h] = fmtTextoLivre(row[j]);
+      else base[h] = row[j];
+    });
+    if (precisaTitular) itens.push(Object.assign({ tipoLpu: 'titular' }, base));
+    if (precisaApoio) itens.push(Object.assign({ tipoLpu: 'apoio' }, base));
+  });
+  return resposta('ok', { itens: itens });
+}
+
+// ── LPU: fila + histórico pra Medição (medicao.html) ─────────────────
+// Devolve um item por sub-processo LPU que já teve algum Status preenchido (titular
+// e/ou apoio) — a tela de Medição separa, do lado do cliente, o que é fila acionável
+// (AGUARDANDO_MEDICAO) do que é só valor histórico/aprovado pro dashboard financeiro
+// (mesmo padrão de dashboard_gestao.html, que já faz toda a agregação client-side em
+// cima de LISTAR_ESTEIRA). Cada item leva `tipoLpu` igual à fila do aprovador.
+function listarLpuMedicao(ss) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet || sheet.getLastRow() < 2) return resposta('ok', { itens: [] });
+
+  const data = sheet.getDataRange().getValues();
+  data.shift();
+  const idxStatusLpu = HEADERS_ESTEIRA.indexOf('Status LPU');
+  const idxStatusLpuApoio = HEADERS_ESTEIRA.indexOf('Status LPU Apoio');
+
+  const itens = [];
+  data.forEach((row, i) => {
+    const temTitular = !!row[idxStatusLpu];
+    // SEM_COBRANCA e PENDENTE_DECISAO não geram valor nem entram no dashboard — só
+    // interessam os que efetivamente entraram no fluxo de preenchimento/aprovação.
+    const statusApoio = row[idxStatusLpuApoio];
+    const temApoio = !!statusApoio && statusApoio !== 'PENDENTE_DECISAO' && statusApoio !== 'SEM_COBRANCA';
+    if (!temTitular && !temApoio) return;
+
+    const base = { rowIndex: i + 2 };
+    HEADERS_ESTEIRA.forEach((h, j) => {
+      if (h === 'Data NOC') base[h] = fmtTextoLivre(row[j]);
+      else base[h] = row[j];
+    });
+    if (temTitular) itens.push(Object.assign({ tipoLpu: 'titular' }, base));
+    if (temApoio) itens.push(Object.assign({ tipoLpu: 'apoio' }, base));
+  });
+  return resposta('ok', { itens: itens });
 }
 
 function listarEsteira(ss) {
@@ -796,4 +1113,43 @@ function recalcularMTTRMTTDHistorico() {
   });
 
   Logger.log('Recalculadas: ' + atualizadas + ' | Puladas (dados incompletos): ' + puladas);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MIGRAÇÃO — roda UMA VEZ pra criar o cabeçalho de colunas novas
+//  que ainda não existem fisicamente na planilha (HEADERS_ESTEIRA
+//  ganhou o item mas a aba ESTEIRA não tem a coluna ainda).
+//  Sem isso, getDataRange() não inclui a coluna nova pras linhas já
+//  existentes, e o valor lido vem "undefined" — que o JSON.stringify
+//  descarta silenciosamente (o campo some da resposta da API).
+// ══════════════════════════════════════════════════════════════
+function adicionarColunasNovas() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet) { Logger.log('Aba não encontrada.'); return; }
+  const ultimaCol = sheet.getLastColumn();
+  const headerRow = sheet.getRange(1, 1, 1, ultimaCol).getValues()[0];
+  const novos = [
+    'TMC', 'Previsão Chegada',
+    'Status LPU','LPU Empresa Prestadora','LPU CNPJ','LPU Técnicos','LPU Descrição Contábil',
+    'LPU Itens','LPU Total','LPU Observações','LPU Fotos','LPU Assinatura Prestador',
+    'LPU Timestamp Preenchimento','LPU Validado Por Aprovador','LPU Timestamp Aprovador',
+    'LPU Aprovador Medição','LPU Timestamp Medição','LPU Motivo Reprovação','LPU Relatório PDF',
+    'Status LPU Apoio','LPU Apoio Empresa Prestadora','LPU Apoio CNPJ','LPU Apoio Técnicos',
+    'LPU Apoio Descrição Contábil','LPU Apoio Itens','LPU Apoio Total','LPU Apoio Observações',
+    'LPU Apoio Assinatura Prestador','LPU Apoio Timestamp Preenchimento',
+    'LPU Apoio Validado Por Aprovador','LPU Apoio Timestamp Aprovador',
+    'LPU Apoio Aprovador Medição','LPU Apoio Timestamp Medição','LPU Apoio Motivo Reprovação',
+    'LPU Apoio Relatório PDF',
+    'Número CEO A','Número CEO B'
+  ];
+  novos.forEach(h => {
+    if (headerRow.indexOf(h) === -1) {
+      const novaCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, novaCol).setValue(h);
+      Logger.log('Adicionada coluna "' + h + '" na posicao ' + novaCol);
+    } else {
+      Logger.log('Coluna "' + h + '" ja existe.');
+    }
+  });
 }

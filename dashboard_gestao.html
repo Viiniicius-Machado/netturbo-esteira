@@ -81,6 +81,24 @@
     .metric-card.m-ok .metric-big{color:var(--green)}
     .metric-card.m-warn .metric-big{color:var(--amber)}
     .metric-card.m-bad .metric-big{color:var(--red)}
+    .metric-card.clicavel{cursor:pointer;transition:border-color .15s,transform .15s}
+    .metric-card.clicavel:hover{border-color:var(--accent);transform:translateY(-1px)}
+    .metric-card.clicavel .metric-hint{font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.6rem}
+
+    /* DETALHE — sub-página com 3 mais rápidas / 3 mais críticas de um indicador */
+    .detalhe-overlay{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:1rem}
+    .detalhe-overlay.open{display:flex}
+    .detalhe-panel{background:var(--surface);border:1px solid var(--border-hi);border-radius:var(--radius-lg);max-width:560px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+    .detalhe-header{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:1rem 1.2rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface)}
+    .detalhe-header h3{font-family:'Rajdhani',sans-serif;font-size:.95rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+    .detalhe-close{background:none;border:1px solid var(--border-hi);color:var(--text-dim);font-size:1rem;width:28px;height:28px;border-radius:6px;cursor:pointer;line-height:1;flex-shrink:0}
+    .detalhe-body{padding:1rem 1.2rem}
+    .detalhe-secao-title{font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);margin:1.1rem 0 .5rem}
+    .detalhe-secao-title:first-child{margin-top:0}
+
+    .tipo-tabs{display:flex;gap:.4rem;margin-bottom:.8rem}
+    .tipo-tab{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+    .tipo-tab.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
 
     .gauge-card{display:flex;align-items:center;gap:1rem}
     .gauge-svg-wrap{position:relative;width:86px;height:86px;flex-shrink:0}
@@ -133,7 +151,7 @@
       <label>Senha</label>
       <input type="password" id="pwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()"/>
     </div>
-    <div class="login-error" id="loginErro">❌ Senha incorreta.</div>
+    <div class="login-error" id="loginErro">Senha incorreta.</div>
     <button class="login-btn" onclick="tryLogin()">Entrar</button>
   </div>
 </div>
@@ -146,7 +164,7 @@
       <div class="hdr-sub">Consolidação · Esteira de Despacho</div>
     </div>
     <div style="flex:1"></div>
-    <a href="painel.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px">🏠 Painel</a>
+    <a href="painel.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px">Painel</a>
   </div>
 </header>
 
@@ -221,6 +239,11 @@
   <div class="card">
     <div class="card-header">SLA, Eficiência e Tempos Médios</div>
     <div class="card-body">
+      <div class="tipo-tabs" id="tipoTabs">
+        <button type="button" class="tipo-tab active" data-tipo="TODOS" onclick="selecionarFiltroTipo('TODOS')">Todos</button>
+        <button type="button" class="tipo-tab" data-tipo="ROMPIMENTO" onclick="selecionarFiltroTipo('ROMPIMENTO')">Rompimento</button>
+        <button type="button" class="tipo-tab" data-tipo="MASSIVA" onclick="selecionarFiltroTipo('MASSIVA')">Massiva</button>
+      </div>
       <div class="metric-row">
         <div class="metric-card gauge-card">
           <div class="gauge-svg-wrap">
@@ -239,38 +262,36 @@
             </div>
           </div>
         </div>
-        <div class="metric-card" id="cardMTTR">
+        <div class="metric-card clicavel" id="cardMTTR" onclick="abrirDetalheIndicador('MTTR')">
           <div class="metric-title">MTTR Médio (Meta ≤4:00)</div>
           <div class="metric-big" id="mMTTR">–</div>
           <div class="metric-sub" id="mMTTRGapTempo"></div>
+          <div class="metric-hint">Toque para ver as 3 mais rápidas / 3 mais críticas</div>
         </div>
-        <div class="metric-card" id="cardMTTD">
+        <div class="metric-card clicavel" id="cardMTTD" onclick="abrirDetalheIndicador('MTTD')">
           <div class="metric-title">MTTD Médio (Meta ≤1:00)</div>
           <div class="metric-big" id="mMTTD">–</div>
           <div class="metric-sub" id="mMTTDGapTempo"></div>
+          <div class="metric-hint">Toque para ver as 3 mais rápidas / 3 mais críticas</div>
+        </div>
+        <div class="metric-card clicavel" id="cardTMC" onclick="abrirDetalheIndicador('TMC')">
+          <div class="metric-title">TMC Médio (Meta ≤3:00)</div>
+          <div class="metric-big" id="mTMC">–</div>
+          <div class="metric-sub" id="mTMCGapTempo"></div>
+          <div class="metric-hint">Toque para ver as 3 mais rápidas / 3 mais críticas</div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="metric-row" style="margin-bottom:1rem">
-    <div class="card" style="margin-bottom:0;flex:1">
-      <div class="card-header">Destaques MTTR</div>
-      <div class="card-body">
-        <div class="destaque-sub-title">🟢 Mais rápidas</div>
-        <div id="destMttrRapidas"></div>
-        <div class="destaque-sub-title" style="margin-top:.9rem">🔴 Mais críticas (maior estouro)</div>
-        <div id="destMttrCriticas"></div>
+  <!-- DETALHE DE INDICADOR (MTTR/MTTD/TMC) — 3 mais rápidas e 3 mais críticas do período/filtro atual -->
+  <div class="detalhe-overlay" id="detalheOverlay" onclick="if(event.target===this) fecharDetalheIndicador()">
+    <div class="detalhe-panel">
+      <div class="detalhe-header">
+        <h3 id="detalheTitulo">Detalhe</h3>
+        <button class="detalhe-close" onclick="fecharDetalheIndicador()">✕</button>
       </div>
-    </div>
-    <div class="card" style="margin-bottom:0;flex:1">
-      <div class="card-header">Destaques MTTD</div>
-      <div class="card-body">
-        <div class="destaque-sub-title">🟢 Mais rápidas</div>
-        <div id="destMttdRapidas"></div>
-        <div class="destaque-sub-title" style="margin-top:.9rem">🔴 Mais críticas (maior estouro)</div>
-        <div id="destMttdCriticas"></div>
-      </div>
+      <div class="detalhe-body" id="detalheBody"></div>
     </div>
   </div>
 
@@ -299,8 +320,11 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 const LEADERSHIP_PASSWORD = "Manutencao@101";
 const META_EFICIENCIA = 70;   // %
-const META_MTTR_MIN = 240;    // 4:00 (Chegada → Validação: tempo de reparo em campo)
+const META_MTTR_MIN = 240;    // 4:00 (Recebido → Validação: tempo total do atendimento)
 const META_MTTD_MIN = 60;     // 1:00 (Despacho → Chegada: tempo de resposta/deslocamento)
+const META_TMC_MIN = 180;     // 3:00 (Chegada → Pedido de Validação: tempo de execução em campo)
+
+let FILTRO_TIPO_ATIVO = 'TODOS'; // 'TODOS' | 'ROMPIMENTO' | 'MASSIVA' — filtra só o card de Eficiência/MTTR/MTTD/TMC
 
 const TIPOS = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO'];
 const EMPRESAS = ['VAL','PV','OLIVEIRA','SOLUTEC','QUALITY','NETTURBO'];
@@ -473,6 +497,103 @@ function gapContagem(dentro, fora, metaPct){
   return Math.max(0, Math.ceil(x));
 }
 
+// Troca a aba Todos/Rompimento/Massiva do card de Eficiência e re-renderiza só ele
+window.selecionarFiltroTipo = function(tipo){
+  FILTRO_TIPO_ATIVO = tipo;
+  document.querySelectorAll('#tipoTabs .tipo-tab').forEach(b=>b.classList.toggle('active', b.dataset.tipo===tipo));
+  renderBlocoEficiencia();
+};
+
+// Calcula e renderiza Eficiência (gauge) + MTTR + MTTD + TMC, sobre o subconjunto de
+// DADOS_FILTRADOS que bate com FILTRO_TIPO_ATIVO ('TODOS' usa tudo, sem filtrar).
+function renderBlocoEficiencia(){
+  const dados = FILTRO_TIPO_ATIVO === 'TODOS' ? DADOS_FILTRADOS : DADOS_FILTRADOS.filter(a=>a['Ocorrência']===FILTRO_TIPO_ATIVO);
+
+  let cSla=0, sSla=0, somaMTTR=0, contMTTR=0, somaMTTD=0, contMTTD=0, somaTMC=0, contTMC=0;
+  dados.forEach(a=>{
+    const mttr = paraMinutos(a['MTTR']);
+    const mttd = paraMinutos(a['MTTD']);
+    const tmc = paraMinutos(a['TMC']);
+    if(mttr!==null){
+      somaMTTR += mttr; contMTTR++;
+      if(mttr <= META_MTTR_MIN) cSla++; else sSla++;
+    }
+    if(mttd!==null){ somaMTTD += mttd; contMTTD++; }
+    if(tmc!==null){ somaTMC += tmc; contTMC++; }
+  });
+
+  document.getElementById('mCSla').textContent = cSla;
+  document.getElementById('mSSla').textContent = sSla;
+
+  const totalSla = cSla + sSla;
+  const eficiencia = totalSla ? Math.round(cSla/totalSla*100) : 0;
+  const corEficiencia = !totalSla ? 'var(--text-muted)' :
+    (eficiencia >= META_EFICIENCIA ? 'var(--green)' : (eficiencia >= META_EFICIENCIA*0.85 ? 'var(--amber)' : 'var(--red)'));
+  document.getElementById('gEficienciaNum').textContent = totalSla ? eficiencia + '%' : '–';
+  document.getElementById('gEficienciaNum').style.color = corEficiencia;
+  renderGauge('gEficienciaFill', totalSla ? eficiencia : 0, corEficiencia);
+  const gapEf = gapContagem(cSla, sSla, META_EFICIENCIA);
+  document.getElementById('mEficienciaGapTexto').textContent = !totalSla
+    ? 'Sem dados nesse mês'
+    : (gapEf === 0 ? '✓ Meta batida' : `Faltam ${gapEf} atividade(s) dentro do SLA pra bater a meta`);
+
+  const mttrMedioMin = contMTTR ? Math.round(somaMTTR/contMTTR) : null;
+  document.getElementById('mMTTR').textContent = fmtMin(mttrMedioMin);
+  const faixaMTTR = faixaStatus(mttrMedioMin, META_MTTR_MIN, false);
+  document.getElementById('cardMTTR').className = 'metric-card clicavel' + (faixaMTTR ? ' m-' + faixaMTTR : '');
+  const diffMTTR = mttrMedioMin!==null ? mttrMedioMin - META_MTTR_MIN : null;
+  document.getElementById('mMTTRGapTempo').textContent = diffMTTR===null ? 'Sem dados' :
+    (diffMTTR<=0 ? `${fmtMin(Math.abs(diffMTTR))} abaixo da meta` : `+${fmtMin(diffMTTR)} acima da meta`);
+
+  const mttdMedioMin = contMTTD ? Math.round(somaMTTD/contMTTD) : null;
+  document.getElementById('mMTTD').textContent = fmtMin(mttdMedioMin);
+  const faixaMTTD = faixaStatus(mttdMedioMin, META_MTTD_MIN, false);
+  document.getElementById('cardMTTD').className = 'metric-card clicavel' + (faixaMTTD ? ' m-' + faixaMTTD : '');
+  const diffMTTD = mttdMedioMin!==null ? mttdMedioMin - META_MTTD_MIN : null;
+  document.getElementById('mMTTDGapTempo').textContent = diffMTTD===null ? 'Sem dados' :
+    (diffMTTD<=0 ? `${fmtMin(Math.abs(diffMTTD))} abaixo da meta` : `+${fmtMin(diffMTTD)} acima da meta`);
+
+  const tmcMedioMin = contTMC ? Math.round(somaTMC/contTMC) : null;
+  document.getElementById('mTMC').textContent = fmtMin(tmcMedioMin);
+  const faixaTMC = faixaStatus(tmcMedioMin, META_TMC_MIN, false);
+  document.getElementById('cardTMC').className = 'metric-card clicavel' + (faixaTMC ? ' m-' + faixaTMC : '');
+  const diffTMC = tmcMedioMin!==null ? tmcMedioMin - META_TMC_MIN : null;
+  document.getElementById('mTMCGapTempo').textContent = diffTMC===null ? 'Sem dados' :
+    (diffTMC<=0 ? `${fmtMin(Math.abs(diffTMC))} abaixo da meta` : `+${fmtMin(diffTMC)} acima da meta`);
+}
+
+// ── DETALHE DE INDICADOR (clique no card MTTR/MTTD/TMC) ─────────
+// Mesmo cálculo/formato já usado nos blocos "Destaques MTTR/MTTD" (montarDestaques +
+// renderDestaqueLista) — só reaproveita numa sub-página modal, sem mudar como o número
+// principal do card é exibido, e estende a mesma lógica pro TMC (que não tinha destaque).
+const INDICADOR_DETALHE_CFG = {
+  MTTR: { campo:'MTTR', meta:META_MTTR_MIN, label:'MTTR' },
+  MTTD: { campo:'MTTD', meta:META_MTTD_MIN, label:'MTTD' },
+  TMC:  { campo:'TMC',  meta:META_TMC_MIN,  label:'TMC'  }
+};
+
+window.abrirDetalheIndicador = function(indicador){
+  const cfg = INDICADOR_DETALHE_CFG[indicador];
+  if(!cfg) return;
+  const dados = FILTRO_TIPO_ATIVO === 'TODOS' ? DADOS_FILTRADOS : DADOS_FILTRADOS.filter(a=>a['Ocorrência']===FILTRO_TIPO_ATIVO);
+  const dest = montarDestaques(dados, cfg.campo, cfg.meta);
+
+  document.getElementById('detalheTitulo').textContent = cfg.label + ' — Meta ≤' + fmtMin(cfg.meta);
+  document.getElementById('detalheBody').innerHTML = `
+    <div class="detalhe-secao-title">3 mais rápidas</div>
+    <div id="detalheRapidas"></div>
+    <div class="detalhe-secao-title">3 mais críticas (acima da meta)</div>
+    <div id="detalheCriticas"></div>
+  `;
+  renderDestaqueLista('detalheRapidas', dest.rapidas, false);
+  renderDestaqueLista('detalheCriticas', dest.criticas, true);
+  document.getElementById('detalheOverlay').classList.add('open');
+};
+
+window.fecharDetalheIndicador = function(){
+  document.getElementById('detalheOverlay').classList.remove('open');
+};
+
 function renderDashboard(){
   const mes = document.getElementById('mesFiltro').value;
   DADOS_FILTRADOS = TODAS_ATIVIDADES.filter(a => a['Status']==='VALIDADA' && mesDeTimestamp(a['Timestamp Validação'])===mes);
@@ -495,65 +616,17 @@ function renderDashboard(){
   renderRanking('rankCidades', contarPorCampo(DADOS_FILTRADOS, 'Cidade Falha'));
   renderRanking('rankCausas', contarPorCampo(DADOS_FILTRADOS, 'Causa'));
 
-  // ── Destaques de MTTR e MTTD (mais rápidas / mais críticas) ──
-  const destMttr = montarDestaques(DADOS_FILTRADOS, 'MTTR', META_MTTR_MIN);
-  renderDestaqueLista('destMttrRapidas', destMttr.rapidas, false);
-  renderDestaqueLista('destMttrCriticas', destMttr.criticas, true);
-
-  const destMttd = montarDestaques(DADOS_FILTRADOS, 'MTTD', META_MTTD_MIN);
-  renderDestaqueLista('destMttdRapidas', destMttd.rapidas, false);
-  renderDestaqueLista('destMttdCriticas', destMttd.criticas, true);
-
-  // ── C/SLA, S/SLA, Eficiência, MTTR, MTTD ──
-  let cSla=0, sSla=0, somaMTTR=0, contMTTR=0, somaMTTD=0, contMTTD=0, cMttd=0, sMttd=0;
+  // ── C/SLA e S/SLA gerais (KPI row do topo — não entra no filtro Rompimento/Massiva) ──
+  let cSlaGeral=0, sSlaGeral=0;
   DADOS_FILTRADOS.forEach(a=>{
     const mttr = paraMinutos(a['MTTR']);
-    const mttd = paraMinutos(a['MTTD']);
-    if(mttr!==null){
-      somaMTTR += mttr; contMTTR++;
-      if(mttr <= META_MTTR_MIN) cSla++; else sSla++;
-    }
-    if(mttd!==null){
-      somaMTTD += mttd; contMTTD++;
-      if(mttd <= META_MTTD_MIN) cMttd++; else sMttd++;
-    }
+    if(mttr!==null){ if(mttr <= META_MTTR_MIN) cSlaGeral++; else sSlaGeral++; }
   });
-
   document.getElementById('stConcluidas').textContent = DADOS_FILTRADOS.length;
-  document.getElementById('stCSla').textContent = cSla;
-  document.getElementById('stSSla').textContent = sSla;
-  document.getElementById('mCSla').textContent = cSla;
-  document.getElementById('mSSla').textContent = sSla;
+  document.getElementById('stCSla').textContent = cSlaGeral;
+  document.getElementById('stSSla').textContent = sSlaGeral;
 
-  const totalSla = cSla + sSla;
-  const eficiencia = totalSla ? Math.round(cSla/totalSla*100) : 0;
-  const corEficiencia = !totalSla ? 'var(--text-muted)' :
-    (eficiencia >= META_EFICIENCIA ? 'var(--green)' : (eficiencia >= META_EFICIENCIA*0.85 ? 'var(--amber)' : 'var(--red)'));
-  document.getElementById('gEficienciaNum').textContent = totalSla ? eficiencia + '%' : '–';
-  document.getElementById('gEficienciaNum').style.color = corEficiencia;
-  renderGauge('gEficienciaFill', totalSla ? eficiencia : 0, corEficiencia);
-  const gapEf = gapContagem(cSla, sSla, META_EFICIENCIA);
-  document.getElementById('mEficienciaGapTexto').textContent = !totalSla
-    ? 'Sem dados nesse mês'
-    : (gapEf === 0 ? '✓ Meta batida' : `Faltam ${gapEf} atividade(s) dentro do SLA pra bater a meta`);
-
-  const mttrMedioMin = contMTTR ? Math.round(somaMTTR/contMTTR) : null;
-  const mttrEl = document.getElementById('mMTTR');
-  mttrEl.textContent = fmtMin(mttrMedioMin);
-  const faixaMTTR = faixaStatus(mttrMedioMin, META_MTTR_MIN, false);
-  document.getElementById('cardMTTR').className = faixaMTTR ? 'metric-card m-' + faixaMTTR : 'metric-card';
-  const diffMTTR = mttrMedioMin!==null ? mttrMedioMin - META_MTTR_MIN : null;
-  document.getElementById('mMTTRGapTempo').textContent = diffMTTR===null ? 'Sem dados' :
-    (diffMTTR<=0 ? `${fmtMin(Math.abs(diffMTTR))} abaixo da meta` : `+${fmtMin(diffMTTR)} acima da meta`);
-
-  const mttdMedioMin = contMTTD ? Math.round(somaMTTD/contMTTD) : null;
-  const mttdEl = document.getElementById('mMTTD');
-  mttdEl.textContent = fmtMin(mttdMedioMin);
-  const faixaMTTD = faixaStatus(mttdMedioMin, META_MTTD_MIN, false);
-  document.getElementById('cardMTTD').className = faixaMTTD ? 'metric-card m-' + faixaMTTD : 'metric-card';
-  const diffMTTD = mttdMedioMin!==null ? mttdMedioMin - META_MTTD_MIN : null;
-  document.getElementById('mMTTDGapTempo').textContent = diffMTTD===null ? 'Sem dados' :
-    (diffMTTD<=0 ? `${fmtMin(Math.abs(diffMTTD))} abaixo da meta` : `+${fmtMin(diffMTTD)} acima da meta`);
+  renderBlocoEficiencia();
 
   // ── Tabela ──
   const tbody = document.getElementById('tbodyDados');

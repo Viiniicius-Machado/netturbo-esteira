@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<title>Fiscalização · Netturbo Liderança</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{
+  --green:#8bc34a;--green-dark:#5d8a1f;
+  --green-glow:rgba(139,195,74,.22);--green-dim:rgba(139,195,74,.08);
+  --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+  --border:#252525;--border-hi:#353535;
+  --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+  --red:#e53935;--amber:#ffa000;--blue:#42a5f5;--accent:#a8c93c;
+  --radius:6px;--radius-lg:10px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px;scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:"Inter",sans-serif;min-height:100vh;padding-bottom:3rem}
+
+/* ── LOGIN ─────────────────────────────────────────────── */
+#login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06 0%,#080808 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+.login-box{width:100%;max-width:340px;background:linear-gradient(160deg,#131813,#0f0f0f);border:1px solid #1e2e12;border-radius:20px;padding:2.5rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.4rem;box-shadow:0 0 80px rgba(139,195,74,.07)}
+.login-logo-wrap{width:120px;background:#fff;border-radius:12px;padding:.6rem}
+.login-logo-wrap img{width:100%;height:auto;object-fit:contain;display:block}
+.login-heading{text-align:center}
+.login-heading h2{font-family:"Rajdhani",sans-serif;font-size:1.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);line-height:1}
+.login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.18em;text-transform:uppercase;margin-top:.3rem}
+.login-badge{font-size:.6rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;padding:.3rem .8rem;border-radius:20px;background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)}
+.login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
+.login-field label{font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim)}
+.login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-family:"Inter",sans-serif;font-size:.95rem;padding:.75rem 1rem;width:100%;letter-spacing:.05em;transition:border-color .2s,box-shadow .2s}
+.login-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(168,201,60,.1)}
+.login-btn{width:100%;padding:.85rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:"Rajdhani",sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;box-shadow:0 4px 24px rgba(168,201,60,.25);transition:opacity .2s}
+.login-btn:active{opacity:.85}
+.login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
+.login-error.visible{display:block}
+.login-hint{font-size:.62rem;color:var(--text-muted);text-align:center}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+header{background:linear-gradient(180deg,#100d04 0%,#0f0f0f 100%);border-bottom:1px solid #1e1a08;position:sticky;top:0;z-index:100;box-shadow:0 2px 30px rgba(0,0,0,.75),0 1px 0 rgba(168,201,60,.06)}
+.header-inner{max-width:700px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.6rem 1rem}
+.hdr-logo{height:38px;width:auto;flex-shrink:0;background:#fff;border-radius:6px;padding:.25rem .5rem}
+.hdr-logo img{height:100%;width:auto;object-fit:contain;object-position:center;display:block}
+.hdr-title{flex:1;display:flex;flex-direction:column;gap:.15rem;min-width:0}
+.hdr-brand-row{display:flex;align-items:center;gap:.55rem}
+.hdr-brand{font-family:"Rajdhani",sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;line-height:1}
+.hdr-pill{font-family:"Rajdhani",sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;background:rgba(168,201,60,.12);color:var(--accent);border:1px solid rgba(168,201,60,.25);border-radius:4px;padding:.12rem .45rem;white-space:nowrap}
+.hdr-sub-row{display:flex;align-items:center;gap:.4rem}
+.hdr-sub{font-size:.6rem;color:var(--text-muted);letter-spacing:.18em;text-transform:uppercase}
+.hdr-sep{width:1px;height:8px;background:#2a2a2a}
+.hdr-dept{font-size:.6rem;color:#6b8a1f;letter-spacing:.12em;text-transform:uppercase}
+.hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:.3rem;flex-shrink:0}
+.access-badge{font-size:.58rem;font-weight:700;letter-spacing:.1em;padding:.25rem .55rem;border-radius:20px;text-transform:uppercase;background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)}
+
+/* ── MAIN ─────────────────────────────────────────────────*/
+main{max-width:700px;margin:0 auto;padding:1.2rem 1rem 0}
+
+/* ── CARD ─────────────────────────────────────────────────*/
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:.9rem;overflow:hidden}
+.card-header{display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border)}
+.card-header h2{font-family:"Rajdhani",sans-serif;font-size:.83rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.card-body{padding:.9rem 1rem}
+.card-body>*+*{margin-top:.7rem}
+
+/* ── FIELDS ───────────────────────────────────────────────*/
+.field{display:flex;flex-direction:column;gap:.28rem}
+.field label{font-size:.67rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
+.field input,.field select,.field textarea{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-family:"Inter",sans-serif;font-size:.875rem;padding:.52rem .75rem;width:100%;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(168,201,60,.1)}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;padding-right:2rem}
+.field textarea{resize:vertical;min-height:80px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}
+.divider{height:1px;background:var(--border);margin:.72rem 0}
+
+/* ── CHECKLIST ─────────────────────────────────────────── */
+.conf-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}
+.conf-item{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.55rem;text-align:center}
+.conf-item .conf-num{font-family:"Rajdhani",sans-serif;font-size:1.6rem;font-weight:700;line-height:1}
+.conf-item .conf-lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-top:.1rem}
+.conf-item.ok .conf-num{color:var(--green)}
+.conf-item.warn .conf-num{color:var(--amber)}
+.conf-item.nok .conf-num{color:var(--red)}
+.check-grid{display:grid;grid-template-columns:1fr;gap:.4rem}
+.check-item{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:center;padding:.6rem .75rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius)}
+.check-label{font-size:.8rem;color:var(--text-dim);line-height:1.3}
+.check-status{display:flex;gap:.3rem}
+.cs-btn{padding:.28rem .55rem;border-radius:4px;border:1px solid var(--border-hi);background:var(--surface);color:var(--text-muted);font-size:.6rem;font-weight:700;letter-spacing:.06em;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.cs-btn.ok{background:rgba(139,195,74,.15);border-color:var(--green);color:var(--green)}
+.cs-btn.warn{background:rgba(255,160,0,.12);border-color:var(--amber);color:var(--amber)}
+.cs-btn.nok{background:rgba(229,57,53,.12);border-color:var(--red);color:var(--red)}
+
+/* ── FOTOS ────────────────────────────────────────────────*/
+#fotos-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.5rem}
+@media(max-width:400px){#fotos-grid{grid-template-columns:1fr}}
+.foto-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius-lg);overflow:hidden;position:relative}
+.foto-card .foto-preview{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;cursor:pointer}
+.foto-card .foto-caption{padding:.5rem .6rem;display:flex;gap:.4rem;align-items:center}
+.foto-card .foto-caption input{flex:1;background:transparent;border:none;border-bottom:1px solid var(--border-hi);color:var(--text);font-size:.78rem;padding:.2rem .1rem;font-family:"Inter",sans-serif}
+.foto-card .foto-caption input:focus{outline:none;border-color:var(--accent)}
+.foto-card .foto-caption input::placeholder{color:var(--text-muted)}
+.foto-card .btn-del-foto{width:24px;height:24px;border-radius:4px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.3);color:var(--red);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.foto-card .foto-index{position:absolute;top:.4rem;left:.4rem;background:rgba(0,0,0,.7);border:1px solid rgba(168,201,60,.4);color:var(--accent);font-size:.6rem;font-weight:700;letter-spacing:.08em;padding:.15rem .45rem;border-radius:4px;font-family:"Rajdhani",sans-serif}
+.btn-add-foto{margin-top:.6rem;width:100%;padding:.6rem;background:transparent;border:1px dashed var(--border-hi);border-radius:var(--radius-lg);color:var(--text-dim);font-size:.78rem;cursor:pointer;transition:all .2s;letter-spacing:.05em}
+.btn-add-foto:hover{border-color:var(--accent);color:var(--accent)}
+#foto-input{display:none}
+
+/* ── ASSINATURA ───────────────────────────────────────────*/
+.sig-wrap{position:relative;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);overflow:hidden}
+.sig-canvas{width:100%;height:120px;cursor:crosshair;touch-action:none;display:block}
+.sig-clear{position:absolute;top:.4rem;right:.4rem;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.3);color:var(--red);font-size:.65rem;padding:.2rem .5rem;border-radius:4px;cursor:pointer;font-weight:600}
+.sig-hint{text-align:center;font-size:.65rem;color:var(--text-muted);padding:.3rem;letter-spacing:.05em}
+
+/* ── BUTTONS ──────────────────────────────────────────────*/
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-top:1rem}
+.btn-action{padding:.85rem;border:none;border-radius:var(--radius-lg);font-family:"Rajdhani",sans-serif;font-size:.95rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.4rem;transition:opacity .2s}
+.btn-pdf{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505;box-shadow:0 4px 22px rgba(168,201,60,.25)}
+.btn-sheets{background:linear-gradient(135deg,#2a5a14,#8bc34a);color:#050505;box-shadow:0 4px 22px rgba(139,195,74,.25)}
+.btn-action:active{opacity:.82}
+
+/* ── TOAST ────────────────────────────────────────────────*/
+#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid #6b8a1f;border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── PDF HIDDEN ───────────────────────────────────────────*/
+#pdf-root{position:fixed;left:-99999px;top:0;z-index:-1;background:#fff}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo-wrap"><img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo"/></div>
+    <div class="login-heading"><h2>Netturbo</h2><p>Acesso Restrito · Liderança</p></div>
+    <div class="login-badge">Área da Liderança</div>
+    <div class="login-field">
+      <label>Senha da Liderança</label>
+      <input type="password" id="login-senha" placeholder="••••••••" onkeydown="if(event.key==='Enter')fazerLogin()" autocomplete="current-password"/>
+    </div>
+    <div class="login-error" id="login-erro">Senha incorreta. Acesso negado.</div>
+    <button class="login-btn" onclick="fazerLogin()">Acessar Sistema</button>
+    <div class="login-hint">Somente lideranças autorizadas têm acesso</div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <div class="hdr-logo"><img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo"/></div>
+    <div class="hdr-title">
+      <div class="hdr-brand-row"><span class="hdr-brand">Netturbo</span><span class="hdr-pill">FISCALIZAÇÃO</span></div>
+      <div class="hdr-sub-row"><span class="hdr-sub">Relatório de Obra</span><span class="hdr-sep"></span><span class="hdr-dept">Área da Liderança</span></div>
+    </div>
+    <div class="hdr-right"><div class="access-badge">LIDERANÇA</div></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- IDENTIFICAÇÃO -->
+  <section class="card">
+    <div class="card-header"><h2>Identificação do Relatório</h2></div>
+    <div class="card-body">
+      <div class="grid2">
+        <div class="field">
+          <label>Tipo de Relatório</label>
+          <select id="tipo-relatorio" onchange="onTipoChange()" oninput="onTipoChange()">
+            <option value="">Selecione...</option>
+            <option value="ACOMPANHAMENTO DE OBRA">Acompanhamento de Obra</option>
+            <option value="AUDITORIA FERRAMENTAL/EPI/EPC">Auditoria Ferramental / EPI / EPC</option>
+          </select>
+        </div>
+        <div class="field"><label>Protocolo / OS</label><input type="text" id="protocolo" placeholder="000000"/></div>
+        <div class="field"><label>Fiscal / Encarregado</label><input type="text" id="fiscal" placeholder="Nome completo"/></div>
+        <div class="field"><label>Prestador Fiscalizado</label><input type="text" id="prestador" placeholder="Empresa / equipe"/></div>
+        <div class="field"><label>Data</label><input type="date" id="data-rel"/></div>
+        <div class="field"><label>Cidade</label><input type="text" id="cidade" placeholder="Ex: Sumaré - SP"/></div>
+      </div>
+      <div class="field"><label>Endereço da Ocorrência</label><input type="text" id="endereco" placeholder="Rua, número, bairro..."/></div>
+      <div class="field"><label>Descrição Geral</label><textarea id="descricao" placeholder="Descreva o que foi encontrado em campo..."></textarea></div>
+    </div>
+  </section>
+
+  <!-- CHECKLIST -->
+  <section class="card">
+    <div class="card-header"><h2 id="checklist-title">Checklist de Conformidade</h2></div>
+    <div class="card-body">
+      <div class="conf-summary">
+        <div class="conf-item ok"><div class="conf-num" id="cnt-ok">0</div><div class="conf-lbl">Conforme</div></div>
+        <div class="conf-item warn"><div class="conf-num" id="cnt-warn">0</div><div class="conf-lbl">Atenção</div></div>
+        <div class="conf-item nok"><div class="conf-num" id="cnt-nok">0</div><div class="conf-lbl">Não Conforme</div></div>
+      </div>
+      <div class="divider"></div>
+      <div id="check-grid" class="check-grid">
+        <div style="font-size:.75rem;color:var(--text-muted);font-style:italic;padding:.5rem">Selecione o tipo de relatório para carregar o checklist...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOTOS -->
+  <section class="card">
+    <div class="card-header"><h2>Registro Fotográfico</h2></div>
+    <div class="card-body">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:.4rem">Toque em uma foto para ampliar. Adicione legendas descritivas.</div>
+      <div id="fotos-grid"></div>
+      <button class="btn-add-foto" onclick="document.getElementById('foto-input').click()">Adicionar Foto(s)</button>
+      <input type="file" id="foto-input" accept="image/*" multiple onchange="adicionarFotos(this)"/>
+    </div>
+  </section>
+
+  <!-- OCORRÊNCIAS -->
+  <section class="card">
+    <div class="card-header"><h2>Ocorrências e Providências</h2></div>
+    <div class="card-body">
+      <div class="field"><label>Ocorrências Identificadas</label><textarea id="ocorrencias" placeholder="Liste as irregularidades encontradas..."></textarea></div>
+      <div class="field"><label>Providências Determinadas</label><textarea id="providencias" placeholder="Quais ações foram determinadas..."></textarea></div>
+      <div class="grid2">
+        <div class="field"><label>Prazo para Correção</label><input type="date" id="prazo-correcao"/></div>
+        <div class="field"><label>Status Geral</label>
+          <select id="status-geral">
+            <option value="">Selecione...</option>
+            <option value="APROVADO">APROVADO</option>
+            <option value="APROVADO COM RESSALVAS">APROVADO COM RESSALVAS</option>
+            <option value="REPROVADO">REPROVADO</option>
+            <option value="EM ANDAMENTO">EM ANDAMENTO</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ASSINATURAS -->
+  <section class="card">
+    <div class="card-header"><h2>Assinaturas</h2></div>
+    <div class="card-body">
+      <!-- Fiscal -->
+      <div class="field"><label>Nome do Fiscal Responsável</label><input type="text" id="nome-fiscal" placeholder="Nome completo"/></div>
+      <div class="field"><label>Assinatura do Fiscal <span style="font-size:.62rem;color:var(--text-muted)">(desenhe abaixo)</span></label></div>
+      <div class="sig-wrap">
+        <canvas class="sig-canvas" id="sig-fiscal"></canvas>
+        <button class="sig-clear" onclick="limparAssinatura('sig-fiscal')">Limpar</button>
+      </div>
+      <div class="sig-hint">Use o dedo ou caneta para assinar</div>
+
+      <div class="divider"></div>
+
+      <!-- Fiscalizado -->
+      <div class="field"><label>Nome do Fiscalizado / Representante</label><input type="text" id="nome-fiscalizado" placeholder="Nome completo (pode assinar depois)"/></div>
+      <div class="field"><label>Assinatura do Fiscalizado <span style="font-size:.62rem;color:var(--text-muted)">(ciência · pode assinar depois)</span></label></div>
+      <div class="sig-wrap">
+        <canvas class="sig-canvas" id="sig-fiscalizado"></canvas>
+        <button class="sig-clear" onclick="limparAssinatura('sig-fiscalizado')">Limpar</button>
+      </div>
+      <div class="sig-hint">Assinar na ciência do relatório · Pode ser preenchido posteriormente</div>
+    </div>
+  </section>
+
+  <!-- AÇÕES -->
+  <div class="btn-row">
+    <button class="btn-action btn-pdf" onclick="gerarPDF()">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Gerar PDF
+    </button>
+  </div>
+
+</main>
+<div id="toast"></div>
+<div id="pdf-root"></div>
+
+<script>
+const LOGO_SRC = "https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp";
+document.querySelectorAll("img[alt='Netturbo']").forEach(i => i.src = LOGO_SRC);
+
+const LIDER_HASH = "7d5d2aad8b9f6e751886444ac5125a3d7552ce3d5e3361808dcfe5e0fd811c0e";
+
+// ── AUTH ──────────────────────────────────────────────────
+async function sha256(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function fazerLogin(){
+  const s=document.getElementById("login-senha").value;
+  const h=await sha256(s);
+  if(h===LIDER_HASH){
+    sessionStorage.setItem("fiscal_auth","1");
+    document.getElementById("login-overlay").style.display="none";
+    inicializar();
+  }else{
+    const e=document.getElementById("login-erro");e.classList.add("visible");
+    document.getElementById("login-senha").value="";
+    document.getElementById("login-senha").focus();
+    setTimeout(()=>e.classList.remove("visible"),3000);
+  }
+}
+window.fazerLogin=fazerLogin;
+if(sessionStorage.getItem("fiscal_auth")==="1"){document.getElementById("login-overlay").style.display="none";inicializar();}
+
+// ── CHECKLISTS ────────────────────────────────────────────
+const CHECKLISTS = {
+  "ACOMPANHAMENTO DE OBRA": [
+    "Técnico utilizando EPI/EPC adequados",
+    "Sinalização de segurança no local",
+    "Veículo identificado e organizado",
+    "Ferramentas em bom estado",
+    "Cabo identificado com nomenclatura correta",
+    "Cabo lançado na altura correta na rede?",
+    "Cabo fixado corretamente nos postes?",
+    "Cabo sem folga excessiva (flecha adequada)?",
+    "Cabo com distância segura da fiação elétrica?",
+    "Fusão/CEO montada corretamente",
+    "Testes de atenuação realizados",
+    "Local limpo após serviço",
+    "Preenchido RFO?",
+    "Prazo SLA sendo cumprido",
+    "Feito calibragem da máquina?",
+    "Usando isopropílico?",
+    "Deixou sujeira no local?"
+  ],
+  "AUDITORIA FERRAMENTAL/EPI/EPC": [
+    "Máquina homologada?",
+    "Tem álcool isopropílico?",
+    "Tem lenço?",
+    "Como está o clivador?",
+    "Como está o decapador?",
+    "Tem Power Meter?",
+    "Tem OTDR?",
+    "Tem Fuzimec?",
+    "Chave BAP?",
+    "Kit chave de fenda?",
+    "Kit chave Philips?",
+    "Alicate universal?",
+    "Alicate de corte?",
+    "Alicate de bico?",
+    "Escada sem rachaduras ou degrau torto?",
+    "Tem corda para amarração?",
+    "Tem cinto paraquedista?",
+    "Tem cone e faixa refletiva?",
+    "Tem capacete de segurança?",
+    "Tem óculos para proteção?",
+    "Tem luva?"
+  ]
+};
+
+let checkStatus = {};
+
+function onTipoChange(){
+  const tipo = document.getElementById("tipo-relatorio").value;
+  checkStatus = {};
+  buildChecklist(tipo);
+}
+window.onTipoChange = onTipoChange;
+
+function buildChecklist(tipo){
+  const grid = document.getElementById("check-grid");
+  const title = document.getElementById("checklist-title");
+  const items = CHECKLISTS[tipo] || [];
+  if(!items.length){
+    grid.innerHTML = "<div style='font-size:.75rem;color:var(--text-muted);font-style:italic;padding:.5rem'>Selecione o tipo de relatório...</div>";
+    return;
+  }
+  title.textContent = tipo === "AUDITORIA FERRAMENTAL/EPI/EPC" ? "Checklist de Ferramental e EPI/EPC" : "Checklist de Conformidade da Obra";
+  grid.innerHTML = "";
+  items.forEach((label,idx) => {
+    const item = document.createElement("div");
+    item.className = "check-item";
+    item.innerHTML = `<span class="check-label">${label}</span>
+      <div class="check-status">
+        <button class="cs-btn" data-idx="${idx}" data-val="ok" onclick="setCheck(${idx},'ok')">✓</button>
+        <button class="cs-btn" data-idx="${idx}" data-val="warn" onclick="setCheck(${idx},'warn')">!</button>
+        <button class="cs-btn" data-idx="${idx}" data-val="nok" onclick="setCheck(${idx},'nok')">✕</button>
+      </div>`;
+    grid.appendChild(item);
+  });
+  updateConformidade();
+}
+
+window.setCheck = function(idx, val){
+  checkStatus[idx] = checkStatus[idx]===val ? "" : val;
+  document.querySelectorAll(`.cs-btn[data-idx="${idx}"]`).forEach(btn=>{
+    btn.classList.remove("ok","warn","nok");
+    if(btn.dataset.val===checkStatus[idx]) btn.classList.add(checkStatus[idx]);
+  });
+  updateConformidade();
+};
+
+function updateConformidade(){
+  const vals = Object.values(checkStatus);
+  document.getElementById("cnt-ok").textContent = vals.filter(v=>v==="ok").length;
+  document.getElementById("cnt-warn").textContent = vals.filter(v=>v==="warn").length;
+  document.getElementById("cnt-nok").textContent = vals.filter(v=>v==="nok").length;
+}
+
+// ── FOTOS ─────────────────────────────────────────────────
+let fotos = [];
+function renderFotos(){
+  const grid = document.getElementById("fotos-grid");
+  grid.innerHTML = "";
+  fotos.forEach((foto,idx) => {
+    const card = document.createElement("div");
+    card.className = "foto-card";
+    card.innerHTML = `
+      <span class="foto-index">FOTO ${idx+1}</span>
+      <img class="foto-preview" src="${foto.src}" onclick="verFoto('${foto.src}')" />
+      <div class="foto-caption">
+        <input type="text" placeholder="Legenda..." value="${foto.caption||''}" oninput="fotos[${idx}].caption=this.value"/>
+        <button class="btn-del-foto" onclick="removerFoto(${idx})">✕</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+window.adicionarFotos = function(input){
+  const files=[...input.files]; let loaded=0;
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      fotos.push({src:e.target.result,caption:""});
+      loaded++;
+      if(loaded===files.length){renderFotos();showToast(`${files.length} foto(s) adicionada(s)`);}
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value="";
+};
+window.removerFoto = function(idx){fotos.splice(idx,1);renderFotos();};
+window.verFoto = function(src){
+  const ov=document.createElement("div");
+  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9998;display:flex;align-items:center;justify-content:center;cursor:zoom-out";
+  const img=document.createElement("img");
+  img.src=src;img.style.cssText="max-width:95vw;max-height:90vh;border-radius:8px;object-fit:contain";
+  ov.appendChild(img);ov.onclick=()=>ov.remove();
+  document.body.appendChild(ov);
+};
+
+// ── ASSINATURA ────────────────────────────────────────────
+function initCanvas(id){
+  const canvas=document.getElementById(id);
+  const ctx=canvas.getContext("2d");
+  canvas.width=canvas.offsetWidth||600;canvas.height=120;
+  ctx.strokeStyle="#a8c93c";ctx.lineWidth=2;ctx.lineCap="round";ctx.lineJoin="round";
+  let drawing=false,last={x:0,y:0};
+  const getPos=e=>{const r=canvas.getBoundingClientRect();if(e.touches){return{x:e.touches[0].clientX-r.left,y:e.touches[0].clientY-r.top};}return{x:e.clientX-r.left,y:e.clientY-r.top};};
+  canvas.addEventListener("mousedown",e=>{drawing=true;last=getPos(e);});
+  canvas.addEventListener("mousemove",e=>{if(!drawing)return;const p=getPos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;});
+  canvas.addEventListener("mouseup",()=>drawing=false);
+  canvas.addEventListener("touchstart",e=>{e.preventDefault();drawing=true;last=getPos(e);},{passive:false});
+  canvas.addEventListener("touchmove",e=>{e.preventDefault();if(!drawing)return;const p=getPos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;},{passive:false});
+  canvas.addEventListener("touchend",()=>drawing=false);
+}
+window.limparAssinatura = function(id){const c=document.getElementById(id);c.getContext("2d").clearRect(0,0,c.width,c.height);};
+
+function isSigEmpty(id){
+  const c=document.getElementById(id);
+  return !c.getContext("2d").getImageData(0,0,c.width,c.height).data.some(x=>x!==0);
+}
+
+// ── PDF BUILDER ───────────────────────────────────────────
+// Uses a precise pixel-based approach at 2× for high DPI
+// A4 = 794px wide at 96dpi / 210mm
+// We render at 1587px wide (2×) then downscale — crisp & no clipping
+
+const PDF_W = 794; // logical A4 pixels
+
+function v(id){return document.getElementById(id).value.trim();}
+
+function fmtDate(dateStr){
+  if(!dateStr) return "";
+  const d=new Date(dateStr+"T12:00:00");
+  return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
+}
+
+function statusColor(s){
+  if(!s) return "#555";
+  if(s.includes("REPROVADO")) return "#c62828";
+  if(s.includes("RESSALVAS")) return "#f57c00";
+  if(s.includes("APROVADO")) return "#388e3c";
+  return "#1565c0";
+}
+
+function buildCheckRows(){
+  const tipo = v("tipo-relatorio");
+  const items = CHECKLISTS[tipo]||[];
+  return items.map((lbl,idx)=>{
+    const st=checkStatus[idx]||"";
+    const cls=st==="ok"?"ok":st==="warn"?"warn":st==="nok"?"nok":"nd";
+    const label=st==="ok"?"Conforme":st==="warn"?"Atenção":st==="nok"?"Não Conforme":"N/D";
+    const bg=st==="ok"?"#e8f5e9":st==="warn"?"#fff8e1":st==="nok"?"#ffebee":"#f5f5f5";
+    const color=st==="ok"?"#2e7d32":st==="warn"?"#e65100":st==="nok"?"#b71c1c":"#9e9e9e";
+    return `<tr>
+      <td style="padding:5px 10px;border:1px solid #e0e0e0;font-size:10px;color:#333">${lbl}</td>
+      <td style="padding:5px 10px;border:1px solid #e0e0e0;text-align:center;white-space:nowrap">
+        <span style="background:${bg};color:${color};font-size:8px;font-weight:700;letter-spacing:1px;padding:2px 7px;border-radius:3px;text-transform:uppercase">${label}</span>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function buildPDFHtml(){
+  const sigFiscalData = isSigEmpty("sig-fiscal") ? "" : document.getElementById("sig-fiscal").toDataURL("image/png");
+  const sigFiscalizadoData = isSigEmpty("sig-fiscalizado") ? "" : document.getElementById("sig-fiscalizado").toDataURL("image/png");
+  const tipo = v("tipo-relatorio") || "RELATÓRIO DE FISCALIZAÇÃO";
+  const dataFormatada = fmtDate(v("data-rel"));
+  const stGeral = v("status-geral");
+  const stColor = statusColor(stGeral);
+
+  // PAGE 1 — Cover + info + checklist
+  const pg1 = `
+  <div style="width:${PDF_W}px;min-height:1122px;padding:55px 55px 50px;position:relative;background:#fff;font-family:Arial,sans-serif;color:#111;page-break-after:always">
+    <!-- HEADER -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:18px;border-bottom:4px solid #8bc34a;margin-bottom:28px">
+      <div style="display:flex;align-items:center;gap:18px">
+        <div style="width:66px;height:66px;border-radius:50%;overflow:hidden;border:2px solid #8bc34a;flex-shrink:0">
+          <img src="${LOGO_SRC}" style="width:100%;height:100%;object-fit:contain;display:block"/>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#555;margin-bottom:6px">NETTURBO</div>
+          <div style="font-size:30px;font-weight:700;color:#111;line-height:1.1">Relatório de<br/>Fiscalização</div>
+          <div style="font-size:12px;color:#666;letter-spacing:2px;text-transform:uppercase;margin-top:5px">${tipo}</div>
+        </div>
+      </div>
+      <div style="text-align:right;font-size:11px;color:#666;line-height:1.8;padding-top:4px">
+        ${v("fiscal")||"Fiscal"}<br/>
+        ${dataFormatada}<br/>
+        <span style="background:#f0f4e8;padding:3px 10px;border-radius:10px;color:#5d8a1f;font-weight:700;font-size:9px;letter-spacing:1px">LIDERANÇA</span>
+      </div>
+    </div>
+    <div style="height:3px;background:linear-gradient(90deg,#8bc34a,#a8c93c);margin-bottom:28px;border-radius:2px"></div>
+
+    <!-- IDENTIFICAÇÃO -->
+    <div style="margin-bottom:22px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#8bc34a;border-bottom:1px solid #e8e8e8;padding-bottom:5px;margin-bottom:14px">IDENTIFICAÇÃO</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 28px">
+        <div><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:3px">PROTOCOLO / OS</div><div style="font-size:11px;color:#111;border-bottom:1px solid #eee;padding-bottom:3px">${v("protocolo")||"—"}</div></div>
+        <div><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:3px">DATA</div><div style="font-size:11px;color:#111;border-bottom:1px solid #eee;padding-bottom:3px">${dataFormatada||"—"}</div></div>
+        <div><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:3px">FISCAL RESPONSÁVEL</div><div style="font-size:11px;color:#111;border-bottom:1px solid #eee;padding-bottom:3px">${v("fiscal")||"—"}</div></div>
+        <div><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:3px">PRESTADOR FISCALIZADO</div><div style="font-size:11px;color:#111;border-bottom:1px solid #eee;padding-bottom:3px">${v("prestador")||"—"}</div></div>
+        <div><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:3px">CIDADE</div><div style="font-size:11px;color:#111;border-bottom:1px solid #eee;padding-bottom:3px">${v("cidade")||"—"}</div></div>
+        <div><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:3px">STATUS GERAL</div><div style="font-size:11px;font-weight:700;color:${stColor};border-bottom:1px solid #eee;padding-bottom:3px">${stGeral||"—"}</div></div>
+      </div>
+      <div style="margin-top:10px"><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:3px">ENDEREÇO</div><div style="font-size:11px;color:#111;border-bottom:1px solid #eee;padding-bottom:3px">${v("endereco")||"—"}</div></div>
+      <div style="margin-top:10px"><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:3px">DESCRIÇÃO GERAL</div><div style="font-size:11px;color:#111;border-bottom:1px solid #eee;padding-bottom:5px;min-height:20px;white-space:pre-wrap">${v("descricao")||"—"}</div></div>
+    </div>
+
+    <!-- CHECKLIST -->
+    <div style="margin-bottom:22px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#8bc34a;border-bottom:1px solid #e8e8e8;padding-bottom:5px;margin-bottom:14px">CHECKLIST DE CONFORMIDADE</div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr>
+            <th style="background:#f5f5f5;padding:6px 10px;text-align:left;border:1px solid #ddd;font-size:8px;letter-spacing:1px;text-transform:uppercase;color:#666">Item Verificado</th>
+            <th style="background:#f5f5f5;padding:6px 10px;text-align:center;border:1px solid #ddd;font-size:8px;letter-spacing:1px;text-transform:uppercase;color:#666;width:100px">Status</th>
+          </tr>
+        </thead>
+        <tbody>${buildCheckRows()}</tbody>
+      </table>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="position:absolute;bottom:28px;left:55px;right:55px;display:flex;justify-content:space-between;font-size:8px;color:#bbb;border-top:1px solid #eee;padding-top:8px">
+      <span>Netturbo O&M · Relatório de Fiscalização</span>
+      <span>Gerado em ${new Date().toLocaleString("pt-BR")}</span>
+    </div>
+  </div>`;
+
+  // PAGE 2 — Ocorrências + Assinaturas
+  const pg2 = `
+  <div style="width:${PDF_W}px;min-height:1122px;padding:55px 55px 50px;position:relative;background:#fff;font-family:Arial,sans-serif;color:#111;page-break-after:always">
+    <!-- mini header -->
+    <div style="display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:2px solid #8bc34a;margin-bottom:24px">
+      <div style="width:38px;height:38px;border-radius:50%;overflow:hidden;border:1.5px solid #8bc34a;flex-shrink:0">
+        <img src="${LOGO_SRC}" style="width:100%;height:100%;object-fit:contain;display:block"/>
+      </div>
+      <div>
+        <div style="font-size:8px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#555">NETTURBO · FISCALIZAÇÃO</div>
+        <div style="font-size:12px;font-weight:700;color:#333">${tipo}</div>
+      </div>
+      <div style="margin-left:auto;font-size:9px;color:#888">${v("fiscal")} · ${dataFormatada}</div>
+    </div>
+
+    <!-- OCORRÊNCIAS -->
+    <div style="margin-bottom:24px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#8bc34a;border-bottom:1px solid #e8e8e8;padding-bottom:5px;margin-bottom:14px">OCORRÊNCIAS E PROVIDÊNCIAS</div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px">OCORRÊNCIAS IDENTIFICADAS</div>
+        <div style="font-size:11px;color:#333;border-bottom:1px solid #eee;padding-bottom:5px;min-height:40px;white-space:pre-wrap">${v("ocorrencias")||"Nenhuma"}</div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px">PROVIDÊNCIAS DETERMINADAS</div>
+        <div style="font-size:11px;color:#333;border-bottom:1px solid #eee;padding-bottom:5px;min-height:40px;white-space:pre-wrap">${v("providencias")||"—"}</div>
+      </div>
+      ${v("prazo-correcao")?`<div><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px">PRAZO PARA CORREÇÃO</div><div style="font-size:11px;color:#333;border-bottom:1px solid #eee;padding-bottom:3px">${fmtDate(v("prazo-correcao"))}</div></div>`:""}
+    </div>
+
+    <!-- ASSINATURAS -->
+    <div style="margin-top:30px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#8bc34a;border-bottom:1px solid #e8e8e8;padding-bottom:5px;margin-bottom:20px">ASSINATURAS</div>
+      <div style="display:flex;gap:40px">
+        <!-- Fiscal -->
+        <div style="flex:1;text-align:center">
+          <div style="height:64px;display:flex;align-items:center;justify-content:center;border-bottom:1.5px solid #333;margin-bottom:8px">
+            ${sigFiscalData?`<img src="${sigFiscalData}" style="max-height:58px;max-width:220px;object-fit:contain"/>`:""}
+          </div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555">${v("nome-fiscal")||"Fiscal Responsável"}</div>
+          <div style="font-size:8px;color:#aaa;margin-top:2px">Fiscal Netturbo</div>
+        </div>
+        <!-- Fiscalizado -->
+        <div style="flex:1;text-align:center">
+          <div style="height:64px;display:flex;align-items:center;justify-content:center;border-bottom:1.5px solid #333;margin-bottom:8px">
+            ${sigFiscalizadoData?`<img src="${sigFiscalizadoData}" style="max-height:58px;max-width:220px;object-fit:contain"/>`:""}
+          </div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555">${v("nome-fiscalizado")||"Prestador / Representante"}</div>
+          <div style="font-size:8px;color:#aaa;margin-top:2px">Ciência do Relatório</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="position:absolute;bottom:28px;left:55px;right:55px;display:flex;justify-content:space-between;font-size:8px;color:#bbb;border-top:1px solid #eee;padding-top:8px">
+      <span>Netturbo O&M · Relatório de Fiscalização</span>
+      <span>Gerado em ${new Date().toLocaleString("pt-BR")}</span>
+    </div>
+  </div>`;
+
+  // FOTO PAGES — 4 fotos por página, bem enquadradas
+  let fotoPgs = "";
+  for(let i=0;i<fotos.length;i+=4){
+    const chunk=fotos.slice(i,i+4);
+    const isFirst=i===0;
+    fotoPgs += `
+    <div style="width:${PDF_W}px;min-height:1122px;padding:55px 55px 50px;position:relative;background:#fff;font-family:Arial,sans-serif;color:#111">
+      <!-- mini header -->
+      <div style="display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:2px solid #8bc34a;margin-bottom:24px">
+        <div style="width:38px;height:38px;border-radius:50%;overflow:hidden;border:1.5px solid #8bc34a;flex-shrink:0">
+          <img src="${LOGO_SRC}" style="width:100%;height:100%;object-fit:contain;display:block"/>
+        </div>
+        <div>
+          <div style="font-size:8px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#555">NETTURBO · FISCALIZAÇÃO</div>
+          <div style="font-size:12px;font-weight:700;color:#333">Registro Fotográfico${fotos.length>4?" (continuação)":""}</div>
+        </div>
+        <div style="margin-left:auto;font-size:9px;color:#888">${v("fiscal")} · ${dataFormatada}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        ${chunk.map((f,ci)=>`
+          <div>
+            <div style="font-size:8px;font-weight:700;letter-spacing:2px;color:#8bc34a;margin-bottom:6px;text-transform:uppercase">FOTO ${i+ci+1}</div>
+            <img src="${f.src}" style="width:100%;height:220px;object-fit:cover;border-radius:5px;border:1px solid #ddd;display:block"/>
+            <div style="font-size:10px;color:#555;margin-top:6px;font-style:italic;text-align:center;padding:0 4px">${f.caption||"(sem legenda)"}</div>
+          </div>`).join("")}
+      </div>
+      <!-- FOOTER -->
+      <div style="position:absolute;bottom:28px;left:55px;right:55px;display:flex;justify-content:space-between;font-size:8px;color:#bbb;border-top:1px solid #eee;padding-top:8px">
+        <span>Netturbo O&M · Relatório de Fiscalização</span>
+        <span>Gerado em ${new Date().toLocaleString("pt-BR")}</span>
+      </div>
+    </div>`;
+  }
+
+  return pg1 + pg2 + fotoPgs;
+}
+
+window.gerarPDF = async function(){
+  showToast("⏳ Preparando PDF de alta resolução...");
+  await new Promise(r=>setTimeout(r,100));
+
+  const container = document.getElementById("pdf-root");
+  container.style.cssText = `position:fixed;left:-99999px;top:0;z-index:-1;background:#fff;width:${PDF_W}px`;
+  container.innerHTML = buildPDFHtml();
+
+  // Wait for all images (logo + fotos) to load
+  const allImgs = [...container.querySelectorAll("img")];
+  await new Promise(resolve=>{
+    if(!allImgs.length){resolve();return;}
+    let done=0;
+    const check=()=>{done++;if(done>=allImgs.length)resolve();};
+    allImgs.forEach(img=>{
+      if(img.complete&&img.naturalHeight>0){check();}
+      else{img.onload=check;img.onerror=check;}
+    });
+    setTimeout(resolve,5000);
+  });
+
+  // Small delay for layout
+  await new Promise(r=>setTimeout(r,300));
+
+  try{
+    const {jsPDF}=window.jspdf;
+    // A4 in pts: 595.28 × 841.89
+    const doc=new jsPDF({orientation:"portrait",unit:"pt",format:"a4",compress:true});
+    const pages=container.querySelectorAll("div[style*='min-height:1122px']");
+
+    showToast(`⏳ Renderizando ${pages.length} página(s)...`);
+
+    for(let i=0;i<pages.length;i++){
+      if(i>0) doc.addPage();
+      // Scale 2× for crisp output
+      const canvas = await html2canvas(pages[i],{
+        scale:2,
+        useCORS:true,
+        allowTaint:true,
+        logging:false,
+        backgroundColor:"#ffffff",
+        width:PDF_W,
+        windowWidth:PDF_W
+      });
+      // Fit exactly into A4 (595.28 × 841.89 pts)
+      doc.addImage(canvas.toDataURL("image/jpeg",0.92),"JPEG",0,0,595.28,841.89);
+    }
+
+    const nomeFiscal = v("nome-fiscal").replace(/\s+/g,"-")||"fiscal";
+    const dataStr = v("data-rel")||new Date().toISOString().split("T")[0];
+    doc.save(`RFO-Fiscalizacao-${nomeFiscal}-${dataStr}.pdf`);
+    showToast("PDF gerado com sucesso!");
+  }catch(err){
+    console.error(err);
+    showToast("Erro ao gerar PDF. Veja o console.");
+  }
+  container.innerHTML="";
+};
+
+// ── TOAST ─────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),3500);}
+
+// ── INIT ──────────────────────────────────────────────────
+function inicializar(){
+  document.getElementById("data-rel").value=new Date().toISOString().split("T")[0];
+  initCanvas("sig-fiscal");
+  initCanvas("sig-fiscalizado");
+  renderFotos();
+}
+</script>
+</body>
+</html>

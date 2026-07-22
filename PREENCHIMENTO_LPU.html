@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preenchimento LPU</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gd:#8CBF3F;--gm:#8CBF3F;--gl:#f4f9ec;
+  --red:#c0392b;--g50:#f7f8fa;--g100:#eef0f3;
+  --g300:#d0d5dd;--g500:#6b7585;--g800:#2d3444;
+  --bdr:#d4ddd8;--r:6px;--rl:10px;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#ecf0eb;color:var(--g800);font-size:14px;line-height:1.5;padding:24px 16px 40px}
+.shell{max-width:960px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(26,92,55,.13);overflow:hidden}
+.fhd{background:var(--gd);padding:24px 32px;display:flex;align-items:center;gap:20px}
+.lz{flex-shrink:0;width:220px;height:110px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;overflow:hidden;background:rgba(255,255,255,.07)}
+.lz img{width:100%;height:100%;object-fit:contain}
+.hi h1{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px}
+.hi p{font-size:12px;color:rgba(255,255,255,.6)}
+
+/* Progress */
+
+.fb{padding:28px 32px 40px}
+.sec{margin-top:28px;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--gd);padding-bottom:7px;border-bottom:2px solid var(--gd);margin:0 0 14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 18px}
+.s2{grid-column:span 2}.s3{grid-column:span 3}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld label{font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px}
+.req{color:var(--red)}
+input[type="text"],input[type="number"],input[type="date"],input[type="file"],select,textarea{width:100%;padding:8px 11px;border:1px solid var(--bdr);border-radius:var(--r);font-size:13.5px;font-family:inherit;color:var(--g800);background:#fff;outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--gm);box-shadow:0 0 0 3px rgba(140,191,63,.15)}
+textarea{resize:vertical;min-height:60px}
+
+/* Table */
+.data-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:12px}
+.data-table th{background:var(--gd);color:#fff;padding:8px 6px;font-size:10px;text-transform:uppercase;letter-spacing:.3px;text-align:center}
+.data-table td{border-bottom:1px solid var(--bdr);padding:7px 6px;text-align:center;font-size:11px}
+.data-table tr:nth-child(even) td{background:var(--g50)}
+.row-subtotal{background:var(--gl)!important;font-weight:700;color:var(--gd)}
+.row-subtotal td{background:var(--gl)!important;text-align:right}
+.btn-remove{background:none;border:none;cursor:pointer;color:var(--g300);font-size:14px;transition:color .15s}
+.btn-remove:hover{color:var(--red)}
+#total-geral-box{font-size:1.3em;text-align:right;margin-top:16px;color:var(--gd);border-top:2px solid var(--gd);padding-top:10px;font-weight:700}
+
+/* Add item row */
+.add-row{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;margin-top:12px;align-items:end}
+.add-btn{padding:9px 20px;border:none;border-radius:var(--r);cursor:pointer;font-weight:700;font-size:12px;font-family:inherit;background:var(--gd);color:#fff;transition:opacity .15s;white-space:nowrap}
+.add-btn:hover{opacity:.85}
+
+/* Photo preview */
+.foto-preview-card{display:flex;align-items:center;gap:12px;border:1px solid var(--bdr);padding:10px;border-radius:var(--rl);background:var(--g50);margin-bottom:8px}
+.foto-preview-card img{width:80px;height:60px;object-fit:cover;border-radius:var(--r);border:1px solid var(--bdr)}
+
+/* Nav */
+.nav-buttons{display:flex;gap:10px;justify-content:space-between;margin-top:28px;padding-top:18px;border-top:1px solid var(--bdr)}
+.btn{padding:9px 20px;border:none;border-radius:var(--r);cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;letter-spacing:.3px;transition:opacity .15s,transform .1s}
+.btn:active{transform:scale(.97)}
+.btn:hover{opacity:.85}
+.btng{background:var(--g100);color:var(--g800)}
+.btnp{background:var(--gm);color:#fff}
+.btn-lg{padding:12px 28px;font-size:14px}
+
+/* ══ MOBILE OPTIMIZATIONS ══ */
+@media (max-width: 768px) {
+  body{padding:8px 4px 30px}
+  .shell{border-radius:10px}
+  .fhd{padding:16px;gap:12px;flex-wrap:wrap;justify-content:center;text-align:center}
+  .lz{width:140px;height:70px}
+  .hi h1{font-size:17px}
+  .hi p{font-size:11px}
+  .fb{padding:16px 14px 30px}
+  .sec{font-size:9px;margin-top:20px!important}
+  .g2{grid-template-columns:1fr;gap:10px}
+  .g3{grid-template-columns:1fr;gap:10px}
+  .s2{grid-column:span 1}
+  .s3{grid-column:span 1}
+  .add-row{grid-template-columns:1fr 1fr;gap:8px}
+  .add-row .add-btn{grid-column:span 2;padding:12px;font-size:13px}
+  input[type="text"],input[type="number"],input[type="date"],input[type="file"],select,textarea{
+    font-size:16px!important;padding:10px 12px;-webkit-appearance:none;
+  }
+  select{font-size:14px!important}
+  .fld label{font-size:11px}
+  .btn-lg{width:100%;text-align:center;padding:14px;font-size:15px}
+  
+  /* Table: horizontal scroll wrapper */
+  .table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border:1px solid var(--bdr);border-radius:var(--rl)}
+  .data-table{min-width:650px;margin:0;font-size:11px}
+  .data-table th{padding:6px 4px;font-size:8px;white-space:nowrap}
+  .data-table td{padding:6px 4px;font-size:10px}
+  
+  #total-geral-box{font-size:1.1em;padding-top:8px}
+  .foto-preview-card{flex-direction:column;align-items:stretch;gap:8px}
+  .foto-preview-card img{width:100%;height:auto;max-height:150px}
+}
+
+@media (max-width: 400px) {
+  .fhd{padding:12px 10px}
+  .lz{width:110px;height:55px}
+  .hi h1{font-size:15px}
+  .fb{padding:12px 10px 24px}
+  .add-row{grid-template-columns:1fr}
+  .add-row .add-btn{grid-column:span 1}
+}
+
+/* Item list with inline qty */
+.item-list{display:flex;flex-direction:column;gap:2px;margin:8px 0}
+.item-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--bdr);border-radius:var(--r);background:#fff;transition:background .15s}
+.item-row:nth-child(odd){background:var(--g50)}
+.item-row:hover{background:var(--gl)}
+.item-cod{font-size:10px;font-weight:700;color:var(--gd);min-width:60px;flex-shrink:0}
+.item-desc{font-size:12px;color:var(--g800);flex:1;line-height:1.3}
+.item-val{font-size:10px;color:var(--g500);min-width:55px;text-align:right;flex-shrink:0}
+.item-qty{width:60px;min-width:60px;max-width:60px;padding:5px 6px;border:1px solid var(--bdr);border-radius:var(--r);font-size:13px;text-align:center;font-family:inherit;color:var(--g800);flex-shrink:0}
+.item-qty:focus{border-color:var(--gm);box-shadow:0 0 0 2px rgba(140,191,63,.2)}
+.item-qty-filled{border-color:var(--gd);background:var(--gl);font-weight:700}
+.launch-btn{width:100%;padding:14px;border:none;border-radius:var(--r);background:var(--gd);color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;margin-top:12px;transition:opacity .15s}
+.launch-btn:hover{opacity:.85}
+.launch-btn:active{transform:scale(.98)}
+@media(max-width:768px){
+  .item-row{flex-wrap:wrap;gap:4px;padding:10px 8px}
+  .item-cod{min-width:50px;font-size:9px}
+  .item-desc{font-size:11px;flex-basis:calc(100% - 130px)}
+  .item-qty{font-size:14px!important;min-height:44px}
+}
+
+.item-fator{width:70px;min-width:70px;max-width:70px;padding:4px 2px;border:1px solid var(--bdr);border-radius:var(--r);font-size:10px;font-family:inherit;color:var(--g800);flex-shrink:0;background:#fff;-webkit-appearance:none;appearance:none;text-align:center}
+.item-fator:focus{border-color:var(--gm)}
+@media(max-width:768px){.item-fator{font-size:12px!important;min-height:44px}}
+
+/* ── LOGIN (mesma sessão do tecnico.html) — tema escuro, igual ao acesso das outras
+   telas (tecnico.html/index.html/medicao.html). Só o acesso muda; o formulário em si
+   (#app pra baixo) continua no tema claro de sempre, sem mexer. ── */
+#login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;box-shadow:0 0 60px rgba(140,191,63,.08);padding:32px 28px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.login-heading{text-align:center}
+.login-heading h2{font-size:19px;font-weight:700;color:var(--gd)}
+.login-heading p{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+.login-field{width:100%;display:flex;flex-direction:column;gap:4px}
+.login-field label{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px}
+.login-field select,.login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:var(--r);color:#e8e8e8;font-size:14px;padding:9px 11px;width:100%;font-family:inherit}
+.login-field select:focus,.login-field input:focus{outline:none;border-color:var(--gm)}
+.login-btn{width:100%;padding:11px;background:var(--gm);border:none;border-radius:var(--r);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px}
+.login-error{font-size:12px;color:#e57373;background:rgba(192,57,43,.12);border:1px solid rgba(192,57,43,.35);border-radius:6px;padding:8px 11px;width:100%;text-align:center;display:none}
+.login-error.visible{display:block}
+.login-info{font-size:11px;color:#888;background:rgba(140,191,63,.08);border:1px solid rgba(140,191,63,.25);border-radius:6px;padding:8px 11px;width:100%;text-align:center;display:none}
+.login-info.visible{display:block}
+.login-bloqueado{font-size:13px;color:#e8e8e8;text-align:center;line-height:1.6}
+.assinatura-auto{background:var(--g50);border:1px solid var(--bdr);border-radius:var(--r);padding:10px 12px;font-size:13px;color:var(--g800)}
+.assinatura-auto b{color:var(--gd)}
+.voltar-atividades{max-width:960px;margin:0 auto 12px;padding:0 16px}
+.voltar-atividades a{font-size:13px;color:var(--g500);text-decoration:none}
+.voltar-atividades a:hover{color:var(--gd)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN — reaproveita a sessão do técnico (mesmo PIN/senha do tecnico.html); acesso
+     restrito a prestadoras terceiras, NETTURBO não pode preencher LPU -->
+<div id="login-overlay">
+  <div class="login-box" id="boxLoginLpu">
+    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:110px;height:auto;background:#fff;border-radius:12px;padding:.5rem" onerror="this.style.display='none'"/>
+    <div class="login-heading">
+      <h2>Netturbo</h2>
+      <p>Preenchimento LPU · Acesso de Prestadoras Terceiras</p>
+    </div>
+    <div class="login-field">
+      <label>Empresa</label>
+      <select id="selEmpresa" onchange="atualizarTecnicosLogin()"></select>
+    </div>
+    <div class="login-field">
+      <label>Técnico</label>
+      <select id="selTecnico"></select>
+    </div>
+    <div class="login-field">
+      <label>PIN (fornecido pela liderança)</label>
+      <input type="password" inputmode="numeric" maxlength="4" id="inputPin" placeholder="0000"/>
+    </div>
+    <div class="login-field">
+      <label>Complemento (sua senha pessoal)</label>
+      <input type="password" id="inputComplemento" placeholder="Sua senha"/>
+    </div>
+    <div class="login-info" id="infoLogin">Primeiro acesso: o complemento que você digitar agora vai virar sua senha pessoal daqui pra frente.</div>
+    <div class="login-error" id="erroLogin"></div>
+    <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+  </div>
+  <div class="login-box" id="boxBloqueado" style="display:none">
+    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:110px;height:auto;background:#fff;border-radius:12px;padding:.5rem" onerror="this.style.display='none'"/>
+    <div class="login-heading">
+      <h2>Acesso Restrito</h2>
+    </div>
+    <div class="login-bloqueado">Este relatório é exclusivo para técnicos de prestadoras terceiras.<br>Contas NETTURBO não preenchem LPU.</div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+<div class="voltar-atividades"><a href="tecnico.html">&#8592; Minhas Atividades</a></div>
+<div class="shell">
+  <div class="fhd">
+    <div class="lz"><img src="data:image/jpeg;base64,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" alt="NetTurbo"></div>
+    <div class="hi" style="flex:1">
+      <h1>Prestação de Serviços</h1>
+      <p>Preenchimento LPU</p>
+    </div>
+    <div style="color:rgba(255,255,255,.5);font-size:10px;font-weight:600;align-self:flex-start;padding-top:4px;white-space:nowrap">v1.02</div>
+  </div>
+  <div class="fb">
+
+    <!-- STEP 1: Identificação -->
+    <div id="step-1">
+      <div class="sec">1. Identificação</div>
+      <div class="g2">
+        <div class="fld"><label>Empresa Prestadora</label><input type="text" id="empresa" placeholder="Nome da empresa"></div>
+        <div class="fld"><label>CNPJ</label><input type="text" id="cnpj" placeholder="00.000.000/0000-00"></div>
+        <div class="fld"><label>Técnicos</label><input type="text" id="tecnicos" placeholder="Nomes dos técnicos"></div>
+        <div class="fld"><label>Cliente / POP</label><input type="text" id="cliente" placeholder="Nome do cliente"></div>
+        <div class="fld"><label>ID / Etiqueta</label><input type="text" id="etiqueta" placeholder="Identificação"></div>
+        <div class="fld"><label>Cidade</label><input type="text" id="cidade" placeholder="Cidade"></div>
+        <div class="fld"><label>Data de Início</label><input type="date" id="data_inicio"></div>
+        <div class="fld"><label>Data de Término</label><input type="date" id="data_fim"></div>
+        <div class="fld s2">
+          <label>Descrição Contábil</label>
+          <select id="desc_contabil">
+            <option value="">-- Selecione a Descrição Contábil --</option>
+            <option value="3.1.1.2.05.0005 - Serviços de Instalação CLIENTE - IMPLANTAÇÃO">3.1.1.2.05.0005 - Instalação CLIENTE - IMPLANTAÇÃO</option>
+            <option value="3.1.1.2.05.0007 - Serviços de Instalação REDE - CONSTRUÇÃO DE REDE">3.1.1.2.05.0007 - Instalação REDE - CONSTRUÇÃO DE REDE</option>
+            <option value="3.1.1.2.05.0103 - Serviços de Melhoria REDE - REPARO PROGRAMADO DE REDE">3.1.1.2.05.0103 - Melhoria REDE - REPARO PROGRAMADO</option>
+            <option value="3.1.1.2.05.0008 - Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)">3.1.1.2.05.0008 - Manutenção REDE - REPARO EMERGENCIAL</option>
+            <option value="3.1.1.2.05.0006 - Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)">3.1.1.2.05.0006 - Manutenção CLIENTE - REPARO EMERGENCIAL</option>
+            <option value="3.1.1.2.05.0101 - Serviços Preventivos">3.1.1.2.05.0101 - Serviços Preventivos</option>
+	    <option value="3.1.1.2.05.0102 - Serviços de Retirada">3.1.1.2.05.0102 - Serviços de Retirada</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Lançamento de Itens -->
+    <div id="step-2">
+      <div class="sec">2. Lançamento de Itens</div>
+      <select id="fator_selecionado" style="display:none"><option value="comum">Comum</option></select>
+      <div class="item-list" id="item-list"></div>
+      <button class="launch-btn" onclick="launchItems()">&#x2B07; Lançar Itens Preenchidos</button>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Cód.</th><th>Descrição</th><th>Fator</th><th>Classe</th><th>Med.</th><th>V. Unit</th><th>Qtd</th><th>Total</th><th></th></tr></thead>
+        <tbody id="tabela"></tbody>
+      </table></div>
+      <div id="total-geral-box">Total Geral: R$ 0,00</div>
+    </div>
+    <select id="servico" style="display:none"><option value="">--</option></select>
+    <input type="hidden" id="qtd" value="1">
+
+    <!-- STEP 3: Finalização -->
+    <div id="step-3">
+      <div class="sec">3. Finalização</div>
+      <div class="fld" style="margin-bottom:16px"><label>Observações Gerais</label><textarea id="obs" rows="3" placeholder="Observações gerais do relatório..."></textarea></div>
+      <div class="fld" style="margin-bottom:12px">
+        <label>Fotos para o Relatório Fotográfico</label>
+        <input type="file" id="fotos" multiple accept="image/*" onchange="previewFotos()">
+      </div>
+      <div id="container-previa-fotos" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
+
+      <div class="fld" style="margin-top:20px">
+        <label>Assinatura Prestador</label>
+        <div class="assinatura-auto" id="assinaturaAutoTexto">Preenchida automaticamente ao concluir, com seu nome, data e hora.</div>
+      </div>
+
+      <button class="btn btnp btn-lg" style="width:100%;margin-top:16px;padding:14px" onclick="gerarPDF()">&#x2B07; Gerar Relatório PDF</button>
+      <button class="btn btnp btn-lg" id="btnConcluir" style="width:100%;margin-top:10px;padding:14px;background:#5d8a1f" onclick="concluirLPU()">Concluído — Enviar para Validação</button>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+const LOGO = "data:image/jpeg;base64,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";
+
+
+    const lpu = [
+        { cod:"SEV0001", desc:"Instalação Ancoragem Simples Fita Aço Autosustentavel (passagem de rede)", classe:"Classe L", medida:"unidade", valor:0.2, valorCritico: 0.3 },
+        { cod:"SEV0002", desc:"Instalação Encabeçamento Simples Fita Aço Autosustentavel", classe:"Classe L", medida:"unidade", valor:0.4, valorCritico: 0.5 },
+        { cod:"SEV0003", desc:"Instalação Encabeçamento para Espinamento (Bap, Olhal, Parafuso)", classe:"Classe L", medida:"unidade", valor:0.7, valorCritico: 0.8 },
+        { cod:"SEV0004", desc:"Instalação Ancoragem para Espinamento Suporte SUPA (passagem de rede)", classe:"Classe L", medida:"unidade", valor:0.6, valorCritico: 0.7 },
+        { cod:"SEV0005", desc:"Instalação Plaqueta de identificação", classe:"Classe L", medida:"unidade", valor:0.3, valorCritico: 0.4 },
+        { cod:"SEV0006", desc:"Lançamento de cabo optico Auto Sustentavel", classe:"Classe L", medida:"metro", valor:1.2, valorCritico: 1.3 },
+        { cod:"SEV0007", desc:"Espinamento de cabos", classe:"Classe L", medida:"metro", valor:0.7, valorCritico: 0.8 },
+        { cod:"SEV0008", desc:"Lançamento de cabo optico com rede Existente", classe:"Classe L", medida:"metro", valor:1.15, valorCritico: 1.25 },
+        { cod:"SEV0009", desc:"Lançamento de cordoalha dieletrica", classe:"Classe L", medida:"metro", valor:0.7, valorCritico: 0.8 },
+        { cod:"SEV0010", desc:"Lançamento de cordoalha aço", classe:"Classe L", medida:"metro", valor:1.5, valorCritico: 1.6 },
+        { cod:"SEV0011", desc:"Lançamento de cabo optico Subterraneo", classe:"Classe L", medida:"metro", valor:3, valorCritico: 3.1 },
+        { cod:"SEV0012", desc:"Lançamento de cabo optico Tubulações internas (tubos, eletrotubos,canduites)", classe:"Classe L", medida:"metro", valor:2.25, valorCritico: 2.35 },
+        { cod:"SEV0013", desc:"Lançamento de cabo optico Eletrocalhas", classe:"Classe L", medida:"metro", valor:1.7, valorCritico: 1.8 },
+        { cod:"SEV0014", desc:"Lançamento de cabo Drop Aereo", classe:"Classe L", medida:"metro", valor:1, valorCritico: 1.1 },
+        { cod:"SEV0015", desc:"Lançamento de cabo Drop Subterraneo", classe:"Classe L", medida:"metro", valor:1.3, valorCritico: 1.4 },
+        { cod:"SEV0016", desc:"Lançamento de cabo Drop Tubulações internas (tubos, eletrotubos,canduites)", classe:"Classe L", medida:"metro", valor:1.18, valorCritico: 1.28 },
+        { cod:"SEV0017", desc:"Lançamento de cabo Drop Eletrocalhas", classe:"Classe L", medida:"metro", valor:1.1, valorCritico: 1.2 },
+        { cod:"SEV0018", desc:"Retirada de cabo optico", classe:"Classe L", medida:"metro", valor:0.6, valorCritico: 0.7 },
+        { cod:"SEV0019", desc:"Retirada de CEO / CTO", classe:"Classe L", medida:"unidade", valor:20, valorCritico: 20.1 },
+        { cod:"SEV0020", desc:"Perfuração em Parede Alvenaria/Madeira", classe:"Classe C", medida:"unidade", valor:10, valorCritico: 10.1 },
+        { cod:"SEV0021", desc:"Perfuração de Solo para Poste", classe:"Classe C", medida:"unidade", valor:250, valorCritico: 250.1 },
+        { cod:"SEV0022", desc:"Perfuração de Solo concreto para passagem de cabo", classe:"Classe C", medida:"unidade", valor:30, valorCritico: 30.1 },
+        { cod:"SEV0022b", desc:"Abertura/Fechamento Tampa Caixa Subterranea", classe:"Classe C", medida:"unidade", valor:12, valorCritico: 12.1 },
+        { cod:"SEV0023", desc:"Instalação de Eletrotubo", classe:"Classe C", medida:"metro", valor:2.05, valorCritico: 2.15 },
+        { cod:"SEV0024", desc:"Instalação de Eletrocalha", classe:"Classe C", medida:"metro", valor:2.15, valorCritico: 2.25 },
+        { cod:"SEV0025", desc:"Instalação de Suportes Em Geral Para Cabos em Parede", classe:"Classe L", medida:"unidade", valor:8, valorCritico: 8.1 },
+        { cod:"SEV0026", desc:"Instalação de canaletas interna", classe:"Classe C", medida:"metro", valor:0.9, valorCritico: 1 },
+        { cod:"SEV0027", desc:"Preparação e montagem de Ponto de Terminação de Rede Optica (PTRO)", classe:"Classe CFO", medida:"unidade", valor:13.5, valorCritico: 15 },
+        { cod:"SEV0028", desc:"Preparação e montagem de Terminador Optico", classe:"Classe CFO", medida:"unidade", valor:16.5, valorCritico: 19 },
+        { cod:"SEV0029", desc:"Preparação e montagem de Caixa de Emenda Optica FOSC", classe:"Classe CFO", medida:"unidade", valor:200, valorCritico: 250 },
+        { cod:"SEV0030", desc:"Preparação e montagem de Caixa de Emenda Optica Mini FOSC", classe:"Classe CFO", medida:"unidade", valor:49.9, valorCritico: 69 },
+        { cod:"SEV0031", desc:"Preparação e montagem de Caixa de Emenda Optica FIST", classe:"Classe CFO", medida:"unidade", valor:279.9, valorCritico: 300 },
+        { cod:"SEV0032", desc:"Preparação e montagem de Caixa de Terminal Optica (CTO)", classe:"Classe CFO", medida:"unidade", valor:90, valorCritico: 100 },
+        { cod:"SEV0033", desc:"Preparação e montagem de Distribuidor Geral Optico Interno (DGOI)", classe:"Classe CFO", medida:"unidade", valor:85, valorCritico: 100 },
+        { cod:"SEV0034", desc:"Preparação e montagem de Distribuidor Interno Optico 6 ou 12F (DIO)", classe:"Classe CFO", medida:"unidade", valor:139.9, valorCritico: 150 },
+	{ cod:"SEV0035", desc:"Preparação e montagem de Distribuidor Interno Optico 24 ou 48F (DIO)", classe:"Classe CFO", medida:"unidade", valor:219.9, valorCritico:250 },
+	{ cod:"SEV0036", desc:"Preparação e montagem de Distribuidor Interno Optico 72 ou 144F (DIO)", classe:"Classe CFO", medida:"unidade", valor:329.9, valorCritico:360 },
+	{ cod:"SEV0037", desc:"Reabertura e Fechamento de Ceo Existente", classe:"Classe CFO", medida:"unidade", valor:35, valorCritico:42 },
+	{ cod:"SEV0038", desc:"Identificação interna Tubo loos Anilha", classe:"Classe CFO", medida:"unidade", valor:0.91, valorCritico:1.01 },
+	{ cod:"SEV0039", desc:"Identificação interna Tubo loos Rotuladora", classe:"Classe CFO", medida:"unidade", valor:0.79, valorCritico:0.89 },
+	{ cod:"SEV0040", desc:"Identificação interna Fusão", classe:"Classe CFO", medida:"unidade", valor:0.15, valorCritico:0.25 },
+	{ cod:"SEV0041", desc:"Teste Potencia Luz (Power Meter)", classe:"Classe CFO", medida:"unidade", valor:2.1, valorCritico:2.2 },
+	{ cod:"SEV0042", desc:"Teste OTDR Para Localização de defeitos", classe:"Classe CFO", medida:"unidade", valor:2.3, valorCritico:2.5 },
+	{ cod:"SEV0043", desc:"Teste OTDR com relatorio para Certificação Com emissão de Relatorio", classe:"Classe CFO", medida:"unidade", valor:5.65, valorCritico:5.75 },
+	{ cod:"SEV0044", desc:"Teste Verificação de Falha (VFL)", classe:"Classe CFO", medida:"unidade", valor:2.05, valorCritico:2.5 },
+	{ cod:"SEV0045", desc:"Preparação e Emenda Fibra Optica (FUSÃO)", classe:"Classe CFO", medida:"unidade", valor:10, valorCritico:12 },
+	{ cod:"SEV0046", desc:"Sangria e abertura Longitudinal de “Tubo Loose\", com limpeza e acomodação de Tubo Loose em bandeja de caixa de emenda ou CTO já existente.", classe:"Classe CFO", medida:"unidade", valor:80, valorCritico:90 },
+	{ cod:"SEV0047", desc:"Instalação de Splitter óptico de qualquer tipo e capacidade em caixa de emenda ou caixa Terminal, (sem fornecimento material).", classe:"Classe CFO", medida:"unidade", valor:11.5, valorCritico:18.5 },
+	{ cod:"SEV0048", desc:"Inserção de Cabo Optico em Periferico (CEO/CTO/DIO/DGOI)", classe:"Classe CFO", medida:"unidade", valor:9.9, valorCritico:18 },
+	{ cod:"SEV0049", desc:"Travessia em Rodovia de Cabo Optico", classe:"Classe L", medida:"unidade", valor:250, valorCritico:450 },
+	{ cod:"SEV0050", desc:"Preparação e montagem de Conector Mecanico para Fibra Optica", classe:"Classe CFO", medida:"unidade", valor:6, valorCritico:6.1 },
+	{ cod:"SEV0051", desc:"Instalação de bastidor para distribuição óptica em piso até 44Us.", classe:"Classe CFO", medida:"unidade", valor:140, valorCritico:140.1 },
+	{ cod:"SEV0052", desc:"Instalação de bastidor para distribuição óptica em parede até 12Us.", classe:"Classe CFO", medida:"unidade", valor:101.5, valorCritico:101.6 },
+	{ cod:"SEV0053", desc:"Instalação e configuração de Equipamento ONU ( GPON / XGSPON)", classe:"Classe INT", medida:"unidade", valor:105, valorCritico:115 },
+	{ cod:"SEV0054", desc:"Instalação e configuração de Equipamento Routerboard", classe:"Classe INT", medida:"unidade", valor:135, valorCritico:148 },
+	{ cod:"SEV0055", desc:"Instalação e configuração de Equipamento Ciber Security (Fortgate)", classe:"Classe INT", medida:"unidade", valor:142, valorCritico:152 },
+	{ cod:"SEV0056", desc:"Instalação de ATA ou e Perifericos Telefonicos", classe:"Classe INT", medida:"unidade", valor:50, valorCritico:60 },
+	{ cod:"SEV0057", desc:"Instalação e configuração de CPE e equipamento wireless s/ configuração", classe:"Classe INT", medida:"unidade", valor:60.1, valorCritico:71 },
+	{ cod:"SEV0058", desc:"Acesso para Configuração de ativos remoto.", classe:"Classe INT", medida:"unidade", valor:35, valorCritico:39 },
+	{ cod:"SEV0059", desc:"Instalação e configuração de Equipamento Rede Metro ( PTP)", classe:"Classe INT", medida:"unidade", valor:95.9, valorCritico:101.5 },
+	{ cod:"SEV0060", desc:"Elaboração de Relatorio de entrega de Novo Circuito", classe:"Classe INT", medida:"unidade", valor:40, valorCritico:50 },
+	{ cod:"SEV0061", desc:"Elaboração de Relatorio de Reparo de Circuito Ativo (Manutenção)", classe:"Classe INT", medida:"unidade", valor:30, valorCritico:35.8 },
+	{ cod:"SEV0062", desc:"Elaboração de Relatorio de Teste de Banda", classe:"Classe INT", medida:"unidade", valor:50, valorCritico:57.9 },
+	{ cod:"SEV0063", desc:"Elaboração de Relatorio de Analise Pré Eliminar de Risco (A.P.R)", classe:"Classe INT", medida:"unidade", valor:69.9, valorCritico:72 },
+	{ cod:"SEV0064", desc:"Elaboração de Relatorio de Plano Provisorio de Instalação (P.P.I)", classe:"Classe INT", medida:"unidade", valor:200, valorCritico:220 },
+	{ cod:"SEV0065", desc:"Elaboração de Relatorio de Aceite de Rede / Fiscalização", classe:"Classe INT", medida:"unidade", valor:110, valorCritico:125 },
+	{ cod:"SEV0066", desc:"Identificação de Periferiferico em Rack", classe:"Classe INT", medida:"unidade", valor:12, valorCritico:18 },
+	{ cod:"SEV0067", desc:"Troca de Periferico Defeituoso em Geral (Fontes, conectores)", classe:"Classe INT", medida:"unidade", valor:80, valorCritico:90 },
+	{ cod:"SEV0068", desc:"Montagem de Conector Mecanico RJ 11 e RJ45", classe:"Classe INT", medida:"unidade", valor:5, valorCritico:7 },
+	{ cod:"SEV0069", desc:"Retirada de Periferico- ONU", classe:"Classe INT", medida:"unidade", valor:25.8, valorCritico:null },
+	{ cod:"SEV0070", desc:"Retirada de Periferico- Swicht em geral", classe:"Classe INT", medida:"unidade", valor:70, valorCritico:null },
+	{ cod:"SEV0071", desc:"Retirada de Periferico- Fortgate", classe:"Classe INT", medida:"unidade", valor:110, valorCritico:null },
+	{ cod:"SEV0072", desc:"Retirada de Periferico- Equipamentos telefonia em Geral", classe:"Classe INT", medida:"unidade", valor:40, valorCritico:null },
+	{ cod:"SEV0073", desc:"Retirada de Periferico- Routerboard", classe:"Classe INT", medida:"unidade", valor:42, valorCritico:null },
+	{ cod:"SEV0074", desc:"Retirada de Periferico- Transivers", classe:"Classe INT", medida:"unidade", valor:13, valorCritico:null },
+	{ cod:"SEV0075", desc:"Retirada de Periferico- Equipamentos Wireless (UNIFI)", classe:"Classe INT", medida:"unidade", valor:90, 	valorCritico:null },
+	{ cod:"SEV0076", desc:"Visita Técnica Improdutiva", classe:"Improtividade", medida:"unidade", valor:91, valorCritico:99 },
+	{ cod:"SEV0077", desc:"Mão De Obra Disponivel", classe:"Plantão", medida:"Hora", valor:19, valorCritico:21 },
+	{ cod:"SEV0078", desc:"Deslocamento para Barueri, São Paulo, Guarulhos e ABC Paulista.", classe:"Deslocamento", medida:"unidade", valor:90, valorCritico:100 },
+	{ cod:"SEV0079", desc:"Deslocamento para Piracicaba, Araras, Rio Claro, Limeira, Jaguariuna", classe:"Deslocamento", medida:"unidade", valor:80, valorCritico:90 },
+	{ cod:"SEV0080", desc:"Deslocamento para Bragança Paulista, Atibaia, Extrema MG.", classe:"Deslocamento", medida:"unidade", valor:65, valorCritico:87 },
+	{ cod:"SEV0081", desc:"Deslocamento para Interior de Baixada Santista", classe:"Deslocamento", medida:"unidade", valor:125, valorCritico:140 },
+	{ cod:"SEV0082", desc:"Deslocamento para Sorocaba, Indaiatuba", classe:"Deslocamento", medida:"unidade", valor:70, valorCritico:78 },
+	{ cod:"SEV0083", desc:"Preventiva Rede Externa Percorrendo Cabo Optico", classe:"Classe P", medida:"Metro", valor:0.37, valorCritico:0.47 },
+	{ cod:"SEV0084", desc:"Correção Fiberloop e correção de posicionamento de CEO", classe:"Classe P", medida:"unidade", valor:18.8, valorCritico:20.8 },
+	{ cod:"SEV0085", desc:"Acompanhamento Troca de Poste", classe:"Classe P", medida:"unidade", valor:200, valorCritico:215 },
+	{ cod:"SEV0086", desc:"Reembolso de despesas Extras", classe:"Deslocamento", medida:"unidade", valor:null, valorCritico:null },
+	{ cod:"SEV0087", desc:"Mão de Obra Disponivel - Semanal", classe:"Plantão", medida:"hora", valor:4, valorCritico:7 },
+	{ cod:"SEV0088", desc:"Tratativa de fibra", classe:"Classe CFO", medida:"metro", valor:0.15, valorCritico: 0.18 }
+    ];
+
+const regrasFiltroCodigos = {
+    "3.1.1.2.05.0005 - Serviços de Instalação CLIENTE - IMPLANTAÇÃO": {
+        intervalos: [
+            { inicio: 1, fim: 17 },
+            { inicio: 20, fim: 68 }, 
+	    { inicio: 76, fim: 82 },
+            { inicio: 86, fim: 88}
+        ],
+        especificos: [] // Itens avulsos que também aparecem aqui
+    },
+
+    "3.1.1.2.05.0006 - Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)": {
+        intervalos: [
+	    { inicio: 41, fim: 44 },
+            { inicio: 53, fim: 59 }, 
+            { inicio: 61, fim: 68 },
+	    { inicio: 76, fim: 82 },
+            { inicio: 85, fim: 87}
+        ],
+        especificos: [] 
+    },
+
+    "3.1.1.2.05.0102 - Serviços de Retirada": {
+        intervalos: [
+            { inicio: 18, fim: 19 }, 
+            { inicio: 69, fim: 82 }
+        ],
+        especificos: [] 
+    },
+
+
+    "3.1.1.2.05.0007 - Serviços de Instalação REDE - CONSTRUÇÃO DE REDE": {
+        intervalos: [
+            { inicio: 1, fim: 17 }, 
+            { inicio: 20, fim: 26 }, 
+            { inicio: 29, fim: 52 }, 
+            { inicio: 76, fim: 82},
+            { inicio: 85, fim: 88}
+        ],
+        especificos: []
+    },
+    "3.1.1.2.05.0008 - Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)": {
+        intervalos: [
+            { inicio: 1, fim: 17 },
+            { inicio: 20, fim: 23 },
+            { inicio: 28, fim: 50 }, 
+            { inicio: 76, fim: 82},
+            { inicio: 84, fim: 88}
+        ],
+        especificos: []
+    },
+    "3.1.1.2.05.0101 - Serviços Preventivos": {
+        intervalos: [
+            { inicio: 1, fim: 17 },
+            { inicio: 76, fim: 87}
+        ],
+        especificos: []
+    },
+    "3.1.1.2.05.0103 - Serviços de Melhoria REDE - REPARO PROGRAMADO DE REDE": {
+        intervalos: [
+            { inicio: 1, fim: 17 },
+            { inicio: 20, fim: 26},
+            { inicio: 29, fim: 52},
+            { inicio: 76, fim: 82},
+            { inicio: 85, fim: 88}
+        ],
+        especificos: []
+    }
+
+    // Adicione as outras conforme sua necessidade seguindo o padrão
+};
+
+    let dados = [];
+
+function atualizarListaServicos() {
+    const descContabil = document.getElementById("desc_contabil").value;
+    const container = document.getElementById("item-list");
+    container.innerHTML = '';
+    
+    if (!descContabil || !regrasFiltroCodigos[descContabil]) return;
+
+    const regra = regrasFiltroCodigos[descContabil];
+    lpu.forEach((item, index) => {
+        const numCodigo = parseInt(item.cod.replace(/\D/g, ''));
+        const noIntervalo = regra.intervalos.some(range => numCodigo >= range.inicio && numCodigo <= range.fim);
+        const ehEspecifico = regra.especificos.includes(item.cod);
+
+        if (noIntervalo || ehEspecifico) {
+            const row = document.createElement("div");
+            row.className = "item-row";
+            
+            const valorUnit = item.valor;
+            const valorStr = (valorUnit !== null) ? "R$ " + valorUnit.toFixed(2) : "—";
+            
+            row.innerHTML = '<span class="item-cod">' + item.cod + '</span>' +
+                '<span class="item-desc">' + item.desc + '</span>' +
+                '<select class="item-fator" data-idx="' + index + '"><option value="comum">Comum</option><option value="critico">Crítico</option></select>' +
+                '<span class="item-val" id="val-' + index + '">' + valorStr + '</span>' +
+                '<input type="number" class="item-qty" data-idx="' + index + '" placeholder="0" min="0" step="1" oninput="highlightQty(this)">';
+            
+            container.appendChild(row);
+        }
+    });
+}
+
+function highlightQty(input) {
+    if (parseFloat(input.value) > 0) {
+        input.classList.add("item-qty-filled");
+    } else {
+        input.classList.remove("item-qty-filled");
+    }
+}
+
+
+
+function launchItems() {
+    const inputs = document.querySelectorAll(".item-qty");
+    let added = 0;
+    
+    inputs.forEach(function(input) {
+        const qty = parseFloat(input.value);
+        if (!qty || qty <= 0) return;
+        
+        const idx = parseInt(input.dataset.idx);
+        const item = lpu[idx];
+        
+        // Read fator from this row's select
+        const fatorSelect = input.closest(".item-row").querySelector(".item-fator");
+        const fator = fatorSelect ? fatorSelect.value : "comum";
+        const fatorLabel = fator.charAt(0).toUpperCase() + fator.slice(1);
+        
+        var valorUnitario;
+        
+        if (item.cod === "SEV0086") {
+            var valCustom = parseFloat(prompt("SEV0086 - Valor do reembolso por unidade (R$):"));
+            if (isNaN(valCustom) || valCustom <= 0) return;
+            valorUnitario = valCustom;
+        } else {
+            valorUnitario = (fator === "critico") ? item.valorCritico : item.valor;
+        }
+        
+        dados.push({
+            codigo: item.cod,
+            descricao: item.desc,
+            classe: item.classe,
+            fator: fatorLabel,
+            medida: item.medida,
+            valor: valorUnitario,
+            qtd: qty,
+            total: valorUnitario * qty
+        });
+        
+        input.value = '';
+        input.classList.remove("item-qty-filled");
+        added++;
+    });
+    
+    if (added === 0) {
+        alert("Preencha a quantidade em pelo menos um item.");
+        return;
+    }
+    
+    render();
+}
+
+    let listaFotos = []; 
+    let fotoCounter = 0;
+
+    function previewFotos() {
+        const input = document.getElementById("fotos");
+        if (!input.files) return;
+
+        Array.from(input.files).forEach((file) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const id = fotoCounter++;
+                listaFotos.push({
+                    id: id,
+                    src: e.target.result,
+                    comentario: ''
+                });
+                renderFotos();
+            }
+            reader.readAsDataURL(file);
+        });
+        // Reset input para permitir subir as mesmas fotos novamente se necessário
+        input.value = '';
+    }
+
+    function renderFotos() {
+        const container = document.getElementById("container-previa-fotos");
+        container.innerHTML = "";
+        listaFotos.forEach(function(foto, index) {
+            var div = document.createElement("div");
+            div.className = "foto-preview-card";
+
+            var img = document.createElement("img");
+            img.src = foto.src;
+
+            var mid = document.createElement("div");
+            mid.style.cssText = "flex:1;display:flex;flex-direction:column;gap:4px";
+            
+            var lbl = document.createElement("label");
+            lbl.style.cssText = "font-size:10px;font-weight:700;color:#6b7585;text-transform:uppercase;letter-spacing:.5px";
+            lbl.textContent = "Foto " + (index + 1);
+
+            var inp = document.createElement("input");
+            inp.type = "text";
+            inp.value = foto.comentario;
+            inp.placeholder = "Legenda da foto...";
+            (function(f) { inp.addEventListener("input", function() { f.comentario = this.value; }); })(foto);
+
+            var fldDiv = document.createElement("div");
+            fldDiv.className = "fld";
+            fldDiv.appendChild(lbl);
+            fldDiv.appendChild(inp);
+            mid.appendChild(fldDiv);
+
+            var btnRm = document.createElement("button");
+            btnRm.textContent = "\u2715 Remover";
+            btnRm.title = "Remover foto";
+            btnRm.style.cssText = "background:#f5e8e8;color:#c0392b;border:1px solid #e0c0c0;cursor:pointer;font-size:11px;font-weight:700;padding:6px 12px;border-radius:6px;font-family:inherit;white-space:nowrap;align-self:flex-start";
+            (function(fid) { btnRm.addEventListener("click", function() { removerFoto(fid); }); })(foto.id);
+
+            div.appendChild(img);
+            div.appendChild(mid);
+            div.appendChild(btnRm);
+            container.appendChild(div);
+        });
+    }
+
+    function removerFoto(id) {
+        listaFotos = listaFotos.filter(f => f.id !== id);
+        renderFotos();
+    }
+
+
+    function render() {
+        let tb = document.getElementById("tabela");
+        tb.innerHTML = "";
+        let totalGeral = 0;
+        let classes = [...new Set(dados.map(d => d.classe))];
+
+        classes.forEach(c => {
+            let sub = 0;
+            dados.filter(d => d.classe === c).forEach((d) => {
+                sub += d.total; 
+                totalGeral += d.total;
+                tb.innerHTML += `<tr>
+                    <td>${d.codigo}</td>
+                    <td>${d.descricao}</td>
+                    <td>${d.fator}</td>
+                    <td>${d.classe}</td>
+                    <td>${d.medida}</td>
+                    <td>R$ ${d.valor.toFixed(2)}</td>
+                    <td>${d.qtd}</td>
+                    <td>R$ ${d.total.toFixed(2)}</td>
+                    <td><button class="btn-remove" onclick="removerItem(${dados.indexOf(d)})">✕</button></td>
+                </tr>`;
+            });
+            tb.innerHTML += `<tr class="row-subtotal"><td colspan="7">Subtotal ${c}</td><td colspan="2">R$ ${sub.toFixed(2)}</td></tr>`;
+        });
+        document.getElementById("total-geral-box").innerText = `Total Geral: R$ ${totalGeral.toFixed(2)}`;
+    }
+
+    function removerItem(index) {
+        dados.splice(index, 1);
+        render();
+    }
+
+    // Monta o documento jsPDF (identificação + itens + assinatura + fotos) sem salvar —
+    // reaproveitado tanto pelo botão "Gerar Relatório PDF" (cópia local) quanto pelo
+    // "Concluído" (sobe o mesmo PDF pro backend, pra virar o relatório que o aprovador
+    // e a Medição abrem pra revisar, em vez de vasculhar foto por foto).
+    async function montarDocumentoPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const larguraFolha = 210;
+        const alturaFolha = 297;
+        const m = 15;
+        const larg = larguraFolha - m*2;
+        let totalFinal = 0;
+
+        const hoje = new Date();
+        const dataRelatorio = hoje.toLocaleDateString('pt-BR');
+        const formatarData = (data) => data ? data.split('-').reverse().join('/') : "--/--/----";
+
+        const empresa = document.getElementById("empresa").value;
+        const cnpj = document.getElementById("cnpj").value;
+        const tecnicos = document.getElementById("tecnicos").value;
+        const cliente = document.getElementById("cliente").value;
+        const etiqueta = document.getElementById("etiqueta").value;
+        const cidade = document.getElementById("cidade").value;
+        const dInicio = formatarData(document.getElementById("data_inicio").value);
+        const dFim = formatarData(document.getElementById("data_fim").value);
+        const descContabil = document.getElementById("desc_contabil").value || "NÃO INFORMADO";
+
+        // ── HEADER com logo ──
+        try { doc.addImage(LOGO, 'JPEG', m, 10, 40, 18); } catch(e) {}
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(61, 61, 61);
+        doc.text("Relatório de Prestação de Serviços", 60, 20);
+
+        // Linha verde separadora
+        doc.setDrawColor(140, 191, 63);
+        doc.setLineWidth(0.8);
+        doc.line(m, 32, larguraFolha - m, 32);
+
+        // ── TABELA DE IDENTIFICAÇÃO ──
+        doc.autoTable({
+            startY: 36,
+            body: [
+                [{content:'Empresa', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:empresa, styles:{fontSize:9}}, {content:'CNPJ', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:cnpj, styles:{fontSize:9}}],
+                [{content:'Técnicos', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:tecnicos, styles:{fontSize:9}}, {content:'Cidade', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:cidade, styles:{fontSize:9}}],
+                [{content:'Cliente / POP', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:cliente, styles:{fontSize:9}}, {content:'ID / Etiqueta', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:etiqueta, styles:{fontSize:9}}],
+                [{content:'Período', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:`${dInicio}  a  ${dFim}`, styles:{fontSize:9}}, {content:'Data Relatório', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:dataRelatorio, styles:{fontSize:9}}],
+                [{content:'Descrição Contábil', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:descContabil, colSpan:3, styles:{fontSize:8,fontStyle:'bold',textColor:[140,191,63]}}],
+            ],
+            theme: 'grid',
+            styles: { cellPadding:3, lineColor:[212,221,216], lineWidth:0.3 },
+            columnStyles: { 0:{cellWidth:28}, 2:{cellWidth:28} },
+            margin: { left: m, right: m }
+        });
+
+        let y = doc.lastAutoTable.finalY + 8;
+
+        // ── TABELAS DE ITENS POR CLASSE ──
+        const classes = [...new Set(dados.map(d => d.classe))];
+
+        classes.forEach(c => {
+            const itens = dados.filter(d => d.classe === c);
+            const sub = itens.reduce((acc, curr) => acc + curr.total, 0);
+            totalFinal += sub;
+
+            doc.autoTable({
+                startY: y,
+                head: [['Cód.', 'Descrição', 'Fator', 'Classe', 'Med.', 'V. Unit', 'Qtd', 'Total']],
+                body: itens.map(d => [d.codigo, d.descricao, d.fator, d.classe, d.medida, `R$ ${d.valor.toFixed(2)}`, d.qtd, `R$ ${d.total.toFixed(2)}`]),
+                foot: [[{content:`Subtotal ${c}:`, colSpan:7, styles:{halign:'right',fontStyle:'bold',fillColor:[244,249,236],textColor:[140,191,63]}}, {content:`R$ ${sub.toFixed(2)}`, styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[140,191,63]}}]],
+                theme: 'grid',
+                headStyles: { fillColor: [140, 191, 63], textColor: [255,255,255], fontSize:7, fontStyle:'bold' },
+                bodyStyles: { fontSize: 7 },
+                footStyles: { fontSize: 8 },
+                styles: { cellPadding:2.5, lineColor:[212,221,216], lineWidth:0.3 },
+                alternateRowStyles: { fillColor: [250, 252, 247] },
+                margin: { left: m, right: m }
+            });
+            y = doc.lastAutoTable.finalY + 6;
+        });
+
+        // ── TOTAL GERAL ──
+        doc.setDrawColor(140, 191, 63);
+        doc.setLineWidth(0.6);
+        doc.line(larguraFolha - m - 70, y, larguraFolha - m, y);
+        y += 6;
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(140, 191, 63);
+        doc.text(`TOTAL GERAL: R$ ${totalFinal.toFixed(2)}`, larguraFolha - m, y, { align: 'right' });
+
+        // ── ASSINATURAS (após total geral) ──
+        y += 20;
+        if (y + 30 > alturaFolha - 20) { doc.addPage(); y = 30; }
+        // Nome + data + hora preenchidos automaticamente pelo login do técnico (não é
+        // mais uma linha em branco pra assinar à mão)
+        const assinaturaAuto = TECNICO_LOGADO ? montarAssinaturaAuto() : '';
+        if (assinaturaAuto) {
+            doc.setFontSize(8.5);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(60, 60, 60);
+            doc.text(assinaturaAuto, 52.5, y - 3, { align: "center" });
+        }
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.3);
+        doc.line(m, y, 90, y);
+        doc.setFontSize(8);
+        doc.setTextColor(107, 117, 133);
+        doc.setFont("helvetica", "normal");
+        doc.text("Assinatura Prestador", 52.5, y + 5, { align: "center" });
+        doc.line(120, y, larguraFolha - m, y);
+        doc.text("Aprovador", 157.5, y + 5, { align: "center" });
+
+        // ── RELATÓRIO FOTOGRÁFICO ──
+        if (listaFotos.length > 0) {
+            doc.addPage();
+            // Header verde na página de fotos
+            doc.setFillColor(140, 191, 63);
+            doc.roundedRect(m, 8, larg, 10, 2, 2, 'F');
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(255);
+            doc.text("RELATÓRIO FOTOGRÁFICO", larguraFolha / 2, 15, { align: 'center' });
+
+            let fotoNoSlide = 0;
+            const fotoW = (larg - 10) / 2;
+            const fotoH = 115;
+            for (var i = 0; i < listaFotos.length; i++) {
+                const restantes = listaFotos.length - i;
+                const limitePagina = (restantes + fotoNoSlide <= 2) ? 2 : 4;
+                if (fotoNoSlide === limitePagina) {
+                    doc.addPage();
+                    fotoNoSlide = 0;
+                    doc.setFillColor(140, 191, 63);
+                    doc.roundedRect(m, 8, larg, 10, 2, 2, 'F');
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "bold");
+                    doc.setTextColor(255);
+                    doc.text("RELATÓRIO FOTOGRÁFICO", larguraFolha / 2, 15, { align: 'center' });
+                }
+                const coluna = fotoNoSlide % 2;
+                const linha = Math.floor(fotoNoSlide / 2);
+                const posX = m + (coluna * (fotoW + 10));
+                const posY = 25 + (linha * (fotoH + 18));
+                try { doc.addImage(listaFotos[i].src, 'JPEG', posX, posY, fotoW, fotoH); } catch(e) {}
+                doc.setDrawColor(212, 221, 216);
+                doc.setLineWidth(0.3);
+                doc.rect(posX, posY, fotoW, fotoH);
+                const comentario = listaFotos[i].comentario || `Registro ${i + 1}`;
+                doc.setFontSize(8);
+                doc.setTextColor(107, 117, 133);
+                doc.setFont("helvetica", "italic");
+                doc.text(comentario, posX + fotoW / 2, posY + fotoH + 5, { align: "center", maxWidth: fotoW });
+                fotoNoSlide++;
+            }
+        }
+
+        // ── FOOTER em todas as páginas ──
+        const pages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pages; i++) {
+            doc.setPage(i);
+            doc.setFontSize(7);
+            doc.setTextColor(170);
+            doc.setFont("helvetica", "normal");
+            doc.text("Relatório de Prestação de Serviços", m, alturaFolha - 8);
+            doc.text(`Página ${i} de ${pages}`, larguraFolha - m, alturaFolha - 8, { align: 'right' });
+            // Thin green line
+            doc.setDrawColor(140, 191, 63);
+            doc.setLineWidth(0.4);
+            doc.line(m, alturaFolha - 12, larguraFolha - m, alturaFolha - 12);
+        }
+
+        return { doc, totalFinal };
+    }
+
+    function nomeArquivoPDF(totalFinal){
+        const _empresa = (document.getElementById("empresa").value||"LPU").replace(/\s+/g,"_");
+        const _etiqueta = (document.getElementById("etiqueta").value||"").replace(/\s+/g,"_");
+        const _descRaw = document.getElementById("desc_contabil").value||"";
+        const _descCode = _descRaw.split(" - ")[0].replace(/\s+/g,"").replace(/\./g,"-") || "";
+        const _dataRel = new Date().toLocaleDateString("pt-BR").replace(/\//g,"-");
+        const _totalStr = "R$" + totalFinal.toFixed(2).replace(".",",");
+        const _parts = [_empresa, _etiqueta, _descCode, _dataRel, _totalStr].filter(Boolean);
+        return `${_parts.join("_")}.pdf`;
+    }
+
+    async function gerarPDF() {
+        const { doc, totalFinal } = await montarDocumentoPDF();
+        doc.save(nomeArquivoPDF(totalFinal));
+    }
+
+
+// ══════════════════════════════════════════════════════════════
+// LOGIN — reaproveita a mesma sessão (sessionStorage) e o mesmo backend do
+// tecnico.html. Acesso restrito a prestadoras terceiras: NETTURBO não preenche LPU.
+// ══════════════════════════════════════════════════════════════
+let TECH_MAP = {};
+let TECNICO_LOGADO = '';
+let EMPRESA_LOGADA = '';
+
+function popularEmpresas(){
+    // Sem NETTURBO na lista — mão de obra própria não passa por cobrança de LPU
+    const opts = '<option value="">Selecione...</option>' + Object.keys(TECH_MAP).filter(e => e !== 'NETTURBO').map(e=>`<option value="${e}">${e}</option>`).join('');
+    document.getElementById('selEmpresa').innerHTML = opts;
+}
+
+async function carregarTecnicos(){
+    try{
+        const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS');
+        const result = await resp.json();
+        TECH_MAP = result.empresas || {};
+    }catch(err){
+        console.error('Não foi possível carregar a lista de técnicos:', err);
+    }
+    popularEmpresas();
+}
+carregarTecnicos();
+
+window.atualizarTecnicosLogin = function(){
+    const empresa = document.getElementById('selEmpresa').value;
+    const nomes = TECH_MAP[empresa] || [];
+    document.getElementById('selTecnico').innerHTML = '<option value="">Selecione...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
+};
+
+function mostrarErroLogin(msg){
+    const el = document.getElementById('erroLogin');
+    el.textContent = msg;
+    el.classList.add('visible');
+}
+
+function getRowIndexDaURL(){
+    const params = new URLSearchParams(window.location.search);
+    return params.get('rowIndex') || '';
+}
+
+// Quando aberta a partir do card de apoio (tecnico.html), a URL traz ?tipoLpu=apoio —
+// aí o envio grava nas colunas "LPU Apoio *" em vez de "LPU *" (mesmo formulário,
+// mesmo fluxo, só muda o conjunto de colunas gravado no backend).
+function getTipoLpuDaURL(){
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tipoLpu') === 'apoio' ? 'apoio' : 'titular';
+}
+
+// Preenche Cliente/Cidade/Etiqueta a partir da atividade de origem (quando a LPU foi
+// aberta a partir de "Minhas Atividades", com ?rowIndex= na URL). Reaproveita
+// LISTAR_ATIVIDADES_TECNICO, que já traz essa atividade pro técnico logado.
+async function prefillDaAtividade(rowIndex){
+    try{
+        const url = APPS_SCRIPT_URL + '?acao=LISTAR_ATIVIDADES_TECNICO&empresa=' + encodeURIComponent(EMPRESA_LOGADA) + '&tecnico=' + encodeURIComponent(TECNICO_LOGADO);
+        const resp = await fetch(url);
+        const result = await resp.json();
+        const atividade = (result.atividades || []).find(a => String(a.rowIndex) === String(rowIndex));
+        if(!atividade) return;
+        document.getElementById('cliente').value = atividade['Cliente'] || '';
+        document.getElementById('cidade').value = atividade['Cidade Falha'] || '';
+        document.getElementById('etiqueta').value = atividade['Protocolo O&M'] || atividade['Protocolo NOC'] || '';
+    }catch(err){ console.error(err); }
+}
+
+function montarAssinaturaAuto(){
+    const agora = new Date();
+    const dataBR = agora.toLocaleDateString('pt-BR');
+    const horaBR = ('0'+agora.getHours()).slice(-2) + ':' + ('0'+agora.getMinutes()).slice(-2);
+    return `${TECNICO_LOGADO} — ${dataBR} ${horaBR}`;
+}
+
+function atualizarAssinaturaAutoTexto(){
+    const el = document.getElementById('assinaturaAutoTexto');
+    if(el) el.innerHTML = '<b>' + montarAssinaturaAuto() + '</b>';
+}
+
+function liberarApp(){
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('empresa').value = EMPRESA_LOGADA;
+    document.getElementById('tecnicos').value = TECNICO_LOGADO;
+    if(getTipoLpuDaURL() === 'apoio'){
+        const sub = document.querySelector('.fhd .hi p');
+        if(sub) sub.textContent = 'Preenchimento LPU · Equipe de Apoio';
+    }
+    const rowIndex = getRowIndexDaURL();
+    if(rowIndex) prefillDaAtividade(rowIndex);
+    atualizarAssinaturaAutoTexto();
+}
+
+window.fazerLogin = async function(){
+    const empresa = document.getElementById('selEmpresa').value;
+    const tecnico = document.getElementById('selTecnico').value;
+    const pin = document.getElementById('inputPin').value.trim();
+    const complemento = document.getElementById('inputComplemento').value;
+    const erroEl = document.getElementById('erroLogin');
+    erroEl.classList.remove('visible');
+
+    if(!empresa || !tecnico || !pin || !complemento){ mostrarErroLogin('Preencha empresa, técnico, PIN e complemento.'); return; }
+    if(empresa === 'NETTURBO'){ mostrarErroLogin('Este relatório é exclusivo para prestadoras terceiras.'); return; }
+
+    try{
+        const resp = await fetch(APPS_SCRIPT_URL, {
+            method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+            body: JSON.stringify({ acao:'LOGIN_TECNICO', empresa, tecnico, pin, complemento })
+        });
+        const result = await resp.json();
+        if(result.status !== 'ok'){ mostrarErroLogin(result.message || 'Não foi possível entrar.'); return; }
+
+        TECNICO_LOGADO = tecnico;
+        EMPRESA_LOGADA = empresa;
+        sessionStorage.setItem('esteira_tecnico_logado', tecnico);
+        sessionStorage.setItem('esteira_empresa_logada', empresa);
+        liberarApp();
+    }catch(err){
+        console.error(err);
+        mostrarErroLogin('Erro ao conectar com o servidor.');
+    }
+};
+
+// Se o técnico já entrou em Minhas Atividades (tecnico.html) nesta mesma sessão do
+// navegador, entra direto aqui sem pedir PIN/senha de novo. Se a sessão salva for de
+// uma conta NETTURBO, bloqueia — LPU é só pra prestadoras terceiras.
+(function tentarSessaoExistente(){
+    const salvo = sessionStorage.getItem('esteira_tecnico_logado');
+    const salvoEmpresa = sessionStorage.getItem('esteira_empresa_logada');
+    if(salvo && salvoEmpresa){
+        if(salvoEmpresa === 'NETTURBO'){
+            document.getElementById('boxLoginLpu').style.display = 'none';
+            document.getElementById('boxBloqueado').style.display = 'flex';
+            return;
+        }
+        TECNICO_LOGADO = salvo;
+        EMPRESA_LOGADA = salvoEmpresa;
+        liberarApp();
+    }
+})();
+
+// ══════════════════════════════════════════════════════════════
+// ENVIO — gera o mesmo PDF do relatório e manda pro backend, vinculado à
+// atividade de origem (rowIndex). Fica pendente de aprovação do despacho e
+// depois da Medição.
+// ══════════════════════════════════════════════════════════════
+window.concluirLPU = async function(){
+    const rowIndex = getRowIndexDaURL();
+    if(!rowIndex){
+        alert('Este preenchimento não está vinculado a nenhuma atividade da esteira. Abra a LPU a partir de um chamado em "Minhas Atividades".');
+        return;
+    }
+    if(!dados.length){ alert('Lance pelo menos um item antes de concluir.'); return; }
+
+    const btn = document.getElementById('btnConcluir');
+    btn.disabled = true; btn.textContent = 'Gerando relatório...';
+    atualizarAssinaturaAutoTexto();
+
+    try{
+        // Monta o mesmo PDF do botão "Gerar Relatório PDF" e sobe pro backend — é ele que
+        // o aprovador e a Medição abrem pra revisar (identificação + itens + fotos já
+        // formatados), em vez de ficar clicando foto por foto numa lista solta.
+        const { doc } = await montarDocumentoPDF();
+        const relatorioPdfBase64 = doc.output('datauristring');
+        btn.textContent = 'Enviando...';
+
+        const payload = {
+            acao: 'SALVAR_LPU_ATIVIDADE',
+            tipoLpu: getTipoLpuDaURL(),
+            rowIndex,
+            empresaPrestadora: document.getElementById('empresa').value,
+            cnpj: document.getElementById('cnpj').value,
+            tecnicos: document.getElementById('tecnicos').value,
+            cliente: document.getElementById('cliente').value,
+            etiqueta: document.getElementById('etiqueta').value,
+            cidade: document.getElementById('cidade').value,
+            descricaoContabil: document.getElementById('desc_contabil').value,
+            itens: dados,
+            observacoes: document.getElementById('obs').value,
+            relatorioPdfBase64,
+            assinaturaPrestador: montarAssinaturaAuto()
+        };
+
+        const resp = await fetch(APPS_SCRIPT_URL, {
+            method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        if(result.status !== 'ok'){
+            alert(result.message || 'Erro ao enviar a LPU.');
+            btn.disabled = false; btn.textContent = 'Concluído — Enviar para Validação';
+            return;
+        }
+
+        alert('LPU enviada para validação com sucesso!');
+        window.location.href = 'tecnico.html';
+    }catch(err){
+        console.error(err);
+        alert('Erro ao conectar com o servidor.');
+        btn.disabled = false; btn.textContent = 'Concluído — Enviar para Validação';
+    }
+};
+
+// Inicialização
+window.onload = () => {
+    document.getElementById("desc_contabil").addEventListener("change", atualizarListaServicos);
+    atualizarListaServicos();
+    document.getElementById("data_inicio").valueAsDate = new Date();
+};
+
+</script>
+</body>
+</html>

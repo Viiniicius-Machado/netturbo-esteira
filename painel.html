@@ -30,7 +30,6 @@
     .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:1.8rem}
     .hub-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.4rem;display:flex;flex-direction:column;gap:.6rem;text-decoration:none;color:var(--text);transition:border-color .15s ease,transform .15s ease}
     .hub-card:hover{border-color:var(--accent);transform:translateY(-2px)}
-    .hub-icon{width:44px;height:44px;border-radius:10px;background:var(--accent-dim,rgba(168,201,60,.1));display:flex;align-items:center;justify-content:center;font-size:1.4rem}
     .hub-title{font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:700;letter-spacing:.02em}
     .hub-desc{font-size:.78rem;color:var(--text-dim);line-height:1.5;flex:1}
     .hub-abrir{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.3rem;margin-top:.3rem}
@@ -56,21 +55,43 @@
 
   <div class="card-grid">
     <a class="hub-card" href="index.html">
-      <div class="hub-icon">📋</div>
       <div class="hub-title">Esteira de Despacho</div>
       <div class="hub-desc">Cadastro e acompanhamento das atividades — quadro Aguardando / Despachada, para o time de despacho.</div>
       <div class="hub-abrir">Abrir →</div>
     </a>
     <a class="hub-card" href="dashboard_gestao.html">
-      <div class="hub-icon">📊</div>
       <div class="hub-title">Dashboard de Gestão</div>
       <div class="hub-desc">Indicadores da operação — SLA, eficiência, MTTR/MTTD, produção por empresa e ranking de causas. Acesso restrito à liderança.</div>
       <div class="hub-abrir">Abrir →</div>
     </a>
     <a class="hub-card" href="tecnico.html">
-      <div class="hub-icon">🛠️</div>
       <div class="hub-title">Minhas Atividades</div>
       <div class="hub-desc">App do técnico em campo — início, chegada, registro de ocorrência e relatório de atendimento.</div>
+      <div class="hub-abrir">Abrir →</div>
+    </a>
+    <a class="hub-card" href="manutencao_preventiva.html">
+      <div class="hub-title">Manutenção Preventiva</div>
+      <div class="hub-desc">Relatório fotográfico de preventiva em rede externa, com geração de PDF. Acesso do técnico (mesmo login de Minhas Atividades).</div>
+      <div class="hub-abrir">Abrir →</div>
+    </a>
+    <a class="hub-card" href="fiscal_v2.html">
+      <div class="hub-title">Fiscalização</div>
+      <div class="hub-desc">Checklist de fiscalização em campo, com fotos e assinatura — geração de PDF. Acesso da liderança.</div>
+      <div class="hub-abrir">Abrir →</div>
+    </a>
+    <a class="hub-card" href="jornada_excedente.html">
+      <div class="hub-title">Jornada Excedente</div>
+      <div class="hub-desc">Registro de horas excedentes de jornada, com assinaturas — geração de PDF. Acesso da liderança.</div>
+      <div class="hub-abrir">Abrir →</div>
+    </a>
+    <a class="hub-card" href="PREENCHIMENTO_LPU.html">
+      <div class="hub-title">Preenchimento LPU</div>
+      <div class="hub-desc">Cobrança de serviços prestados (LPU), vinculada aos chamados validados. Acesso de técnicos de prestadoras terceiras (mesmo login de Minhas Atividades) — NETTURBO não acessa.</div>
+      <div class="hub-abrir">Abrir →</div>
+    </a>
+    <a class="hub-card" href="medicao.html">
+      <div class="hub-title">Medição</div>
+      <div class="hub-desc">Aprovação final das LPUs e fechamento financeiro — soma por prestadora, por descrição contábil e CAPEX/OPEX. Acesso restrito à liderança.</div>
       <div class="hub-abrir">Abrir →</div>
     </a>
   </div>
