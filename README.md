@@ -7,7 +7,7 @@ Sistema web para gestão de despacho, acompanhamento de atendimentos técnicos d
 O projeto é composto por várias telas independentes, cada uma com login próprio. `painel.html` é o hub de acesso rápido a todas elas.
 
 ### `painel.html` — Painel
-Hub central de acesso rápido a todas as telas abaixo, com cards agrupados em três seções (Operação, Financeiro/LPU, Liderança) e busca que filtra os cards em tempo real. Usa a mesma barra superior (`.topbar`) compartilhada por todas as outras telas — ver Arquitetura.
+Hub central de acesso rápido a todas as telas abaixo, com cards agrupados em três seções (Operação, Financeiro/LPU, Liderança) e busca que filtra os cards em tempo real. Sidebar fixa com 4 opções de navegação — Geral (rola pro topo), Operação, Financeiro/LPU e Liderança (rolam até a seção correspondente) — com destaque automático da seção visível ao rolar a página. Usa a mesma barra superior (`.topbar`) compartilhada por todas as outras telas — ver Arquitetura.
 
 ### `index.html` — Esteira de Despacho
 Tela do time de despacho/atendimento.
@@ -16,6 +16,7 @@ Tela do time de despacho/atendimento.
 - Quadro (kanban) com colunas **Aguardando** e **Despachada**, com edição inline dos chamados.
 - Fila de validação técnica (NOC) e fila de aprovação de LPU (despacho), com link direto pro relatório PDF de cada LPU.
 - Atualização automática da esteira via polling na API.
+- Disponibilidade da mão de obra: card (colapsável) para marcar um técnico como Inativo, Férias, Treinamento, Suspensão Disciplinar, Atestado ou Manutenção de Frota, por um período — técnico com um período cobrindo o dia de hoje some de verdade do seletor de despacho (bloqueio real, não só aviso), com aviso de quantos ficaram ocultos.
 
 ### `tecnico.html` — Minhas Atividades
 App mobile-first usado pelo técnico em campo (titular ou equipe de apoio).
@@ -30,7 +31,8 @@ App mobile-first usado pelo técnico em campo (titular ou equipe de apoio).
 ### `PREENCHIMENTO_LPU.html` — Preenchimento LPU
 Formulário de cobrança (LPU) vinculado a um chamado já validado. Acesso de técnicos de prestadoras terceiras (mesma sessão de login de `tecnico.html`) — empresas em `EMPRESAS_SEM_LPU` (hoje NETTURBO e QUALITY, ver seção de LPU abaixo) não entram. Quando a empresa tem um técnico responsável centralizando a LPU (`RESPONSAVEL_LPU_POR_EMPRESA`, ver abaixo), só ele aparece no seletor de técnico — os demais nem conseguem selecionar a própria empresa pra logar aqui.
 - Lançamento de itens de serviço (código, descrição, classe, quantidade) com cálculo automático de subtotal por classe e total geral. Descrição Contábil inclui "Consultoria de Regularização" e "Serviços de Melhoria de REDE" (código 0008, adicionadas em 2026-07-22) — a lista de itens disponível pra cada descrição é filtrada por `regrasFiltroCodigos`; descrições sem regra própria ficam sem itens pra escolher.
-- Assinatura do prestador preenchida automaticamente (técnico logado + data/hora).
+- CNPJ da empresa prestadora preenchido automaticamente a partir do login (VAL, SOLUTEC, OLIVEIRA, PV), sem precisar digitar toda vez.
+- Assinatura do prestador: nome + data/hora preenchidos automaticamente, mas o envio só libera depois de um clique obrigatório em "Assinar" — esse clique incrementa um contador histórico (vitalício, nunca reseta) de assinaturas daquele técnico, exibido junto no documento ("Assinatura Nº X").
 - Gera um relatório em PDF (identificação + itens + fotos) e sobe pro Google Drive — é esse PDF que o aprovador e a Medição revisam depois, em vez de uma lista de fotos solta.
 - Também usado pela equipe de apoio (`?tipoLpu=apoio` na URL), quando ela decide que teve cobrança própria — ver seção de LPU abaixo.
 
@@ -38,8 +40,14 @@ Formulário de cobrança (LPU) vinculado a um chamado já validado. Acesso de t�
 Aprovação final das LPUs e fechamento financeiro. Acesso restrito à liderança, com senha compartilhada + seletor "Validando como" (Pamela Silva, Mariana Cruz, Giselle Silva) pra identificar quem de fato aprovou/confirmou cada ação — obrigatório antes de aprovar, reprovar, confirmar pagamento ou reprovar um fechamento.
 - Fila de LPUs aguardando aprovação da Medição, com link pro relatório PDF.
 - Fechamentos aguardando pagamento: um card por Nota Fiscal anexada pelo prestador (ver `fechamento_lpu.html`), com o valor total do lote. Dois botões: **Confirmar Pagamento** (marca todas as atividades do lote como `PAGO`) ou **Reprovar** (NF errada/ilegível/valor divergente etc. — desfaz a NF anexada, a atividade volta a aparecer como "Pendente de Fechamento" pro prestador em `fechamento_lpu.html`, com o motivo visível; a aprovação da Medição em si não é desfeita).
-- Dashboard financeiro do mês: total de LPUs geradas, CAPEX/OPEX, valor por prestadora, valor por descrição contábil.
-- Orçamento por descrição contábil: acompanha, para as descrições com um teto configurado, quanto já foi comprometido (LPUs preenchidas) e aprovado (Medição) contra o orçamento do mês, com saldo projetado. Orçamentos e classificação CAPEX/OPEX confirmados com a liderança em 2026-07-22.
+- Descritivo das Atividades: tabela do mês filtrado com tudo que já teve LPU gerada, com botão de exportar Excel. A visão financeira completa (orçamento, CAPEX/OPEX, valor por prestadora/descrição contábil) migrou para `dashboard_medicao.html` — ver abaixo.
+
+### `dashboard_medicao.html` — Dashboard Medição
+Visão financeira da LPU por prestadora, a pedido da gerência (2026-07-24). Acesso restrito à liderança. Considera só o que já foi aprovado pela Medição (`APROVADO_AGUARDANDO_NF` ou `PAGO`, pago ou não).
+- Total aprovado e lançado no mês.
+- Mão de Obra Terceiras: ranking por prestadora com valor, quantidade de atividades e ticket médio (valor total ÷ quantidade de obras) — NETTURBO fica de fora (mão de obra própria, não passa por LPU).
+- Descrição Contábil: ranking por conta contábil.
+- Gasto por Semana: mesmo formato de ranking, mas por semana dentro do mês selecionado (Semana 1 = dias 1-7, etc.), em ordem cronológica.
 
 ### `fechamento_lpu.html` — Fechamento LPU
 Fase 2 do fluxo de LPU: emissão de Nota Fiscal e pagamento. Acesso de técnicos de prestadoras terceiras (mesma sessão de login de `tecnico.html`) — mesmas restrições de `EMPRESAS_SEM_LPU` e `RESPONSAVEL_LPU_POR_EMPRESA` do Preenchimento LPU acima.
@@ -52,9 +60,11 @@ Painel gerencial para acompanhamento de indicadores. Acesso restrito à lideran�
 - Filtro por mês e KPIs gerais da operação (pipeline de status).
 - Eficiência (SLA), MTTR, MTTD e TMC médios contra a meta — cada card é clicável e abre uma sub-página com as 3 atividades mais rápidas e as 3 mais críticas daquele indicador.
 - IRR (Índice de Recursos Repetitivos, meta ≤10%): % de ROMPIMENTOs do mês em que o mesmo cliente já tinha tido outro ROMPIMENTO validado nos 30 dias anteriores (base de cálculo é só ROMPIMENTO). Card clicável abre o detalhe por cliente — quantos atendimentos na cadeia, técnico e causa de cada um, e um alerta quando duas visitas seguidas foram no mesmo local (Endereço, com GPS Falha como desempate). No `tecnico.html`, a mesma lógica aparece como IRR pessoal no resumo mensal — a repetição é creditada a quem atendeu ANTES, não a quem herdou o problema depois: se o cliente ligou de novo dentro de 30 dias, é sinal de que aquele reparo não segurou. O técnico da visita seguinte só é responsabilizado se houver uma nova chamada dentro de 30 dias da visita dele.
-- Produção por empresa e ranking de causas.
+- Ocorrências no mês, Cidades com Mais Atividades, Causas Mais Comuns e Produção por Empresa — listas ranqueadas em barra.
 - Tabela detalhada de todas as atividades.
 - Exportação dos dados para Excel (via `xlsx.js`).
+- Budget do Mês (terceiros): valor registrável pela própria tela a cada mês (histórico, nunca sobrescreve), com saldo de LPU por prestadora (aprovado no mês, pago ou não) logo abaixo — resumo clicável que abre o valor de cada terceiro numa subtela.
+- Efetividade da Mão de Obra: um card por empresa (média dos técnicos dela) mostrando o % de dias disponíveis no mês — nunca mostra 100% cheio se algum técnico tiver período de indisponibilidade registrado naquele mês, mesmo que o impacto na média arredonde pra cima. Clique abre o técnico a técnico com o motivo de cada afastamento.
 
 ### `manutencao_preventiva.html` — Manutenção Preventiva
 Relatório fotográfico de preventiva em rede externa, com geração de PDF. Acesso do técnico (mesma sessão de login de `tecnico.html`).
@@ -116,8 +126,9 @@ A Medição também pode reprovar o fechamento já com NF anexada (NF errada/ile
 
 ```
 painel.html / index.html / tecnico.html / dashboard_gestao.html /
-PREENCHIMENTO_LPU.html / medicao.html / fechamento_lpu.html /
-manutencao_preventiva.html / jornada_excedente.html / fiscal_v2.html
+PREENCHIMENTO_LPU.html / medicao.html / dashboard_medicao.html /
+fechamento_lpu.html / manutencao_preventiva.html /
+jornada_excedente.html / fiscal_v2.html
               │
               │  fetch (GET/POST) — parâmetro "acao"
               ▼
@@ -127,7 +138,7 @@ manutencao_preventiva.html / jornada_excedente.html / fiscal_v2.html
         Google Sheets (dados)
 ```
 
-Todas as páginas consomem o mesmo backend (`APPS_SCRIPT_URL`, definido no `<script>` de cada arquivo), através de ações como `LISTAR_ESTEIRA`, `LISTAR_TECNICOS`, `LISTAR_ATIVIDADES_TECNICO`, `RESUMO_DIARIO_TECNICO`, `RESUMO_MENSAL_TECNICO`, `SALVAR_LPU_ATIVIDADE`, `VALIDAR_LPU_APROVADOR`, `VALIDAR_LPU_MEDICAO`, `DECIDIR_LPU_APOIO`, `FECHAR_LPU_NF`, `LISTAR_LPU_FECHAMENTO`, `LISTAR_LPU_PAGAMENTO`, `MARCAR_LPU_PAGO`, `REPROVAR_LPU_NF`, `LPU_OBTER_PDF`, `LPU_ATUALIZAR_PDF`, entre outras. Não há backend próprio nem banco de dados neste repositório — a lógica de persistência vive no Apps Script/planilha vinculados.
+Todas as páginas consomem o mesmo backend (`APPS_SCRIPT_URL`, definido no `<script>` de cada arquivo), através de ações como `LISTAR_ESTEIRA`, `LISTAR_TECNICOS`, `LISTAR_ATIVIDADES_TECNICO`, `RESUMO_DIARIO_TECNICO`, `RESUMO_MENSAL_TECNICO`, `SALVAR_LPU_ATIVIDADE`, `VALIDAR_LPU_APROVADOR`, `VALIDAR_LPU_MEDICAO`, `DECIDIR_LPU_APOIO`, `FECHAR_LPU_NF`, `LISTAR_LPU_FECHAMENTO`, `LISTAR_LPU_PAGAMENTO`, `MARCAR_LPU_PAGO`, `REPROVAR_LPU_NF`, `LPU_OBTER_PDF`, `LPU_ATUALIZAR_PDF`, `REGISTRAR_ASSINATURA_LPU`, `REGISTRAR_ORCAMENTO_MENSAL`, `LISTAR_ORCAMENTOS_MENSAIS`, `REGISTRAR_DISPONIBILIDADE`, `EXCLUIR_DISPONIBILIDADE`, `LISTAR_DISPONIBILIDADE`, entre outras. Não há backend próprio nem banco de dados neste repositório — a lógica de persistência vive no Apps Script/planilha vinculados.
 
 Todas as telas compartilham o mesmo cabeçalho (`.topbar`): barra verde sólida fixa no topo, com logo e marca/subtítulo — sem elementos funcionais (botões, links, seletores) nela, que ficam numa linha própria (`.page-actions`) logo abaixo, dentro do conteúdo de cada página.
 
