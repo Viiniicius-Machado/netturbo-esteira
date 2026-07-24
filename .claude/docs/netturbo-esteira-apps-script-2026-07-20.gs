@@ -112,6 +112,9 @@ function doPost(e) {
     if (acao === 'MARCAR_LPU_PAGO')      return marcarLpuPago(ss, data);
     if (acao === 'REPROVAR_LPU_NF')      return reprovarLpuNf(ss, data);
     if (acao === 'LPU_ATUALIZAR_PDF')    return atualizarLpuPdf(ss, data);
+    if (acao === 'REGISTRAR_ORCAMENTO_MENSAL') return registrarOrcamentoMensal(ss, data);
+    if (acao === 'REGISTRAR_DISPONIBILIDADE')  return registrarDisponibilidade(ss, data);
+    if (acao === 'EXCLUIR_DISPONIBILIDADE')    return excluirDisponibilidade(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -134,6 +137,8 @@ function doGet(e) {
   if (params.acao === 'LISTAR_LPU_FECHAMENTO') return listarLpuFechamento(ss, params);
   if (params.acao === 'LISTAR_LPU_PAGAMENTO') return listarLpuPagamento(ss);
   if (params.acao === 'LPU_OBTER_PDF') return obterLpuPdf(ss, params);
+  if (params.acao === 'LISTAR_ORCAMENTOS_MENSAIS') return listarOrcamentosMensais(ss);
+  if (params.acao === 'LISTAR_DISPONIBILIDADE') return listarDisponibilidade(ss);
   return resposta('ok', { sistema: 'Netturbo Esteira de Despacho' });
 }
 
@@ -1441,6 +1446,90 @@ function listarEsteira(ss) {
     return obj;
   });
   return resposta('ok', { atividades: atividades });
+}
+
+// ── ORÇAMENTOS MENSAIS (budget de terceiros, editável mês a mês pela tela —
+// não é constante fixa no código, porque o valor muda todo mês) ─────────────
+const ABA_ORCAMENTOS = 'ORCAMENTOS_MENSAIS';
+const HEADERS_ORCAMENTOS = ['Mês', 'Categoria', 'Valor', 'Registrado Por', 'Timestamp Registro'];
+
+function garantirOrcamentos(ss) {
+  return garantirAba(ss, ABA_ORCAMENTOS, HEADERS_ORCAMENTOS, '#1a1a1a', '#5aa9e6');
+}
+
+// Cada registro é uma linha nova — nunca sobrescreve (histórico completo). Quem
+// consulta pega sempre a linha mais recente pra cada Mês+Categoria (resolvido no
+// front, ver dashboard_gestao.html). Categoria 'GERAL' é o budget geral de
+// terceiros; outras categorias são nome de empresa (hoje só QUALITY).
+function registrarOrcamentoMensal(ss, data) {
+  const sheet = garantirOrcamentos(ss);
+  if (!data.mes || !data.categoria) return resposta('error', { message: 'Mês e categoria são obrigatórios.' });
+  const valor = Number(data.valor);
+  if (isNaN(valor) || valor < 0) return resposta('error', { message: 'Valor inválido.' });
+
+  const row = sheet.getLastRow() + 1;
+  sheet.getRange(row, 1, 1, 1).setNumberFormat('@STRING@'); // Mês ("YYYY-MM") — texto livre
+  sheet.getRange(row, 1, 1, HEADERS_ORCAMENTOS.length).setValues([[
+    data.mes, data.categoria, valor, data.registradoPor || '', new Date().toLocaleString('pt-BR')
+  ]]);
+  return resposta('ok', {});
+}
+
+function listarOrcamentosMensais(ss) {
+  const sheet = garantirOrcamentos(ss);
+  if (sheet.getLastRow() < 2) return resposta('ok', { orcamentos: [] });
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS_ORCAMENTOS.length).getValues();
+  const orcamentos = data.map(row => ({
+    mes: row[0], categoria: row[1], valor: Number(row[2]) || 0, registradoPor: row[3], timestamp: row[4]
+  }));
+  return resposta('ok', { orcamentos: orcamentos });
+}
+
+// ── DISPONIBILIDADE DA MÃO DE OBRA (períodos em que um técnico não pode ser
+// despachado — férias, treinamento, suspensão, inativo por qualquer motivo) ──
+const ABA_DISPONIBILIDADE = 'DISPONIBILIDADE_TECNICOS';
+const HEADERS_DISPONIBILIDADE = ['Empresa', 'Técnico', 'Data Início', 'Data Fim', 'Status', 'Observação', 'Registrado Por', 'Timestamp Registro'];
+
+function garantirDisponibilidade(ss) {
+  return garantirAba(ss, ABA_DISPONIBILIDADE, HEADERS_DISPONIBILIDADE, '#1a1a1a', '#ffa000');
+}
+
+// Só grava EXCEÇÕES — Ativo é o padrão implícito quando nenhum período cobre a
+// data (ver index.html, que cruza isso com a data de hoje antes de montar a
+// lista de técnicos disponíveis pra despachar).
+function registrarDisponibilidade(ss, data) {
+  const sheet = garantirDisponibilidade(ss);
+  if (!data.empresa || !data.tecnico) return resposta('error', { message: 'Empresa e técnico são obrigatórios.' });
+  if (!data.dataInicio || !data.dataFim) return resposta('error', { message: 'Data início e data fim são obrigatórias.' });
+  if (String(data.dataInicio) > String(data.dataFim)) return resposta('error', { message: 'Data início não pode ser depois da data fim.' });
+  const statusValidos = ['INATIVO', 'FERIAS', 'TREINAMENTO', 'SUSPENSAO', 'ATESTADO', 'MANUTENCAO_FROTA'];
+  if (statusValidos.indexOf(data.status) === -1) return resposta('error', { message: 'Status inválido.' });
+
+  const row = sheet.getLastRow() + 1;
+  sheet.getRange(row, 3, 1, 2).setNumberFormat('@STRING@'); // Data Início / Data Fim ("YYYY-MM-DD") — texto livre
+  sheet.getRange(row, 1, 1, HEADERS_DISPONIBILIDADE.length).setValues([[
+    data.empresa, data.tecnico, data.dataInicio, data.dataFim, data.status, data.observacao || '', data.registradoPor || '', new Date().toLocaleString('pt-BR')
+  ]]);
+  return resposta('ok', {});
+}
+
+function excluirDisponibilidade(ss, data) {
+  const sheet = garantirDisponibilidade(ss);
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  sheet.deleteRow(rowIndex);
+  return resposta('ok', {});
+}
+
+function listarDisponibilidade(ss) {
+  const sheet = garantirDisponibilidade(ss);
+  if (sheet.getLastRow() < 2) return resposta('ok', { periodos: [] });
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS_DISPONIBILIDADE.length).getValues();
+  const periodos = data.map((row, i) => ({
+    rowIndex: i + 2, empresa: row[0], tecnico: row[1], dataInicio: row[2], dataFim: row[3],
+    status: row[4], observacao: row[5], registradoPor: row[6], timestamp: row[7]
+  }));
+  return resposta('ok', { periodos: periodos });
 }
 
 // ══════════════════════════════════════════════════════════════

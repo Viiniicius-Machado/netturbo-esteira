@@ -35,7 +35,11 @@
     .side-link.active{background:linear-gradient(135deg,var(--accent-dark),var(--accent));color:#0a0a0a}
 
     /* ── LAYOUT ── */
-    .layout{margin-left:var(--sidebar-w);padding:1.6rem 1.4rem 3rem;max-width:960px}
+    /* Centraliza o conteúdo no espaço livre depois da sidebar (não no viewport
+       inteiro, senão ficaria embaixo da sidebar) — em telas largas, sobra bem
+       menos vazio à direita; em telas estreitas, o max() zera o deslocamento
+       extra e volta a encostar na sidebar/borda, sem aumentar os cards. */
+    .layout{margin-left:calc(var(--sidebar-w) + max(0px, (100vw - var(--sidebar-w) - 960px)/2));padding:1.6rem 1.4rem 3rem;max-width:960px}
     .intro h1{font-family:'Rajdhani',sans-serif;font-size:1.6rem;font-weight:700;letter-spacing:.04em}
     .intro p{font-size:.83rem;color:var(--text-dim);margin-top:.35rem;line-height:1.6}
 
@@ -44,7 +48,7 @@
     .search-box input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:.85rem;font-family:'Inter',sans-serif}
     .search-box input::placeholder{color:var(--text-muted)}
 
-    .section{margin-top:2.1rem}
+    .section{margin-top:2.1rem;scroll-margin-top:calc(var(--topbar-h) + .8rem)}
     .section-head{display:flex;align-items:center;gap:.55rem;margin-bottom:.9rem}
     .section-title{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text)}
     .section-count{background:var(--surface3);border:1px solid var(--border-hi);border-radius:20px;padding:.1rem .55rem;font-size:.68rem;color:var(--text-dim)}
@@ -84,13 +88,16 @@
 </header>
 
 <nav class="sidebar" aria-label="Seções">
-  <a class="side-link active" href="#operacao" title="Operação">
+  <a class="side-link active" href="#geral" title="Geral" onclick="return irParaSecao('geral', this)">
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
   </a>
-  <a class="side-link" href="#financeiro" title="Financeiro / LPU">
+  <a class="side-link" href="#operacao" title="Operação" onclick="return irParaSecao('operacao', this)">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v8H3z"/><path d="M14 10h4l3 3v2h-7z"/><circle cx="7" cy="17" r="1.6"/><circle cx="17" cy="17" r="1.6"/></svg>
+  </a>
+  <a class="side-link" href="#financeiro" title="Financeiro / LPU" onclick="return irParaSecao('financeiro', this)">
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
   </a>
-  <a class="side-link" href="#lideranca" title="Liderança">
+  <a class="side-link" href="#lideranca" title="Liderança" onclick="return irParaSecao('lideranca', this)">
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="7"/><rect x="13" y="7" width="3" height="12"/><rect x="19" y="3" width="2" height="16"/></svg>
   </a>
 </nav>
@@ -181,6 +188,20 @@ function filtrar(termo){
     if(visiveis) algumVisivel = true;
   });
   document.getElementById('msgVazio').style.display = algumVisivel ? 'none' : 'block';
+}
+
+// Navegação da sidebar: rola até a seção clicada (as seções têm id="sec-<id>",
+// por isso não dá pra usar o href como âncora nativa direto).
+function irParaSecao(id, link){
+  sideLinks.forEach(l => l.classList.remove('active'));
+  link.classList.add('active');
+  if(id === 'geral'){
+    window.scrollTo({ top:0, behavior:'smooth' });
+  } else {
+    const el = document.getElementById('sec-'+id);
+    if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+  return false;
 }
 
 // Marca o ícone da sidebar correspondente à seção visível no scroll.

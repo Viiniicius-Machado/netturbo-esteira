@@ -125,6 +125,34 @@
     .rank-bar-fill{height:100%;background:var(--accent);border-radius:3px}
     .rank-qtd{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.9rem;color:var(--accent);flex-shrink:0}
 
+    /* ── Orçamento (budget mensal editável) — mesmo padrão visual de medicao.html ── */
+    .orcamento-item{padding:.8rem 0;border-top:1px solid var(--border)}
+    .orcamento-item:first-child{border-top:none;padding-top:0}
+    .orcamento-desc{font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:.4rem}
+    .orcamento-bar-track{height:9px;background:var(--surface2);border-radius:5px;overflow:hidden}
+    .orcamento-bar-fill{height:100%;border-radius:5px;transition:width .3s}
+    .orcamento-linhas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.4rem .8rem;margin-top:.55rem}
+    .orcamento-linhas > div{display:flex;justify-content:space-between;gap:.5rem;font-size:.72rem;color:var(--text-muted)}
+    .orcamento-linhas b{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.82rem;color:var(--text)}
+    .orcamento-aviso{font-size:.68rem;color:var(--amber);background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:6px;padding:.4rem .6rem;margin-top:.5rem}
+    .saldo-empresa-item{display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.32rem 0;border-top:1px solid var(--border);font-size:.75rem}
+    .saldo-empresa-item:first-child{border-top:none}
+
+    /* ── Efetividade — grid compacto de blocos, em vez de linhas altas com barra ── */
+    .efetividade-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:.5rem}
+    .efetividade-tile{background:var(--surface3);border:1px solid var(--border-hi);border-top:3px solid var(--border-hi);border-radius:var(--radius);padding:.5rem .4rem;text-align:center;cursor:pointer;transition:border-color .15s,transform .15s}
+    .efetividade-tile:hover{transform:translateY(-1px)}
+    .efetividade-tile .ef-nome{font-size:.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .efetividade-tile .ef-pct{font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;margin-top:.1rem}
+    .saldo-empresa-valor{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent)}
+
+    /* ── Formulários inline simples (registrar orçamento / disponibilidade) ── */
+    .form-inline{display:flex;flex-wrap:wrap;gap:.5rem;align-items:flex-end;margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--border)}
+    .form-inline .campo{display:flex;flex-direction:column;gap:.25rem}
+    .form-inline label{font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+    .form-inline input,.form-inline select{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.45rem .6rem}
+    .form-inline input:focus,.form-inline select:focus{outline:none;border-color:var(--accent)}
+
     .destaque-sub-title{font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
     .destaque-item{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.5rem .65rem;margin-top:.4rem}
     .destaque-topo{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
@@ -205,32 +233,37 @@
     </div>
   </div>
 
-  <div class="metric-row" style="margin-bottom:1rem">
-    <div class="card" style="margin-bottom:0;flex:1">
-      <div class="card-header">Ocorrências no Mês (concluídas)</div>
-      <div class="card-body">
-        <div id="kpiOcorrencias"></div>
-      </div>
-    </div>
-    <div class="card" style="margin-bottom:0;flex:1">
-      <div class="card-header">Produção por Empresa (mão de obra)</div>
-      <div class="card-body">
-        <div id="kpiEmpresas"></div>
+  <div class="card">
+    <div class="card-header">Budget do Mês (terceiros)</div>
+    <div class="card-body">
+      <div id="orcamentoGeralBox"></div>
+      <div id="kpiEmpresasSaldo" style="margin-top:.8rem"></div>
+      <div class="form-inline">
+        <div class="campo">
+          <label>Categoria</label>
+          <select id="selCategoriaOrcamento">
+            <option value="GERAL">Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)</option>
+            <option value="QUALITY">QUALITY (contrato fixo)</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Valor do mês (R$)</label>
+          <input type="number" id="inputValorOrcamento" min="0" step="0.01" placeholder="Ex: 100000"/>
+        </div>
+        <div class="campo">
+          <label>Registrado por</label>
+          <input type="text" id="inputRegistradoPorOrcamento" placeholder="Seu nome"/>
+        </div>
+        <button class="btn btn-accent" onclick="registrarOrcamento()">Registrar valor do mês</button>
       </div>
     </div>
   </div>
 
   <div class="metric-row" style="margin-bottom:1rem">
     <div class="card" style="margin-bottom:0;flex:1">
-      <div class="card-header">Cidades com Mais Atividades</div>
+      <div class="card-header">Efetividade da Mão de Obra</div>
       <div class="card-body">
-        <div id="rankCidades"></div>
-      </div>
-    </div>
-    <div class="card" style="margin-bottom:0;flex:1">
-      <div class="card-header">Causas Mais Comuns</div>
-      <div class="card-body">
-        <div id="rankCausas"></div>
+        <div id="kpiEfetividade" class="efetividade-grid"></div>
       </div>
     </div>
   </div>
@@ -290,6 +323,36 @@
     </div>
   </div>
 
+  <div class="metric-row" style="margin-bottom:1rem">
+    <div class="card" style="margin-bottom:0;flex:1">
+      <div class="card-header">Ocorrências no Mês (concluídas)</div>
+      <div class="card-body">
+        <div id="kpiOcorrencias"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:0;flex:1">
+      <div class="card-header">Cidades com Mais Atividades</div>
+      <div class="card-body">
+        <div id="rankCidades"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="metric-row" style="margin-bottom:1rem">
+    <div class="card" style="margin-bottom:0;flex:1">
+      <div class="card-header">Causas Mais Comuns</div>
+      <div class="card-body">
+        <div id="rankCausas"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:0;flex:1">
+      <div class="card-header">Produção por Empresa (mão de obra)</div>
+      <div class="card-body">
+        <div id="kpiEmpresas"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- DETALHE DE INDICADOR (MTTR/MTTD/TMC) — 3 mais rápidas e 3 mais críticas do período/filtro atual -->
   <div class="detalhe-overlay" id="detalheOverlay" onclick="if(event.target===this) fecharDetalheIndicador()">
     <div class="detalhe-panel">
@@ -338,6 +401,13 @@ const EMPRESAS = ['VAL','PV','OLIVEIRA','SOLUTEC','QUALITY','NETTURBO'];
 
 let TODAS_ATIVIDADES = [];
 let DADOS_FILTRADOS = [];
+let TECH_MAP = {};
+let TODOS_ORCAMENTOS = [];
+let TODOS_PERIODOS_DISPONIBILIDADE = [];
+
+function fmtMoeda(v){
+  return 'R$ ' + Number(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
 
 function tryLogin(){
   const val = document.getElementById('pwdInput').value;
@@ -361,9 +431,19 @@ window.tryLogin = tryLogin;
 
 async function carregarDashboard(){
   try{
-    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
-    const result = await resp.json();
-    TODAS_ATIVIDADES = result.atividades || [];
+    const [respEsteira, respTecnicos, respOrcamentos, respDisponibilidade] = await Promise.all([
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ORCAMENTOS_MENSAIS'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE')
+    ]);
+    const [resultEsteira, resultTecnicos, resultOrcamentos, resultDisponibilidade] = await Promise.all([
+      respEsteira.json(), respTecnicos.json(), respOrcamentos.json(), respDisponibilidade.json()
+    ]);
+    TODAS_ATIVIDADES = resultEsteira.atividades || [];
+    TECH_MAP = resultTecnicos.empresas || {};
+    TODOS_ORCAMENTOS = resultOrcamentos.orcamentos || [];
+    TODOS_PERIODOS_DISPONIBILIDADE = resultDisponibilidade.periodos || [];
     renderPipeline();
     renderDashboard();
     document.getElementById('ultimaAtualizacao').textContent = 'atualizado ' + new Date().toLocaleTimeString('pt-BR');
@@ -440,6 +520,203 @@ function montarRankingFixo(dados, campo, categorias){
     .map(cat => [cat, dados.filter(a=>a[campo]===cat).length])
     .sort((a,b)=>b[1]-a[1]);
 }
+
+// ── BUDGET MENSAL (editável pela tela — ver ORCAMENTOS_MENSAIS no backend) ──
+// Empresas que fecham por LPU (soma calculada) — QUALITY fica de fora daqui
+// porque não tem LPU (contrato fixo, valor registrado igual ao budget geral) e
+// NETTURBO fica de fora porque não é terceiro (mão de obra própria).
+const EMPRESAS_LPU_TERCEIROS = ['VAL','PV','OLIVEIRA','SOLUTEC'];
+
+// Pega o valor vigente de uma categoria pro mês pedido: usa o registro mais
+// recente daquele mês se existir, senão cai pro mês anterior mais recente já
+// registrado (nunca busca no futuro). Cada categoria+mês pode ter mais de um
+// registro (histórico) — o último da lista (ordem de inserção na planilha) vence.
+function valorOrcamentoVigente(categoria, mesAlvo){
+  const doCategoria = TODOS_ORCAMENTOS.filter(o => o.categoria === categoria && o.mes <= mesAlvo);
+  if(!doCategoria.length) return { valor: 0, mesOrigem: '', registrado: false };
+  const mesMaisRecente = doCategoria.reduce((max, o) => o.mes > max ? o.mes : max, doCategoria[0].mes);
+  const doMes = doCategoria.filter(o => o.mes === mesMaisRecente);
+  const ultimo = doMes[doMes.length - 1]; // histórico: o último registrado é o vigente
+  return { valor: ultimo.valor, mesOrigem: mesMaisRecente, registrado: mesMaisRecente === mesAlvo };
+}
+
+// Soma o "Total" de LPU por empresa prestadora, só o que já passou pela Medição
+// (aprovado, pago ou não) e foi preenchido no mês pedido — mesmo critério de
+// "Aprovado" que já existe em medicao.html, aceitando também PAGO (próximo
+// passo do mesmo status). Como LISTAR_ESTEIRA traz linha crua (não dividida por
+// papel), cada linha é somada até duas vezes: uma pro titular, uma pro apoio.
+function somaLpuPorEmpresa(mesAlvo){
+  const somas = {};
+  const statusOk = ['APROVADO_AGUARDANDO_NF', 'PAGO'];
+  TODAS_ATIVIDADES.forEach(a => {
+    if(statusOk.includes(a['Status LPU']) && mesDeTimestamp(a['LPU Timestamp Preenchimento']) === mesAlvo){
+      const emp = a['LPU Empresa Prestadora'] || a['Empresa'] || 'Não informado';
+      somas[emp] = (somas[emp]||0) + Number(a['LPU Total']||0);
+    }
+    if(statusOk.includes(a['Status LPU Apoio']) && mesDeTimestamp(a['LPU Apoio Timestamp Preenchimento']) === mesAlvo){
+      const emp = a['LPU Apoio Empresa Prestadora'] || a['Empresa Apoio'] || 'Não informado';
+      somas[emp] = (somas[emp]||0) + Number(a['LPU Apoio Total']||0);
+    }
+  });
+  return somas;
+}
+
+function renderBudget(mes){
+  const geral = valorOrcamentoVigente('GERAL', mes);
+  const quality = valorOrcamentoVigente('QUALITY', mes);
+  const saldosLpu = somaLpuPorEmpresa(mes);
+
+  const comprometido = EMPRESAS_LPU_TERCEIROS.reduce((s,emp) => s + (saldosLpu[emp]||0), 0) + quality.valor;
+  const saldo = geral.valor - comprometido;
+  const pct = geral.valor > 0 ? (comprometido/geral.valor*100) : (comprometido > 0 ? 100 : 0);
+  const pctBarra = Math.min(100, pct);
+  const cor = pct >= 100 ? 'var(--red)' : pct >= 85 ? '#ffa000' : 'var(--accent)';
+
+  const avisoGeral = geral.registrado ? '' : (geral.mesOrigem
+    ? `<div class="orcamento-aviso">Sem valor registrado pra este mês — usando o valor de ${geral.mesOrigem}. Registre o valor deste mês abaixo.</div>`
+    : `<div class="orcamento-aviso">Nenhum budget geral registrado ainda. Registre o valor deste mês abaixo.</div>`);
+
+  document.getElementById('orcamentoGeralBox').innerHTML = `
+    <div class="orcamento-item">
+      <div class="orcamento-desc">Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)</div>
+      <div class="orcamento-bar-track"><div class="orcamento-bar-fill" style="width:${pctBarra}%;background:${cor}"></div></div>
+      <div class="orcamento-linhas">
+        <div><span>Budget</span><b>${fmtMoeda(geral.valor)}</b></div>
+        <div><span>Comprometido (aprovado)</span><b style="color:${cor}">${fmtMoeda(comprometido)} · ${pct.toFixed(0)}%</b></div>
+        <div><span>Saldo</span><b style="color:${saldo<0?'var(--red)':'var(--text)'}">${fmtMoeda(saldo)}</b></div>
+      </div>
+      ${avisoGeral}
+    </div>`;
+
+  // Resumo clicável em vez da lista sempre visível — abre a subtela com o
+  // detalhamento por prestadora (ver abrirDetalheSaldo).
+  document.getElementById('kpiEmpresasSaldo').innerHTML = `
+    <div class="metric-card clicavel" onclick="abrirDetalheSaldo()">
+      <div class="metric-title">Saldo de LPU por Prestadora (aprovado no mês)</div>
+      <div class="metric-big" style="font-size:1.4rem">${fmtMoeda(comprometido)}</div>
+      <div class="metric-hint">Ver valor de cada terceiro →</div>
+    </div>`;
+}
+
+window.abrirDetalheSaldo = function(){
+  const mes = document.getElementById('mesFiltro').value;
+  const saldosLpu = somaLpuPorEmpresa(mes);
+  const quality = valorOrcamentoVigente('QUALITY', mes);
+
+  document.getElementById('detalheTitulo').textContent = 'Saldo de LPU por Prestadora';
+  const linhas = EMPRESAS_LPU_TERCEIROS.map(emp => `
+    <div class="destaque-item"><div class="destaque-topo"><span class="destaque-protocolo">${emp}</span><span class="destaque-tempo">${fmtMoeda(saldosLpu[emp]||0)}</span></div></div>
+  `).join('') + `
+    <div class="destaque-item"><div class="destaque-topo"><span class="destaque-protocolo">QUALITY${quality.registrado?'':' (mês anterior)'}</span><span class="destaque-tempo">${fmtMoeda(quality.valor)}</span></div></div>`;
+
+  document.getElementById('detalheBody').innerHTML = `<div class="detalhe-secao-title">Valor aprovado (Medição), pago ou não, no mês</div>${linhas}`;
+  document.getElementById('detalheOverlay').classList.add('open');
+};
+
+window.registrarOrcamento = async function(){
+  const mes = document.getElementById('mesFiltro').value;
+  const categoria = document.getElementById('selCategoriaOrcamento').value;
+  const valor = document.getElementById('inputValorOrcamento').value;
+  const registradoPor = document.getElementById('inputRegistradoPorOrcamento').value.trim();
+  if(!mes){ alert('Selecione o mês no filtro antes de registrar.'); return; }
+  if(valor === '' || Number(valor) < 0){ alert('Informe um valor válido.'); return; }
+  if(!registradoPor){ alert('Informe quem está registrando.'); return; }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'REGISTRAR_ORCAMENTO_MENSAL', mes, categoria, valor, registradoPor })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ alert(result.message||'Erro ao registrar o orçamento.'); return; }
+    document.getElementById('inputValorOrcamento').value = '';
+    carregarDashboard();
+  }catch(err){
+    console.error(err);
+    alert('Erro ao conectar com o backend.');
+  }
+};
+
+// ── EFETIVIDADE DA MÃO DE OBRA ────────────────────────────────────────────
+function diasNoMes(mes){
+  const [ano, m] = mes.split('-').map(Number);
+  return new Date(ano, m, 0).getDate();
+}
+
+// Quantos dias do mês pedido um período (Data Início/Fim, "YYYY-MM-DD") cobre —
+// interseção entre o período e o mês, em dias corridos.
+function diasDoPeriodoNoMes(dataInicio, dataFim, mes){
+  const [ano, m] = mes.split('-').map(Number);
+  const inicioMes = new Date(ano, m-1, 1);
+  const fimMes = new Date(ano, m, 0);
+  const ini = new Date(dataInicio + 'T00:00:00');
+  const fim = new Date(dataFim + 'T00:00:00');
+  const inicioReal = ini > inicioMes ? ini : inicioMes;
+  const fimReal = fim < fimMes ? fim : fimMes;
+  const diff = Math.round((fimReal - inicioReal) / 86400000) + 1;
+  return Math.max(0, diff);
+}
+
+const STATUS_DISP_LABEL = { INATIVO:'Inativo', FERIAS:'Férias', TREINAMENTO:'Treinamento', SUSPENSAO:'Suspensão Disciplinar', ATESTADO:'Atestado', MANUTENCAO_FROTA:'Manutenção Frota' };
+
+// % de efetividade de cada técnico no mês pedido: 1 - (dias indisponível / dias do mês).
+function efetividadeTecnico(empresa, tecnico, mes){
+  const totalDias = diasNoMes(mes);
+  const periodosDele = TODOS_PERIODOS_DISPONIBILIDADE.filter(p => p.empresa === empresa && p.tecnico === tecnico);
+  const diasIndisponivel = periodosDele.reduce((s,p) => s + diasDoPeriodoNoMes(p.dataInicio, p.dataFim, mes), 0);
+  const diasEfetivos = Math.max(0, totalDias - diasIndisponivel);
+  const pct = totalDias ? Math.round(diasEfetivos/totalDias*100) : 100;
+  return { pct, periodos: periodosDele };
+}
+
+// Visão recolhida no coletivo — um card por empresa (média dos técnicos dela).
+// Clicar abre a subtela com o técnico a técnico e o motivo (ver abrirDetalheEfetividade).
+function renderEfetividade(mes){
+  const empresas = Object.keys(TECH_MAP).filter(emp => (TECH_MAP[emp]||[]).length);
+  const el = document.getElementById('kpiEfetividade');
+  if(!empresas.length){ el.innerHTML = '<div style="color:var(--text-muted);font-size:.78rem;font-style:italic">Nenhum técnico cadastrado.</div>'; return; }
+
+  const linhas = empresas.map(empresa => {
+    const tecnicos = TECH_MAP[empresa]||[];
+    const detalhes = tecnicos.map(t => efetividadeTecnico(empresa, t, mes));
+    const media = Math.round(detalhes.reduce((s,d) => s + d.pct, 0) / tecnicos.length);
+    // Com muitos técnicos, 1 afastamento isolado pode arredondar de volta pra 100% e
+    // esconder que existe alguém indisponível — nunca deixa exibir 100% cheio se
+    // algum técnico da empresa tiver período registrado no mês.
+    const temExcecao = detalhes.some(d => d.periodos.length);
+    const pctExibido = temExcecao ? Math.min(media, 99) : media;
+    return [empresa, pctExibido];
+  }).sort((a,b) => a[1]-b[1]);
+
+  el.innerHTML = linhas.map(([empresa,pct])=>{
+    const cor = pct >= 90 ? 'var(--accent)' : pct >= 70 ? '#ffa000' : 'var(--red)';
+    return `<div class="efetividade-tile" style="border-top-color:${cor}" onclick="abrirDetalheEfetividade('${empresa}')">
+      <div class="ef-nome">${empresa}</div>
+      <div class="ef-pct" style="color:${cor}">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+window.abrirDetalheEfetividade = function(empresa){
+  const mes = document.getElementById('mesFiltro').value;
+  const tecnicos = TECH_MAP[empresa]||[];
+
+  document.getElementById('detalheTitulo').textContent = 'Efetividade — ' + empresa;
+  const linhas = tecnicos.map(tecnico => {
+    const { pct, periodos } = efetividadeTecnico(empresa, tecnico, mes);
+    const cor = pct >= 90 ? 'var(--accent)' : pct >= 70 ? '#ffa000' : 'var(--red)';
+    const motivo = periodos.length
+      ? periodos.map(p => `${STATUS_DISP_LABEL[p.status]||p.status} (${p.dataInicio} a ${p.dataFim})${p.observacao?' — '+p.observacao:''}`).join('<br>')
+      : 'Sem períodos de indisponibilidade no mês.';
+    return `<div class="destaque-item">
+      <div class="destaque-topo"><span class="destaque-protocolo">${tecnico}</span><span class="destaque-tempo" style="color:${cor}">${pct}%</span></div>
+      <div class="destaque-causa">${motivo}</div>
+    </div>`;
+  });
+
+  document.getElementById('detalheBody').innerHTML = `<div class="detalhe-secao-title">Técnico a técnico, com o motivo de cada afastamento</div>${linhas.join('')}`;
+  document.getElementById('detalheOverlay').classList.add('open');
+};
 
 // ── IRR (Índice de Recursos Repetitivos) ──────────────────────────
 // Repetição = mesmo Cliente com outro ROMPIMENTO validado nos 30 dias anteriores
@@ -754,6 +1031,8 @@ function renderDashboard(){
   // top 5 filtrado de contarPorCampo.
   renderRanking('kpiOcorrencias', montarRankingFixo(DADOS_FILTRADOS, 'Ocorrência', TIPOS));
   renderRanking('kpiEmpresas', montarRankingFixo(DADOS_FILTRADOS, 'Empresa', EMPRESAS));
+  renderBudget(mes);
+  renderEfetividade(mes);
 
   // ── Ranking de cidades e causas mais comuns ──
   renderRanking('rankCidades', contarPorCampo(DADOS_FILTRADOS, 'Cidade Falha'));

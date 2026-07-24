@@ -133,7 +133,16 @@
 
   <!-- COLAR MÁSCARA -->
   <section class="card">
-    <div class="card-header"><h2>Nova Solicitação do NOC</h2></div>
+    <div class="card-header"><h2>Nova Solicitação do NOC</h2>
+      <div style="flex:1"></div>
+      <select id="selLiderAtual" style="margin-right:.5rem;font-size:.75rem;padding:.35rem .6rem">
+        <option value="">Você é...</option>
+        <option value="Vinicius Machado">Vinicius Machado</option>
+        <option value="Weslley Rodrigues">Weslley Rodrigues</option>
+        <option value="Leonardo Egídio">Leonardo Egídio</option>
+        <option value="Reginaldo Venâncio">Reginaldo Venâncio</option>
+      </select>
+    </div>
     <div class="card-body">
       <label style="font-size:.68rem;color:var(--text-muted);display:block;margin-bottom:.4rem">Cole aqui a mensagem recebida do NOC no WhatsApp:</label>
       <textarea id="maskInput" placeholder="Solicitação de deslocamento:&#10;Motivo: ...&#10;Cliente: ...&#10;Endereço: ...&#10;..."></textarea>
@@ -171,17 +180,44 @@
     </div>
   </section>
 
+  <!-- DISPONIBILIDADE DA EQUIPE (férias, treinamento, suspensão, inativo por
+       qualquer motivo — técnico com um período cobrindo hoje some do seletor
+       de despacho, ver atualizarTecnicosDespacho) -->
+  <section class="card">
+    <div class="card-header" style="cursor:pointer" onclick="toggleDisponibilidade()"><h2>Disponibilidade da Equipe</h2>
+      <div style="flex:1"></div>
+      <span class="col-count" id="countDisponibilidade">0</span>
+      <button class="btn btn-outline" id="btnToggleDisponibilidade" style="padding:.3rem .6rem;font-size:.75rem;margin-left:.5rem" onclick="event.stopPropagation();toggleDisponibilidade()">▼</button>
+    </div>
+    <div class="card-body" id="corpoDisponibilidade" style="display:none">
+      <div class="field-grid">
+        <div class="field"><label>Empresa</label><select id="selEmpresaDisp" onchange="atualizarTecnicosDisp()"></select></div>
+        <div class="field"><label>Técnico</label><select id="selTecnicoDisp"><option value="">Selecione a empresa...</option></select></div>
+        <div class="field"><label>Status</label>
+          <select id="selStatusDisp">
+            <option value="INATIVO">Inativo</option>
+            <option value="FERIAS">Férias</option>
+            <option value="TREINAMENTO">Treinamento</option>
+            <option value="SUSPENSAO">Suspensão Disciplinar</option>
+            <option value="ATESTADO">Atestado</option>
+            <option value="MANUTENCAO_FROTA">Manutenção Frota</option>
+          </select>
+        </div>
+        <div class="field"><label>Data Início</label><input type="date" id="inputDataInicioDisp" onchange="sincronizarDataFimDisp()"/></div>
+        <div class="field"><label>Data Fim</label><input type="date" id="inputDataFimDisp"/></div>
+        <div class="field full"><label>Observação (opcional)</label><input type="text" id="inputObsDisp" placeholder="Motivo, detalhe do período..."/></div>
+      </div>
+      <div style="margin-top:.8rem">
+        <button class="btn btn-accent" onclick="registrarDisponibilidade()">Registrar Indisponibilidade</button>
+      </div>
+      <div id="listaDisponibilidade" style="margin-top:1rem"></div>
+    </div>
+  </section>
+
   <!-- ESTEIRA -->
   <section class="card">
     <div class="card-header"><h2>Esteira de Atividades</h2>
       <div style="flex:1"></div>
-      <select id="selLiderAtual" style="margin-right:.5rem;font-size:.75rem;padding:.35rem .6rem">
-        <option value="">Você é...</option>
-        <option value="Vinicius Machado">Vinicius Machado</option>
-        <option value="Weslley Rodrigues">Weslley Rodrigues</option>
-        <option value="Leonardo Egídio">Leonardo Egídio</option>
-        <option value="Reginaldo Venâncio">Reginaldo Venâncio</option>
-      </select>
       <button class="btn btn-outline" style="padding:.4rem .8rem;font-size:.72rem" onclick="carregarEsteira()">↻ Atualizar</button>
     </div>
     <div class="card-body">
@@ -223,6 +259,7 @@ const LEADERSHIP_PASSWORD = "Manutencao@101";
 
 // Empresas e técnicos (mesma lista já usada no RFO Técnico)
 let TECH_MAP = {}; // preenchido ao vivo pelo backend — ver carregarTecnicos()
+let TODOS_PERIODOS_DISPONIBILIDADE = []; // ver carregarEsteira() — atualiza junto da esteira
 
 let ATIVIDADES = [];
 let AGENDAMENTO_ATUAL = false; // estado do toggle Sim/Não na revisão
@@ -249,7 +286,22 @@ async function carregarTecnicos(){
   }catch(err){
     console.error('Não foi possível carregar a lista de técnicos:', err);
   }
+  popularEmpresasDisp();
 }
+
+function popularEmpresasDisp(){
+  const opts = '<option value="">Selecione...</option>' + Object.keys(TECH_MAP).map(e=>`<option value="${e}">${e}</option>`).join('');
+  document.getElementById('selEmpresaDisp').innerHTML = opts;
+}
+window.atualizarTecnicosDisp = function(){
+  const empresa = document.getElementById('selEmpresaDisp').value;
+  const nomes = TECH_MAP[empresa] || [];
+  document.getElementById('selTecnicoDisp').innerHTML = '<option value="">Selecione...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
+};
+window.sincronizarDataFimDisp = function(){
+  const fim = document.getElementById('inputDataFimDisp');
+  if(!fim.value) fim.value = document.getElementById('inputDataInicioDisp').value;
+};
 
 function tryLogin(){
   const val = document.getElementById('pwdInput').value;
@@ -379,15 +431,112 @@ window.confirmarAtividade = confirmarAtividade;
 // ── ESTEIRA ──────────────────────────────────────────────────
 async function carregarEsteira(){
   try{
-    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
-    const result = await resp.json();
-    ATIVIDADES = result.atividades || [];
+    const [respEsteira, respDisp] = await Promise.all([
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE')
+    ]);
+    const [resultEsteira, resultDisp] = await Promise.all([respEsteira.json(), respDisp.json()]);
+    ATIVIDADES = resultEsteira.atividades || [];
+    TODOS_PERIODOS_DISPONIBILIDADE = resultDisp.periodos || [];
     renderEsteira();
+    renderListaDisponibilidade();
   }catch(err){
     console.error(err);
   }
 }
 window.carregarEsteira = carregarEsteira;
+
+// Empresa+técnico com um período (Data Início/Fim) cobrindo hoje ficam de fora
+// da lista pra despachar — bloqueio de verdade, não só aviso (ver Disponibilidade
+// da Equipe). 'ocultos' informa quantos sumiram, pra não parecer que a lista
+// de técnicos da empresa ficou vazia sem motivo.
+function tecnicosDisponiveisHoje(empresa){
+  const nomes = TECH_MAP[empresa] || [];
+  const hoje = new Date();
+  const hojeStr = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
+  const indisponiveis = new Set(
+    TODOS_PERIODOS_DISPONIBILIDADE
+      .filter(p => p.empresa === empresa && p.dataInicio <= hojeStr && hojeStr <= p.dataFim)
+      .map(p => p.tecnico)
+  );
+  return { nomes: nomes.filter(n => !indisponiveis.has(n)), ocultos: indisponiveis.size };
+}
+
+const STATUS_DISP_LABEL = { INATIVO:'Inativo', FERIAS:'Férias', TREINAMENTO:'Treinamento', SUSPENSAO:'Suspensão Disciplinar', ATESTADO:'Atestado', MANUTENCAO_FROTA:'Manutenção Frota' };
+
+// Card começa fechado (tela grande já tem muita coisa) — clique no cabeçalho ou na seta abre/fecha.
+window.toggleDisponibilidade = function(){
+  const corpo = document.getElementById('corpoDisponibilidade');
+  const btn = document.getElementById('btnToggleDisponibilidade');
+  const aberto = corpo.style.display !== 'none';
+  corpo.style.display = aberto ? 'none' : 'block';
+  btn.textContent = aberto ? '▼' : '▲';
+};
+
+function renderListaDisponibilidade(){
+  document.getElementById('countDisponibilidade').textContent = TODOS_PERIODOS_DISPONIBILIDADE.length;
+  const el = document.getElementById('listaDisponibilidade');
+  if(!TODOS_PERIODOS_DISPONIBILIDADE.length){
+    el.innerHTML = '<div class="empty-msg">Nenhum período registrado.</div>';
+    return;
+  }
+  const ordenados = [...TODOS_PERIODOS_DISPONIBILIDADE].sort((a,b) => String(b.dataInicio).localeCompare(String(a.dataInicio)));
+  el.innerHTML = ordenados.map(p => `
+    <div class="atv-card">
+      <div class="protocolo">${p.tecnico}</div>
+      <div class="cliente">${p.empresa} · ${STATUS_DISP_LABEL[p.status]||p.status}</div>
+      <div class="meta">${p.dataInicio} até ${p.dataFim}${p.observacao?'<br>'+p.observacao:''}<br>Registrado por ${p.registradoPor||'—'}</div>
+      <button class="btn" style="width:100%;margin-top:.4rem;padding:.35rem;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;font-size:.68rem" onclick="excluirPeriodoDisponibilidade(${p.rowIndex})">Remover</button>
+    </div>`).join('');
+}
+
+window.registrarDisponibilidade = async function(){
+  const empresa = document.getElementById('selEmpresaDisp').value;
+  const tecnico = document.getElementById('selTecnicoDisp').value;
+  const status = document.getElementById('selStatusDisp').value;
+  const dataInicio = document.getElementById('inputDataInicioDisp').value;
+  const dataFim = document.getElementById('inputDataFimDisp').value || dataInicio;
+  const observacao = document.getElementById('inputObsDisp').value.trim();
+  const registradoPor = document.getElementById('selLiderAtual').value;
+
+  if(!empresa || !tecnico){ showToast('Escolha empresa e técnico.'); return; }
+  if(!dataInicio){ showToast('Informe a data de início.'); return; }
+  if(!registradoPor){ showToast('Selecione "Você é..." antes de registrar.'); return; }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'REGISTRAR_DISPONIBILIDADE', empresa, tecnico, status, dataInicio, dataFim, observacao, registradoPor })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao registrar.'); return; }
+    showToast('Indisponibilidade registrada!');
+    document.getElementById('inputDataInicioDisp').value = '';
+    document.getElementById('inputDataFimDisp').value = '';
+    document.getElementById('inputObsDisp').value = '';
+    carregarEsteira();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+};
+
+window.excluirPeriodoDisponibilidade = async function(rowIndex){
+  if(!confirm('Remover este período de indisponibilidade?')) return;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'EXCLUIR_DISPONIBILIDADE', rowIndex })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao remover.'); return; }
+    showToast('Período removido.');
+    carregarEsteira();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+};
 
 function renderEsteira(){
   const aguardando = ATIVIDADES.filter(a => a['Status'] === 'AGUARDANDO_DESPACHO');
@@ -424,6 +573,7 @@ function renderEsteira(){
         </select>
         <select class="mini" id="sel-tecnico-${a.rowIndex}"><option value="">Técnico...</option></select>
       </div>
+      <div id="aviso-disp-${a.rowIndex}" style="font-size:.62rem;color:var(--amber);margin-top:.3rem"></div>
       <details style="margin-top:.4rem">
         <summary style="font-size:.65rem;color:var(--text-muted);cursor:pointer">+ Equipe de Apoio (opcional)</summary>
         <div class="acoes" style="margin-top:.4rem">
@@ -733,14 +883,16 @@ window.desfazerDespacho = async function(rowIndex){
 
 window.atualizarTecnicosDespacho = function(rowIndex){
   const empresa = document.getElementById('sel-empresa-'+rowIndex).value;
-  const nomes = TECH_MAP[empresa] || [];
+  const { nomes, ocultos } = tecnicosDisponiveisHoje(empresa);
   const sel = document.getElementById('sel-tecnico-'+rowIndex);
   sel.innerHTML = '<option value="">Técnico...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
+  const aviso = document.getElementById('aviso-disp-'+rowIndex);
+  if(aviso) aviso.textContent = ocultos ? `⚠ ${ocultos} técnico(s) indisponível(is) hoje, oculto(s) da lista` : '';
 };
 
 window.atualizarTecnicosApoio = function(rowIndex){
   const empresa = document.getElementById('sel-empresa-apoio-'+rowIndex).value;
-  const nomes = TECH_MAP[empresa] || [];
+  const { nomes } = tecnicosDisponiveisHoje(empresa);
   const sel = document.getElementById('sel-tecnico-apoio-'+rowIndex);
   sel.innerHTML = '<option value="">Técnico apoio...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
 };
@@ -772,7 +924,7 @@ window.despachar = async function(rowIndex){
 
 window.atualizarTecnicosApoio2 = function(rowIndex){
   const empresa = document.getElementById('sel-empresa-apoio2-'+rowIndex).value;
-  const nomes = TECH_MAP[empresa] || [];
+  const { nomes } = tecnicosDisponiveisHoje(empresa);
   const sel = document.getElementById('sel-tecnico-apoio2-'+rowIndex);
   sel.innerHTML = '<option value="">Técnico apoio...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
 };
