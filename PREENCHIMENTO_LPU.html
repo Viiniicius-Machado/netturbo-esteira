@@ -15,12 +15,19 @@
   --bdr:#d4ddd8;--r:6px;--rl:10px;
 }
 body{font-family:'Segoe UI',Arial,sans-serif;background:#ecf0eb;color:var(--g800);font-size:14px;line-height:1.5;padding:24px 16px 40px}
+/* Barra igual a de todas as outras telas (cor fixa em hex — esta página usa uma
+   paleta clara própria, sem a variável --accent do resto do site). Margens
+   negativas cancelam o padding do body pra ficar coladinha nas bordas/topo. */
+.topbar{position:sticky;top:0;z-index:100;height:60px;background:#a8c93c;display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35);margin:-24px -16px 20px -16px}
+.topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+.topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+.topbar-brand{font-family:Arial,sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+.topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+.topbar-spacer{flex:1}
 .shell{max-width:960px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(26,92,55,.13);overflow:hidden}
-.fhd{background:var(--gd);padding:24px 32px;display:flex;align-items:center;gap:20px}
-.lz{flex-shrink:0;width:220px;height:110px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;overflow:hidden;background:rgba(255,255,255,.07)}
-.lz img{width:100%;height:100%;object-fit:contain}
-.hi h1{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px}
-.hi p{font-size:12px;color:rgba(255,255,255,.6)}
+.fhd{background:var(--gd);padding:12px 32px;display:flex;align-items:center;gap:20px}
+.lz,.hi h1{display:none} /* logo/título grandes saem — marca já mora no .topbar; sobra só a linha dinâmica (Preenchimento LPU / Equipe de Apoio) e a versão */
+.hi p{font-size:12px;color:rgba(255,255,255,.9);font-weight:600;letter-spacing:.4px;text-transform:uppercase}
 
 /* Progress */
 
@@ -194,11 +201,20 @@ textarea{resize:vertical;min-height:60px}
     <div class="login-heading">
       <h2>Acesso Restrito</h2>
     </div>
-    <div class="login-bloqueado">Este relatório é exclusivo para técnicos de prestadoras terceiras.<br>Contas NETTURBO não preenchem LPU.</div>
+    <div class="login-bloqueado" id="msgBloqueado">Este relatório é exclusivo para técnicos de prestadoras terceiras.<br>Contas NETTURBO não preenchem LPU.</div>
   </div>
 </div>
 
 <div id="app" style="display:none">
+<header class="topbar">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Netturbo</div>
+    <div class="topbar-sub">Preenchimento LPU</div>
+  </div>
+  <div class="topbar-spacer"></div>
+</header>
 <div class="voltar-atividades"><a href="tecnico.html">&#8592; Minhas Atividades</a></div>
 <div class="shell">
   <div class="fhd">
@@ -866,12 +882,14 @@ function launchItems() {
 // tecnico.html. Acesso restrito a prestadoras terceiras: NETTURBO não preenche LPU.
 // ══════════════════════════════════════════════════════════════
 let TECH_MAP = {};
+let RESPONSAVEIS = {}; // empresa -> técnico que centraliza a LPU (ex: VAL -> Marcos), quando existir
+let SEM_LPU = ['NETTURBO']; // empresas que não cobram por LPU (fallback até o backend responder)
 let TECNICO_LOGADO = '';
 let EMPRESA_LOGADA = '';
 
 function popularEmpresas(){
-    // Sem NETTURBO na lista — mão de obra própria não passa por cobrança de LPU
-    const opts = '<option value="">Selecione...</option>' + Object.keys(TECH_MAP).filter(e => e !== 'NETTURBO').map(e=>`<option value="${e}">${e}</option>`).join('');
+    // Sem empresas SEM_LPU na lista — não passam por cobrança de LPU
+    const opts = '<option value="">Selecione...</option>' + Object.keys(TECH_MAP).filter(e => SEM_LPU.indexOf(e) === -1).map(e=>`<option value="${e}">${e}</option>`).join('');
     document.getElementById('selEmpresa').innerHTML = opts;
 }
 
@@ -880,16 +898,22 @@ async function carregarTecnicos(){
         const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS');
         const result = await resp.json();
         TECH_MAP = result.empresas || {};
+        RESPONSAVEIS = result.responsaveis || {};
+        SEM_LPU = result.semLpu || SEM_LPU;
     }catch(err){
         console.error('Não foi possível carregar a lista de técnicos:', err);
     }
     popularEmpresas();
 }
-carregarTecnicos();
+const carregarTecnicosPromise = carregarTecnicos();
 
 window.atualizarTecnicosLogin = function(){
     const empresa = document.getElementById('selEmpresa').value;
-    const nomes = TECH_MAP[empresa] || [];
+    let nomes = TECH_MAP[empresa] || [];
+    // Empresa com responsável fixo pela LPU: só ele aparece pra escolher —
+    // os demais técnicos nem chegam a ver a opção de entrar aqui.
+    const responsavel = RESPONSAVEIS[empresa];
+    if (responsavel) nomes = nomes.filter(n => n === responsavel);
     document.getElementById('selTecnico').innerHTML = '<option value="">Selecione...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
 };
 
@@ -925,6 +949,10 @@ async function prefillDaAtividade(rowIndex){
         document.getElementById('cliente').value = atividade['Cliente'] || '';
         document.getElementById('cidade').value = atividade['Cidade Falha'] || '';
         document.getElementById('etiqueta').value = atividade['Protocolo O&M'] || atividade['Protocolo NOC'] || '';
+        // LPU delegada (ex: responsável do VAL preenchendo por outro técnico): o campo
+        // "Técnicos" representa quem executou o serviço, não quem está preenchendo.
+        if(atividade.delegadaLpu && atividade['Técnico']) document.getElementById('tecnicos').value = atividade['Técnico'];
+        else if(atividade.delegadaLpuApoio && atividade['Técnico Apoio']) document.getElementById('tecnicos').value = atividade['Técnico Apoio'];
     }catch(err){ console.error(err); }
 }
 
@@ -963,7 +991,9 @@ window.fazerLogin = async function(){
     erroEl.classList.remove('visible');
 
     if(!empresa || !tecnico || !pin || !complemento){ mostrarErroLogin('Preencha empresa, técnico, PIN e complemento.'); return; }
-    if(empresa === 'NETTURBO'){ mostrarErroLogin('Este relatório é exclusivo para prestadoras terceiras.'); return; }
+    if(SEM_LPU.indexOf(empresa) !== -1){ mostrarErroLogin(`${empresa} não usa o fluxo de LPU.`); return; }
+    const responsavelBloqueio = empresaBloqueiaTecnico(empresa, tecnico);
+    if(responsavelBloqueio){ mostrarErroLogin(`A LPU da ${empresa} é preenchida por ${responsavelBloqueio}.`); return; }
 
     try{
         const resp = await fetch(APPS_SCRIPT_URL, {
@@ -984,16 +1014,38 @@ window.fazerLogin = async function(){
     }
 };
 
+// Empresas com um responsável fixo pela LPU (ex: VAL -> Marcos) bloqueiam os
+// demais técnicos aqui, com mensagem explicando quem preenche.
+function bloquear(msg){
+    document.getElementById('boxLoginLpu').style.display = 'none';
+    document.getElementById('msgBloqueado').innerHTML = msg;
+    document.getElementById('boxBloqueado').style.display = 'flex';
+}
+function empresaBloqueiaTecnico(empresa, tecnico){
+    const responsavel = RESPONSAVEIS[empresa];
+    return responsavel && responsavel !== tecnico ? responsavel : null;
+}
+
 // Se o técnico já entrou em Minhas Atividades (tecnico.html) nesta mesma sessão do
 // navegador, entra direto aqui sem pedir PIN/senha de novo. Se a sessão salva for de
-// uma conta NETTURBO, bloqueia — LPU é só pra prestadoras terceiras.
-(function tentarSessaoExistente(){
+// uma conta NETTURBO, bloqueia — LPU é só pra prestadoras terceiras. Se a empresa tem
+// um responsável fixo pela LPU e não é quem está logado, bloqueia também.
+(async function tentarSessaoExistente(){
     const salvo = sessionStorage.getItem('esteira_tecnico_logado');
     const salvoEmpresa = sessionStorage.getItem('esteira_empresa_logada');
     if(salvo && salvoEmpresa){
         if(salvoEmpresa === 'NETTURBO'){
-            document.getElementById('boxLoginLpu').style.display = 'none';
-            document.getElementById('boxBloqueado').style.display = 'flex';
+            bloquear('Este relatório é exclusivo para técnicos de prestadoras terceiras.<br>Contas NETTURBO não preenchem LPU.');
+            return;
+        }
+        await carregarTecnicosPromise;
+        if(SEM_LPU.indexOf(salvoEmpresa) !== -1){
+            bloquear(`${salvoEmpresa} não usa o fluxo de LPU.`);
+            return;
+        }
+        const responsavel = empresaBloqueiaTecnico(salvoEmpresa, salvo);
+        if(responsavel){
+            bloquear(`A LPU da ${salvoEmpresa} é preenchida por <b>${responsavel}</b>.<br>Fale com a liderança se isso precisar mudar.`);
             return;
         }
         TECNICO_LOGADO = salvo;

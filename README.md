@@ -7,7 +7,7 @@ Sistema web para gestão de despacho, acompanhamento de atendimentos técnicos d
 O projeto é composto por várias telas independentes, cada uma com login próprio. `painel.html` é o hub de acesso rápido a todas elas.
 
 ### `painel.html` — Painel
-Hub central com um card de acesso pra cada tela abaixo.
+Hub central de acesso rápido a todas as telas abaixo, com cards agrupados em três seções (Operação, Financeiro/LPU, Liderança) e busca que filtra os cards em tempo real. Usa a mesma barra superior (`.topbar`) compartilhada por todas as outras telas — ver Arquitetura.
 
 ### `index.html` — Esteira de Despacho
 Tela do time de despacho/atendimento.
@@ -28,7 +28,7 @@ App mobile-first usado pelo técnico em campo (titular ou equipe de apoio).
 - Depois que um chamado de empresa terceira é validado, o técnico (titular e/ou apoio, cada um com sua própria empresa) é levado ao sub-fluxo de LPU — ver seção abaixo.
 
 ### `PREENCHIMENTO_LPU.html` — Preenchimento LPU
-Formulário de cobrança (LPU) vinculado a um chamado já validado. Acesso de técnicos de prestadoras terceiras (mesma sessão de login de `tecnico.html`) — contas NETTURBO não entram, já que não há cobrança por LPU pra mão de obra própria.
+Formulário de cobrança (LPU) vinculado a um chamado já validado. Acesso de técnicos de prestadoras terceiras (mesma sessão de login de `tecnico.html`) — empresas em `EMPRESAS_SEM_LPU` (hoje NETTURBO e QUALITY, ver seção de LPU abaixo) não entram. Quando a empresa tem um técnico responsável centralizando a LPU (`RESPONSAVEL_LPU_POR_EMPRESA`, ver abaixo), só ele aparece no seletor de técnico — os demais nem conseguem selecionar a própria empresa pra logar aqui.
 - Lançamento de itens de serviço (código, descrição, classe, quantidade) com cálculo automático de subtotal por classe e total geral. Descrição Contábil inclui "Consultoria de Regularização" e "Serviços de Melhoria de REDE" (código 0008, adicionadas em 2026-07-22) — a lista de itens disponível pra cada descrição é filtrada por `regrasFiltroCodigos`; descrições sem regra própria ficam sem itens pra escolher.
 - Assinatura do prestador preenchida automaticamente (técnico logado + data/hora).
 - Gera um relatório em PDF (identificação + itens + fotos) e sobe pro Google Drive — é esse PDF que o aprovador e a Medição revisam depois, em vez de uma lista de fotos solta.
@@ -42,7 +42,7 @@ Aprovação final das LPUs e fechamento financeiro. Acesso restrito à lideranç
 - Orçamento por descrição contábil: acompanha, para as descrições com um teto configurado, quanto já foi comprometido (LPUs preenchidas) e aprovado (Medição) contra o orçamento do mês, com saldo projetado. Orçamentos e classificação CAPEX/OPEX confirmados com a liderança em 2026-07-22.
 
 ### `fechamento_lpu.html` — Fechamento LPU
-Fase 2 do fluxo de LPU: emissão de Nota Fiscal e pagamento. Acesso de técnicos de prestadoras terceiras (mesma sessão de login de `tecnico.html`) — contas NETTURBO não entram.
+Fase 2 do fluxo de LPU: emissão de Nota Fiscal e pagamento. Acesso de técnicos de prestadoras terceiras (mesma sessão de login de `tecnico.html`) — mesmas restrições de `EMPRESAS_SEM_LPU` e `RESPONSAVEL_LPU_POR_EMPRESA` do Preenchimento LPU acima.
 - Mostra tudo que está `APROVADO_AGUARDANDO_NF` sem NF ainda pra empresa logada (titular e apoio juntos, sem filtro de data — é todo o valor acumulado até o momento) e permite anexar UM arquivo de Nota Fiscal (PDF ou foto) cobrindo o lote inteiro.
 - Depois de anexada, essas atividades passam pra "Aguardando Pagamento" (mesmo status `APROVADO_AGUARDANDO_NF`, agora com a NF vinculada) até a liderança confirmar o pagamento em `medicao.html` — não existe status intermediário de "NF recebida".
 - Histórico de fechamentos já pagos (`PAGO`), com data da confirmação.
@@ -67,7 +67,7 @@ Checklist de fiscalização em campo (acompanhamento de obra ou auditoria de fer
 
 ## Fluxo de LPU (cobrança de prestadoras terceiras)
 
-Quando um chamado de empresa terceira (não NETTURBO) é validado, ele não some da tela do técnico — entra num sub-processo de cobrança:
+Quando um chamado de uma empresa que cobra por LPU é validado, ele não some da tela do técnico — entra num sub-processo de cobrança. Empresas em `EMPRESAS_SEM_LPU` (backend) não passam por nada disso — hoje NETTURBO (mão de obra própria) e QUALITY (contrato fixo de 18 atividades/mês, cobrado só por produtividade); pra elas o processo termina na validação técnica mesmo:
 
 ```
 VALIDADA (chamado)
@@ -104,6 +104,10 @@ Titular e apoio podem ser empresas diferentes e geram cobranças independentes �
 
 Reprovação em qualquer etapa (aprovador ou Medição) volta o status pra `PENDENTE_PREENCHIMENTO` com um motivo, e o técnico corrige e reenvia.
 
+Algumas empresas centralizam toda a LPU da equipe num único técnico responsável (`RESPONSAVEL_LPU_POR_EMPRESA` no backend — hoje só VAL → Marcos Mendes Merino). Nesses casos a atividade continua contando pro técnico que realmente atendeu (MTTR/IRR/resumo pessoal intactos), mas assim que o chamado fica `PENDENTE_PREENCHIMENTO` a etapa de LPU migra pra tela do responsável — os demais técnicos da empresa ficam bloqueados em `PREENCHIMENTO_LPU.html`/`fechamento_lpu.html`.
+
+Quando o aprovador valida uma LPU em `index.html`, o PDF que o técnico já tinha gerado ganha uma página extra com o nome de quem aprovou e a data/hora — carimbo feito no navegador com `pdf-lib` (ações `LPU_OBTER_PDF`/`LPU_ATUALIZAR_PDF`), sem alterar o relatório original (itens, fotos, assinatura do prestador). Se o carimbo falhar por qualquer motivo, a aprovação em si não é desfeita.
+
 Uma prestadora emite uma Nota Fiscal só por mês, não uma por papel — o fechamento em `fechamento_lpu.html` junta pendências de titular e apoio da mesma empresa num arquivo só, e grava a mesma URL (`LPU NF URL`/`LPU Apoio NF URL`) em todas as linhas do lote. É essa URL compartilhada que permite agrupar o "fechamento" na fila de pagamento da Medição sem precisar de uma aba/entidade nova na planilha.
 
 A Medição também pode reprovar o fechamento já com NF anexada (NF errada/ilegível/valor divergente etc.) — isso limpa a NF URL/timestamp daquele lote (titular e/ou apoio) e grava o motivo em `LPU Motivo Reprovação NF`/`LPU Apoio Motivo Reprovação NF`, sem mexer no status (`APROVADO_AGUARDANDO_NF`) nem desfazer a aprovação da Medição em si. O prestador vê o motivo em `fechamento_lpu.html` e reenvia a NF.
@@ -123,7 +127,9 @@ manutencao_preventiva.html / jornada_excedente.html / fiscal_v2.html
         Google Sheets (dados)
 ```
 
-Todas as páginas consomem o mesmo backend (`APPS_SCRIPT_URL`, definido no `<script>` de cada arquivo), através de ações como `LISTAR_ESTEIRA`, `LISTAR_TECNICOS`, `LISTAR_ATIVIDADES_TECNICO`, `RESUMO_DIARIO_TECNICO`, `RESUMO_MENSAL_TECNICO`, `SALVAR_LPU_ATIVIDADE`, `VALIDAR_LPU_APROVADOR`, `VALIDAR_LPU_MEDICAO`, `DECIDIR_LPU_APOIO`, `FECHAR_LPU_NF`, `LISTAR_LPU_FECHAMENTO`, `LISTAR_LPU_PAGAMENTO`, `MARCAR_LPU_PAGO`, `REPROVAR_LPU_NF`, entre outras. Não há backend próprio nem banco de dados neste repositório — a lógica de persistência vive no Apps Script/planilha vinculados.
+Todas as páginas consomem o mesmo backend (`APPS_SCRIPT_URL`, definido no `<script>` de cada arquivo), através de ações como `LISTAR_ESTEIRA`, `LISTAR_TECNICOS`, `LISTAR_ATIVIDADES_TECNICO`, `RESUMO_DIARIO_TECNICO`, `RESUMO_MENSAL_TECNICO`, `SALVAR_LPU_ATIVIDADE`, `VALIDAR_LPU_APROVADOR`, `VALIDAR_LPU_MEDICAO`, `DECIDIR_LPU_APOIO`, `FECHAR_LPU_NF`, `LISTAR_LPU_FECHAMENTO`, `LISTAR_LPU_PAGAMENTO`, `MARCAR_LPU_PAGO`, `REPROVAR_LPU_NF`, `LPU_OBTER_PDF`, `LPU_ATUALIZAR_PDF`, entre outras. Não há backend próprio nem banco de dados neste repositório — a lógica de persistência vive no Apps Script/planilha vinculados.
+
+Todas as telas compartilham o mesmo cabeçalho (`.topbar`): barra verde sólida fixa no topo, com logo e marca/subtítulo — sem elementos funcionais (botões, links, seletores) nela, que ficam numa linha própria (`.page-actions`) logo abaixo, dentro do conteúdo de cada página.
 
 O arquivo `.claude/docs/netturbo-esteira-apps-script-*.gs` é a cópia de referência do código do Apps Script de produção — alterações nele precisam ser coladas manualmente no editor do Apps Script e reimplantadas (Implantar → Gerenciar implantações → Nova versão) pra valerem no `/exec` que os front-ends chamam.
 

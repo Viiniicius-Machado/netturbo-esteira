@@ -42,20 +42,16 @@ body{background:var(--bg);color:var(--text);font-family:"Inter",sans-serif;min-h
 .login-hint{font-size:.62rem;color:var(--text-muted);text-align:center}
 
 /* ── HEADER ─────────────────────────────────────────────── */
-header{background:linear-gradient(180deg,#100d04 0%,#0f0f0f 100%);border-bottom:1px solid #1e1a08;position:sticky;top:0;z-index:100;box-shadow:0 2px 30px rgba(0,0,0,.75),0 1px 0 rgba(168,201,60,.06)}
-.header-inner{max-width:700px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.6rem 1rem}
-.hdr-logo{height:38px;width:auto;flex-shrink:0;background:#fff;border-radius:6px;padding:.25rem .5rem}
-.hdr-logo img{height:100%;width:auto;object-fit:contain;object-position:center;display:block}
-.hdr-title{flex:1;display:flex;flex-direction:column;gap:.15rem;min-width:0}
-.hdr-brand-row{display:flex;align-items:center;gap:.55rem}
-.hdr-brand{font-family:"Rajdhani",sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;line-height:1}
+.topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+.topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+.topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+.topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+.topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+.topbar-spacer{flex:1}
 .hdr-pill{font-family:"Rajdhani",sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;background:rgba(168,201,60,.12);color:var(--accent);border:1px solid rgba(168,201,60,.25);border-radius:4px;padding:.12rem .45rem;white-space:nowrap}
-.hdr-sub-row{display:flex;align-items:center;gap:.4rem}
-.hdr-sub{font-size:.6rem;color:var(--text-muted);letter-spacing:.18em;text-transform:uppercase}
-.hdr-sep{width:1px;height:8px;background:#2a2a2a}
-.hdr-dept{font-size:.6rem;color:#6b8a1f;letter-spacing:.12em;text-transform:uppercase}
-.hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:.3rem;flex-shrink:0}
 .access-badge{font-size:.58rem;font-weight:700;letter-spacing:.1em;padding:.25rem .55rem;border-radius:20px;text-transform:uppercase;background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)}
+
+.page-actions{max-width:700px;margin:0 auto;display:flex;align-items:center;gap:.5rem;padding:.9rem 1rem 0}
 
 /* ── MAIN ─────────────────────────────────────────────────*/
 main{max-width:700px;margin:0 auto;padding:1.2rem 1rem 0}
@@ -149,16 +145,20 @@ main{max-width:700px;margin:0 auto;padding:1.2rem 1rem 0}
 </div>
 
 <!-- HEADER -->
-<header>
-  <div class="header-inner">
-    <div class="hdr-logo"><img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo"/></div>
-    <div class="hdr-title">
-      <div class="hdr-brand-row"><span class="hdr-brand">Netturbo</span><span class="hdr-pill">FISCALIZAÇÃO</span></div>
-      <div class="hdr-sub-row"><span class="hdr-sub">Relatório de Obra</span><span class="hdr-sep"></span><span class="hdr-dept">Área da Liderança</span></div>
-    </div>
-    <div class="hdr-right"><div class="access-badge">LIDERANÇA</div></div>
+<header class="topbar">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo"/>
+  <div>
+    <div class="topbar-brand">Netturbo</div>
+    <div class="topbar-sub">Fiscalização · Relatório de Obra</div>
   </div>
+  <div class="topbar-spacer"></div>
 </header>
+
+<div class="page-actions">
+  <span class="hdr-pill">FISCALIZAÇÃO</span>
+  <div class="access-badge">LIDERANÇA</div>
+</div>
 
 <main>
 

@@ -33,12 +33,14 @@
     .login-error.visible{display:block}
     .login-bloqueado{font-size:.85rem;color:var(--text);text-align:center;line-height:1.6}
 
-    header{background:linear-gradient(180deg,#0c160a,#0f0f0f);border-bottom:1px solid #1a2a12;position:sticky;top:0;z-index:100}
-    .header-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.7rem 1.2rem;flex-wrap:wrap}
-    .hdr-logo{height:38px;width:auto;background:#fff;border-radius:6px;padding:.25rem .5rem}
-    .hdr-brand{font-family:'Rajdhani',sans-serif;font-size:1.25rem;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
-    .hdr-sub{font-size:.58rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase}
+    .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+    .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+    .topbar-spacer{flex:1}
 
+    .page-actions{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:.5rem;padding:.9rem 1.2rem 0}
     main{max-width:900px;margin:0 auto;padding:1.3rem 1.2rem 0}
 
     .btn{padding:.6rem 1.1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.82rem}
@@ -102,21 +104,23 @@
   <div class="login-box" id="boxBloqueado" style="display:none">
     <img class="login-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
     <div class="login-heading"><h2>Acesso Restrito</h2></div>
-    <div class="login-bloqueado">Esta tela é exclusiva para prestadoras terceiras.<br>Contas NETTURBO não emitem LPU nem Nota Fiscal.</div>
+    <div class="login-bloqueado" id="msgBloqueado">Esta tela é exclusiva para prestadoras terceiras.<br>Contas NETTURBO não emitem LPU nem Nota Fiscal.</div>
   </div>
 </div>
 
-<header id="headerApp" style="display:none">
-  <div class="header-inner">
-    <img class="hdr-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
-    <div>
-      <div class="hdr-brand">Fechamento LPU</div>
-      <div class="hdr-sub" id="hdrEmpresa">—</div>
-    </div>
-    <div style="flex:1"></div>
-    <a href="tecnico.html" style="color:var(--text-dim);font-size:.72rem;text-decoration:none;border:1px solid var(--border-hi);padding:.4rem .7rem;border-radius:6px">← Minhas Atividades</a>
+<header id="headerApp" class="topbar" style="display:none">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Fechamento LPU</div>
+    <div class="topbar-sub" id="hdrEmpresa">—</div>
   </div>
+  <div class="topbar-spacer"></div>
 </header>
+
+<div class="page-actions" id="pageActions" style="display:none">
+  <a href="tecnico.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">← Minhas Atividades</a>
+</div>
 
 <main id="app" style="display:none">
 
@@ -170,13 +174,15 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 
 let TECH_MAP = {};
+let RESPONSAVEIS = {}; // empresa -> técnico que centraliza a LPU (ex: VAL -> Marcos), quando existir
+let SEM_LPU = ['NETTURBO']; // empresas que não cobram por LPU (fallback até o backend responder)
 let TECNICO_LOGADO = '';
 let EMPRESA_LOGADA = '';
 let TODOS_ITENS = [];
 
-// Sem NETTURBO na lista — mão de obra própria não passa por cobrança de LPU nem NF.
+// Sem empresas SEM_LPU na lista — não passam por cobrança de LPU nem NF.
 function popularEmpresas(){
-  const opts = '<option value="">Selecione...</option>' + Object.keys(TECH_MAP).filter(e => e !== 'NETTURBO').map(e=>`<option value="${e}">${e}</option>`).join('');
+  const opts = '<option value="">Selecione...</option>' + Object.keys(TECH_MAP).filter(e => SEM_LPU.indexOf(e) === -1).map(e=>`<option value="${e}">${e}</option>`).join('');
   document.getElementById('selEmpresa').innerHTML = opts;
 }
 
@@ -185,14 +191,30 @@ async function carregarTecnicos(){
     const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS');
     const result = await resp.json();
     TECH_MAP = result.empresas || {};
+    RESPONSAVEIS = result.responsaveis || {};
+    SEM_LPU = result.semLpu || SEM_LPU;
   }catch(err){ console.error(err); }
   popularEmpresas();
 }
-carregarTecnicos();
+const carregarTecnicosPromise = carregarTecnicos();
+
+function bloquear(msg){
+  document.getElementById('boxLogin').style.display = 'none';
+  document.getElementById('msgBloqueado').innerHTML = msg;
+  document.getElementById('boxBloqueado').style.display = 'flex';
+}
+function empresaBloqueiaTecnico(empresa, tecnico){
+  const responsavel = RESPONSAVEIS[empresa];
+  return responsavel && responsavel !== tecnico ? responsavel : null;
+}
 
 window.atualizarTecnicosLogin = function(){
   const empresa = document.getElementById('selEmpresa').value;
-  const nomes = TECH_MAP[empresa] || [];
+  let nomes = TECH_MAP[empresa] || [];
+  // Empresa com responsável fixo pela LPU: só ele aparece pra escolher —
+  // os demais técnicos nem chegam a ver a opção de entrar aqui.
+  const responsavel = RESPONSAVEIS[empresa];
+  if (responsavel) nomes = nomes.filter(n => n === responsavel);
   document.getElementById('selTecnico').innerHTML = '<option value="">Selecione...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
 };
 
@@ -204,7 +226,8 @@ function mostrarErroLogin(msg){
 
 function liberarApp(){
   document.getElementById('login-overlay').style.display = 'none';
-  document.getElementById('headerApp').style.display = 'block';
+  document.getElementById('headerApp').style.display = 'flex';
+  document.getElementById('pageActions').style.display = 'flex';
   document.getElementById('app').style.display = 'block';
   document.getElementById('hdrEmpresa').textContent = EMPRESA_LOGADA + ' · ' + TECNICO_LOGADO;
   carregarFechamento();
@@ -222,7 +245,9 @@ window.fazerLogin = async function(){
   erroEl.classList.remove('visible');
 
   if(!empresa || !tecnico || !pin || !complemento){ mostrarErroLogin('Preencha empresa, técnico, PIN e complemento.'); return; }
-  if(empresa === 'NETTURBO'){ mostrarErroLogin('Esta tela é exclusiva para prestadoras terceiras.'); return; }
+  if(SEM_LPU.indexOf(empresa) !== -1){ mostrarErroLogin(`${empresa} não usa o fluxo de LPU.`); return; }
+  const responsavelBloqueio = empresaBloqueiaTecnico(empresa, tecnico);
+  if(responsavelBloqueio){ mostrarErroLogin(`A LPU da ${empresa} é preenchida por ${responsavelBloqueio}.`); return; }
 
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
@@ -244,13 +269,22 @@ window.fazerLogin = async function(){
 };
 
 // Reaproveita a sessão já aberta em tecnico.html/PREENCHIMENTO_LPU.html, se houver.
-(function tentarSessaoExistente(){
+(async function tentarSessaoExistente(){
   const salvo = sessionStorage.getItem('esteira_tecnico_logado');
   const salvoEmpresa = sessionStorage.getItem('esteira_empresa_logada');
   if(salvo && salvoEmpresa){
     if(salvoEmpresa === 'NETTURBO'){
-      document.getElementById('boxLogin').style.display = 'none';
-      document.getElementById('boxBloqueado').style.display = 'flex';
+      bloquear('Esta tela é exclusiva para prestadoras terceiras.<br>Contas NETTURBO não emitem LPU nem Nota Fiscal.');
+      return;
+    }
+    await carregarTecnicosPromise;
+    if(SEM_LPU.indexOf(salvoEmpresa) !== -1){
+      bloquear(`${salvoEmpresa} não usa o fluxo de LPU.`);
+      return;
+    }
+    const responsavel = empresaBloqueiaTecnico(salvoEmpresa, salvo);
+    if(responsavel){
+      bloquear(`A LPU da ${salvoEmpresa} é preenchida por <b>${responsavel}</b>.<br>Fale com a liderança se isso precisar mudar.`);
       return;
     }
     TECNICO_LOGADO = salvo;

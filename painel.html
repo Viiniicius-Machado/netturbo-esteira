@@ -12,95 +12,188 @@
       --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
       --border:#252525;--border-hi:#353535;
       --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+      --topbar-h:60px;--sidebar-w:64px;
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html{font-size:15px}
     body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh}
+    svg{display:block}
 
-    header{background:linear-gradient(180deg,#0c160a,#0f0f0f);border-bottom:1px solid #1a2a12}
-    .header-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:1rem 1.2rem}
-    .hdr-logo{height:38px;width:auto;background:#fff;border-radius:6px;padding:.25rem .5rem}
-    .hdr-brand{font-family:'Rajdhani',sans-serif;font-size:1.25rem;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
-    .hdr-sub{font-size:.6rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase}
+    /* ── TOPBAR ── */
+    .topbar{position:sticky;top:0;z-index:50;height:var(--topbar-h);background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0;cursor:pointer}
+    .topbar-menu:hover{background:rgba(0,0,0,.08)}
+    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+    .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+    .topbar-spacer{flex:1}
 
-    main{max-width:900px;margin:0 auto;padding:2rem 1.2rem}
-    .intro h1{font-family:'Rajdhani',sans-serif;font-size:1.7rem;font-weight:700;letter-spacing:.04em}
-    .intro p{font-size:.85rem;color:var(--text-dim);margin-top:.4rem;line-height:1.6}
+    /* ── SIDEBAR ── */
+    .sidebar{position:fixed;top:var(--topbar-h);left:0;bottom:0;width:var(--sidebar-w);background:#0c0c0c;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:.6rem;padding:1rem 0;z-index:40}
+    .side-link{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);text-decoration:none;transition:background .15s ease,color .15s ease}
+    .side-link:hover{color:var(--text)}
+    .side-link.active{background:linear-gradient(135deg,var(--accent-dark),var(--accent));color:#0a0a0a}
 
-    .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:1.8rem}
-    .hub-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.4rem;display:flex;flex-direction:column;gap:.6rem;text-decoration:none;color:var(--text);transition:border-color .15s ease,transform .15s ease}
+    /* ── LAYOUT ── */
+    .layout{margin-left:var(--sidebar-w);padding:1.6rem 1.4rem 3rem;max-width:960px}
+    .intro h1{font-family:'Rajdhani',sans-serif;font-size:1.6rem;font-weight:700;letter-spacing:.04em}
+    .intro p{font-size:.83rem;color:var(--text-dim);margin-top:.35rem;line-height:1.6}
+
+    .search-box{margin-top:1.3rem;display:flex;align-items:center;gap:.55rem;background:var(--surface);border:1px solid var(--border-hi);border-radius:10px;padding:.65rem .9rem;max-width:420px}
+    .search-box svg{color:var(--text-muted);flex-shrink:0}
+    .search-box input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:.85rem;font-family:'Inter',sans-serif}
+    .search-box input::placeholder{color:var(--text-muted)}
+
+    .section{margin-top:2.1rem}
+    .section-head{display:flex;align-items:center;gap:.55rem;margin-bottom:.9rem}
+    .section-title{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text)}
+    .section-count{background:var(--surface3);border:1px solid var(--border-hi);border-radius:20px;padding:.1rem .55rem;font-size:.68rem;color:var(--text-dim)}
+
+    .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.9rem}
+    .hub-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.1rem;display:flex;gap:.85rem;align-items:flex-start;text-decoration:none;color:var(--text);transition:border-color .15s ease,transform .15s ease}
     .hub-card:hover{border-color:var(--accent);transform:translateY(-2px)}
-    .hub-title{font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:700;letter-spacing:.02em}
-    .hub-desc{font-size:.78rem;color:var(--text-dim);line-height:1.5;flex:1}
-    .hub-abrir{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.3rem;margin-top:.3rem}
+    .hub-icon{width:40px;height:40px;border-radius:50%;background:var(--surface3);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0}
+    .hub-body{flex:1;min-width:0}
+    .hub-eyebrow{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)}
+    .hub-title{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.02em;margin-top:.1rem}
+    .hub-desc{font-size:.75rem;color:var(--text-dim);line-height:1.5;margin-top:.35rem}
+    .hub-arrow{color:var(--text-muted);flex-shrink:0;margin-top:.4rem}
+    .hub-card:hover .hub-arrow{color:var(--accent)}
+
+    .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+
+    @media (max-width:680px){
+      :root{--sidebar-w:0px}
+      .sidebar{display:none}
+      .layout{padding:1.3rem 1rem 2.5rem}
+    }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="header-inner">
-    <img class="hdr-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
-    <div>
-      <div class="hdr-brand">Netturbo</div>
-      <div class="hdr-sub">Painel · Esteira de Despacho</div>
-    </div>
+<header class="topbar">
+  <div class="topbar-menu">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Netturbo</div>
+    <div class="topbar-sub">Painel · Esteira de Despacho</div>
+  </div>
+  <div class="topbar-spacer"></div>
 </header>
 
-<main>
+<nav class="sidebar" aria-label="Seções">
+  <a class="side-link active" href="#operacao" title="Operação">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+  </a>
+  <a class="side-link" href="#financeiro" title="Financeiro / LPU">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+  </a>
+  <a class="side-link" href="#lideranca" title="Liderança">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="7"/><rect x="13" y="7" width="3" height="12"/><rect x="19" y="3" width="2" height="16"/></svg>
+  </a>
+</nav>
+
+<main class="layout">
   <div class="intro">
     <h1>Painel</h1>
     <p>Acesso rápido às telas da Esteira de Despacho. Escolha abaixo o que você precisa abrir.</p>
   </div>
 
-  <div class="card-grid">
-    <a class="hub-card" href="index.html">
-      <div class="hub-title">Esteira de Despacho</div>
-      <div class="hub-desc">Cadastro e acompanhamento das atividades — quadro Aguardando / Despachada, para o time de despacho.</div>
-      <div class="hub-abrir">Abrir →</div>
-    </a>
-    <a class="hub-card" href="dashboard_gestao.html">
-      <div class="hub-title">Dashboard de Gestão</div>
-      <div class="hub-desc">Indicadores da operação — SLA, eficiência, MTTR/MTTD, produção por empresa e ranking de causas. Acesso restrito à liderança.</div>
-      <div class="hub-abrir">Abrir →</div>
-    </a>
-    <a class="hub-card" href="tecnico.html">
-      <div class="hub-title">Minhas Atividades</div>
-      <div class="hub-desc">App do técnico em campo — início, chegada, registro de ocorrência e relatório de atendimento.</div>
-      <div class="hub-abrir">Abrir →</div>
-    </a>
-    <a class="hub-card" href="manutencao_preventiva.html">
-      <div class="hub-title">Manutenção Preventiva</div>
-      <div class="hub-desc">Relatório fotográfico de preventiva em rede externa, com geração de PDF. Acesso do técnico (mesmo login de Minhas Atividades).</div>
-      <div class="hub-abrir">Abrir →</div>
-    </a>
-    <a class="hub-card" href="fiscal_v2.html">
-      <div class="hub-title">Fiscalização</div>
-      <div class="hub-desc">Checklist de fiscalização em campo, com fotos e assinatura — geração de PDF. Acesso da liderança.</div>
-      <div class="hub-abrir">Abrir →</div>
-    </a>
-    <a class="hub-card" href="jornada_excedente.html">
-      <div class="hub-title">Jornada Excedente</div>
-      <div class="hub-desc">Registro de horas excedentes de jornada, com assinaturas — geração de PDF. Acesso da liderança.</div>
-      <div class="hub-abrir">Abrir →</div>
-    </a>
-    <a class="hub-card" href="PREENCHIMENTO_LPU.html">
-      <div class="hub-title">Preenchimento LPU</div>
-      <div class="hub-desc">Cobrança de serviços prestados (LPU), vinculada aos chamados validados. Acesso de técnicos de prestadoras terceiras (mesmo login de Minhas Atividades) — NETTURBO não acessa.</div>
-      <div class="hub-abrir">Abrir →</div>
-    </a>
-    <a class="hub-card" href="medicao.html">
-      <div class="hub-title">Medição</div>
-      <div class="hub-desc">Aprovação final das LPUs e fechamento financeiro — soma por prestadora, por descrição contábil e CAPEX/OPEX. Acesso restrito à liderança.</div>
-      <div class="hub-abrir">Abrir →</div>
-    </a>
-    <a class="hub-card" href="fechamento_lpu.html">
-      <div class="hub-title">Fechamento LPU</div>
-      <div class="hub-desc">Anexo da Nota Fiscal cobrindo o valor acumulado do mês e acompanhamento do pagamento. Acesso de técnicos de prestadoras terceiras (mesmo login de Minhas Atividades).</div>
-      <div class="hub-abrir">Abrir →</div>
-    </a>
+  <div class="search-box">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="busca" type="text" placeholder="Buscar tela..." oninput="filtrar(this.value)"/>
   </div>
+
+  <div id="secoes"></div>
+  <div class="empty-msg" id="msgVazio" style="display:none">Nenhuma tela encontrada.</div>
 </main>
+
+<script>
+const ICONE_CARD = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="13" width="3" height="6"/><rect x="13" y="9" width="3" height="10"/><rect x="18" y="5" width="3" height="14"/></svg>`;
+
+const SECOES = [
+  {
+    id:'operacao', label:'Operação',
+    cards:[
+      { href:'index.html', titulo:'Esteira de Despacho', desc:'Cadastro e acompanhamento das atividades — quadro Aguardando / Despachada, para o time de despacho.' },
+      { href:'tecnico.html', titulo:'Minhas Atividades', desc:'App do técnico em campo — início, chegada, registro de ocorrência e relatório de atendimento.' },
+      { href:'manutencao_preventiva.html', titulo:'Manutenção Preventiva', desc:'Relatório fotográfico de preventiva em rede externa, com geração de PDF. Acesso do técnico (mesmo login de Minhas Atividades).' }
+    ]
+  },
+  {
+    id:'financeiro', label:'Financeiro / LPU',
+    cards:[
+      { href:'PREENCHIMENTO_LPU.html', titulo:'Preenchimento LPU', desc:'Cobrança de serviços prestados (LPU), vinculada aos chamados validados. Acesso de técnicos de prestadoras terceiras (mesmo login de Minhas Atividades) — NETTURBO não acessa.' },
+      { href:'fechamento_lpu.html', titulo:'Fechamento LPU', desc:'Anexo da Nota Fiscal cobrindo o valor acumulado do mês e acompanhamento do pagamento. Acesso de técnicos de prestadoras terceiras (mesmo login de Minhas Atividades).' },
+      { href:'medicao.html', titulo:'Medição', desc:'Aprovação final das LPUs e fechamento financeiro — soma por prestadora, por descrição contábil e CAPEX/OPEX. Acesso restrito à liderança.' }
+    ]
+  },
+  {
+    id:'lideranca', label:'Liderança',
+    cards:[
+      { href:'dashboard_gestao.html', titulo:'Dashboard de Gestão', desc:'Indicadores da operação — SLA, eficiência, MTTR/MTTD, produção por empresa e ranking de causas. Acesso restrito à liderança.' },
+      { href:'fiscal_v2.html', titulo:'Fiscalização', desc:'Checklist de fiscalização em campo, com fotos e assinatura — geração de PDF. Acesso da liderança.' },
+      { href:'jornada_excedente.html', titulo:'Jornada Excedente', desc:'Registro de horas excedentes de jornada, com assinaturas — geração de PDF. Acesso da liderança.' }
+    ]
+  }
+];
+
+function renderSecoes(){
+  const cont = document.getElementById('secoes');
+  cont.innerHTML = SECOES.map(sec => `
+    <div class="section" id="sec-${sec.id}">
+      <div class="section-head">
+        <span class="section-title">${sec.label}</span>
+        <span class="section-count">${sec.cards.length}</span>
+      </div>
+      <div class="card-grid">
+        ${sec.cards.map(c => `
+          <a class="hub-card" href="${c.href}" data-busca="${(c.titulo+' '+c.desc).toLowerCase()}">
+            <div class="hub-icon">${ICONE_CARD}</div>
+            <div class="hub-body">
+              <div class="hub-eyebrow">${sec.label}</div>
+              <div class="hub-title">${c.titulo}</div>
+              <div class="hub-desc">${c.desc}</div>
+            </div>
+            <div class="hub-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+          </a>`).join('')}
+      </div>
+    </div>`).join('');
+}
+renderSecoes();
+
+function filtrar(termo){
+  const q = termo.trim().toLowerCase();
+  let algumVisivel = false;
+  document.querySelectorAll('.section').forEach(secEl => {
+    let visiveis = 0;
+    secEl.querySelectorAll('.hub-card').forEach(card => {
+      const bate = !q || card.dataset.busca.includes(q);
+      card.style.display = bate ? '' : 'none';
+      if(bate) visiveis++;
+    });
+    secEl.style.display = visiveis ? '' : 'none';
+    secEl.querySelector('.section-count').textContent = visiveis;
+    if(visiveis) algumVisivel = true;
+  });
+  document.getElementById('msgVazio').style.display = algumVisivel ? 'none' : 'block';
+}
+
+// Marca o ícone da sidebar correspondente à seção visível no scroll.
+const sideLinks = Array.from(document.querySelectorAll('.side-link'));
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if(!entry.isIntersecting) return;
+    const id = entry.target.id.replace('sec-','');
+    sideLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#'+id));
+  });
+}, { rootMargin: '-40% 0px -50% 0px' });
+document.querySelectorAll('.section').forEach(sec => observer.observe(sec));
+</script>
 
 </body>
 </html>

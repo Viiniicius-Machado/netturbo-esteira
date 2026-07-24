@@ -111,6 +111,7 @@ function doPost(e) {
     if (acao === 'FECHAR_LPU_NF')        return fecharLpuNf(ss, data);
     if (acao === 'MARCAR_LPU_PAGO')      return marcarLpuPago(ss, data);
     if (acao === 'REPROVAR_LPU_NF')      return reprovarLpuNf(ss, data);
+    if (acao === 'LPU_ATUALIZAR_PDF')    return atualizarLpuPdf(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -132,6 +133,7 @@ function doGet(e) {
   if (params.acao === 'LISTAR_LPU_MEDICAO') return listarLpuMedicao(ss);
   if (params.acao === 'LISTAR_LPU_FECHAMENTO') return listarLpuFechamento(ss, params);
   if (params.acao === 'LISTAR_LPU_PAGAMENTO') return listarLpuPagamento(ss);
+  if (params.acao === 'LPU_OBTER_PDF') return obterLpuPdf(ss, params);
   return resposta('ok', { sistema: 'Netturbo Esteira de Despacho' });
 }
 
@@ -320,6 +322,19 @@ const TECH_MAP_BACKEND = {
   "VAL": ["Guilherme de Jesus Arruda","Djalma Aparecido Inocêncio","Marcos Mendes Merino","Altimayer de Araújo Lima","Robson Rodrigues Santos","Felipe Martins Santos Silva","Jonathan Henrique Honorato","Diego Eduardo de Souza Basso"]
 };
 
+// Empresas em que UM técnico centraliza toda a LPU da equipe. A atividade
+// continua contando pro técnico que atendeu (MTTR/IRR/resumo pessoal); só a
+// etapa de LPU (preencher / NF / financeiro) é roteada para o responsável abaixo.
+const RESPONSAVEL_LPU_POR_EMPRESA = {
+  "VAL": "Marcos Mendes Merino"
+};
+
+// Empresas que NÃO cobram por LPU (nada de "Pendente de Preenchimento LPU",
+// Fechamento LPU, Nota Fiscal). NETTURBO é mão de obra própria. QUALITY tem
+// contrato fixo (18 atividades/mês) cobrado por produtividade — pra essas, o
+// processo da tela do técnico termina na validação do NOC, sem sub-processo de LPU.
+const EMPRESAS_SEM_LPU = ["NETTURBO", "QUALITY"];
+
 function sha256Hex(str) {
   const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, str, Utilities.Charset.UTF_8);
   return bytes.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
@@ -359,7 +374,7 @@ function listarTecnicos(ss) {
     if (!empresas[empresa]) empresas[empresa] = [];
     empresas[empresa].push(tecnico);
   });
-  return resposta('ok', { empresas: empresas });
+  return resposta('ok', { empresas: empresas, responsaveis: RESPONSAVEL_LPU_POR_EMPRESA, semLpu: EMPRESAS_SEM_LPU });
 }
 
 function encontrarLinhaAcesso(sheet, empresa, tecnico) {
@@ -439,9 +454,31 @@ function listarAtividadesTecnico(ss, params) {
 
   const atividades = [];
   data.forEach((row, i) => {
-    const souTitular = row[idxEmpresa] === params.empresa && row[idxTecnico] === params.tecnico;
-    const souApoio = row[idxEmpresaApoio] === params.empresa && row[idxTecnicoApoio] === params.tecnico;
-    if (!souTitular && !souApoio) return;
+    const empresaLinha = row[idxEmpresa];
+    const tecnicoLinha = row[idxTecnico];
+    const empresaApoioLinha = row[idxEmpresaApoio];
+    const tecnicoApoioLinha = row[idxTecnicoApoio];
+
+    const souTitular = empresaLinha === params.empresa && tecnicoLinha === params.tecnico;
+    const souApoio = empresaApoioLinha === params.empresa && tecnicoApoioLinha === params.tecnico;
+
+    // Empresas com RESPONSAVEL_LPU_POR_EMPRESA centralizam a etapa de LPU num só
+    // técnico: a atividade continua sendo do titular/apoio pra tudo que é campo,
+    // mas quando VALIDADA (chegou a vez da LPU) ela "migra" pra lista do responsável.
+    const respTit = RESPONSAVEL_LPU_POR_EMPRESA[empresaLinha];
+    const respApo = RESPONSAVEL_LPU_POR_EMPRESA[empresaApoioLinha];
+    const souResponsavelTitular = row[idxStatus] === 'VALIDADA' && !souTitular
+      && empresaLinha === params.empresa && respTit === params.tecnico;
+    const souResponsavelApoio = row[idxStatus] === 'VALIDADA' && !souApoio
+      && empresaApoioLinha === params.empresa && respApo === params.tecnico;
+
+    let papel = null, delegadaLpu = false, delegadaLpuApoio = false;
+    if (souTitular) papel = 'titular';
+    else if (souApoio) papel = 'apoio';
+    else if (souResponsavelTitular) { papel = 'titular'; delegadaLpu = true; }
+    else if (souResponsavelApoio) { papel = 'apoio'; delegadaLpuApoio = true; }
+    if (!papel) return;
+
     if (row[idxStatus] === 'AGUARDANDO_DESPACHO') return; // não é dele ainda
     if (row[idxStatus] === 'VALIDADA') {
       // Só continua na lista ativa se ainda tiver um sub-processo de LPU em andamento —
@@ -449,18 +486,37 @@ function listarAtividadesTecnico(ss, params) {
       // próprio Status LPU, já que podem ser empresas diferentes com cobranças distintas).
       // Sem LPU (ex: NETTURBO, ou apoio que disse "sem cobrança") ou já passou de Medição
       // → some, como sempre foi, e entra só no resumo diário/mensal.
-      if (souTitular) {
+      if (papel === 'titular') {
+        // Defesa extra: empresa sem LPU (ex: QUALITY) não deveria nunca chegar
+        // aqui com um Status LPU pendente, mas se a linha foi validada ANTES da
+        // empresa entrar em EMPRESAS_SEM_LPU, o valor antigo ainda está gravado
+        // na planilha — trata como se não tivesse LPU nenhuma, sempre.
+        if (EMPRESAS_SEM_LPU.indexOf(empresaLinha) !== -1) return;
         const statusLpu = row[idxStatusLpu];
         const lpuAindaAtivo = ['PENDENTE_PREENCHIMENTO','AGUARDANDO_APROVADOR','AGUARDANDO_MEDICAO'].includes(statusLpu);
         if (!lpuAindaAtivo) return;
+        // A empresa tem responsável e não sou eu: a LPU não é minha — some daqui
+        // (segue contando pro meu resumo diário/mensal, só não entra nesta lista).
+        if (souTitular && respTit && respTit !== params.tecnico) return;
       } else {
+        if (EMPRESAS_SEM_LPU.indexOf(empresaApoioLinha) !== -1) return;
         const statusLpuApoio = row[idxStatusLpuApoio];
         const lpuApoioAindaAtivo = ['PENDENTE_DECISAO','PENDENTE_PREENCHIMENTO','AGUARDANDO_APROVADOR','AGUARDANDO_MEDICAO'].includes(statusLpuApoio);
         if (!lpuApoioAindaAtivo) return;
+        if (statusLpuApoio === 'PENDENTE_DECISAO') {
+          // A decisão de "teve cobrança?" é sempre de quem foi apoio de fato,
+          // mesmo se a empresa tiver um responsável de LPU — a delegação só
+          // começa depois, a partir do preenchimento em si.
+          if (delegadaLpuApoio) return;
+        } else {
+          if (souApoio && respApo && respApo !== params.tecnico) return;
+        }
       }
     }
 
-    const obj = { rowIndex: i + 2, papel: souTitular ? 'titular' : 'apoio' };
+    const obj = { rowIndex: i + 2, papel: papel };
+    if (delegadaLpu) obj.delegadaLpu = true;
+    if (delegadaLpuApoio) obj.delegadaLpuApoio = true;
     HEADERS_ESTEIRA.forEach((h, j) => {
       if (h === 'Data NOC') obj[h] = fmtTextoLivre(row[j]);
       else if (h === 'Hora Início' || h === 'Hora Chegada' || h === 'Hora Início Apoio' || h === 'Hora Chegada Apoio') obj[h] = fmtHoraLivre(row[j]);
@@ -831,9 +887,10 @@ function validarAtividade(ss, data) {
 
     // Empresas terceiras entram no sub-processo de cobrança (LPU) — a atividade volta
     // pra tela do técnico com "Pendente de Preenchimento LPU" em vez de simplesmente
-    // sumir. NETTURBO (mão de obra própria, sem cobrança por LPU) não entra nesse fluxo.
+    // sumir. EMPRESAS_SEM_LPU (mão de obra própria, ou contrato fixo cobrado por
+    // produtividade) não entra nesse fluxo — termina aqui mesmo, na validação.
     const empresaAtividade = sheet.getRange(rowIndex, idx('Empresa')).getValue();
-    if (empresaAtividade !== 'NETTURBO') {
+    if (EMPRESAS_SEM_LPU.indexOf(empresaAtividade) === -1) {
       sheet.getRange(rowIndex, idx('Status LPU')).setValue('PENDENTE_PREENCHIMENTO');
     }
 
@@ -842,7 +899,7 @@ function validarAtividade(ss, data) {
     // de assumir, pergunta pro apoio se teve cobrança — PENDENTE_DECISAO em vez de já
     // pular pro preenchimento.
     const empresaApoio = sheet.getRange(rowIndex, idx('Empresa Apoio')).getValue();
-    if (empresaApoio && empresaApoio !== 'NETTURBO') {
+    if (empresaApoio && EMPRESAS_SEM_LPU.indexOf(empresaApoio) === -1) {
       sheet.getRange(rowIndex, idx('Status LPU Apoio')).setValue('PENDENTE_DECISAO');
     }
 
@@ -978,6 +1035,59 @@ function validarLpuAprovador(ss, data) {
     sheet.getRange(rowIndex, idx(prefixo + 'Motivo Reprovação')).setValue(data.motivo || '');
     sheet.getRange(rowIndex, idx(colStatus)).setValue('PENDENTE_PREENCHIMENTO'); // volta pro técnico corrigir
   }
+  return resposta('ok', {});
+}
+
+// Extrai o ID de arquivo do Drive a partir da URL salva por getUrl()
+// (formato "https://drive.google.com/file/d/{ID}/view?..."). Usado pelo
+// carimbo do aprovador pra buscar/re-subir o PDF já existente da LPU.
+function extrairIdArquivoDrive(url) {
+  const m = String(url || '').match(/\/file\/d\/([^\/]+)/);
+  return m ? m[1] : '';
+}
+
+// ── LPU: busca o PDF já gerado (pro carimbo do aprovador, ver atualizarLpuPdf) ──
+function obterLpuPdf(ss, params) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
+  const rowIndex = parseInt(params.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
+  const prefixo = params.tipoLpu === 'apoio' ? 'LPU Apoio ' : 'LPU ';
+
+  const url = sheet.getRange(rowIndex, idx(prefixo + 'Relatório PDF')).getValue();
+  const fileId = extrairIdArquivoDrive(url);
+  if (!fileId) return resposta('error', { message: 'Esta LPU não tem um Relatório PDF salvo.' });
+
+  try {
+    const blob = DriveApp.getFileById(fileId).getBlob();
+    return resposta('ok', { pdfBase64: Utilities.base64Encode(blob.getBytes()) });
+  } catch (e) {
+    return resposta('error', { message: 'Não foi possível ler o PDF: ' + e.toString() });
+  }
+}
+
+// ── LPU: sobe uma versão carimbada do PDF (chamado pelo front depois que o
+// aprovador valida na esteira — ver validarLpuAprovador em index.html). Sobe
+// como arquivo novo em vez de sobrescrever, mais simples e sem risco de
+// corromper o arquivo original se algo der errado no meio do caminho.
+function atualizarLpuPdf(ss, data) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
+  const ehApoio = data.tipoLpu === 'apoio';
+  const prefixo = ehApoio ? 'LPU Apoio ' : 'LPU ';
+
+  if (!data.pdfBase64) return resposta('error', { message: 'pdfBase64 ausente' });
+  const bytes = Utilities.base64Decode(data.pdfBase64);
+  const blob = Utilities.newBlob(bytes, 'application/pdf', 'LPU_' + (ehApoio ? 'APOIO_' : '') + rowIndex + '_aprovado.pdf');
+  const pasta = getOrCriarPastaLPU();
+  const arquivo = pasta.createFile(blob);
+  arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  sheet.getRange(rowIndex, idx(prefixo + 'Relatório PDF')).setValue(arquivo.getUrl());
+
   return resposta('ok', {});
 }
 

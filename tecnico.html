@@ -34,11 +34,14 @@
     .login-info.visible{display:block}
     .link-esqueci{font-size:.72rem;color:var(--accent);cursor:pointer;text-align:center;text-decoration:underline;margin-top:-.4rem}
 
-    header{background:linear-gradient(180deg,#0c160a,#0f0f0f);border-bottom:1px solid #1a2a12;position:sticky;top:0;z-index:100}
-    .header-inner{max-width:700px;margin:0 auto;display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem}
-    .hdr-brand{font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;letter-spacing:.1em;color:var(--accent);text-transform:uppercase}
-    .hdr-sub{font-size:.6rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase}
+    .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+    .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+    .topbar-spacer{flex:1}
 
+    .page-actions{max-width:700px;margin:0 auto;display:flex;align-items:center;gap:.5rem;padding:.9rem 1rem 0}
     main{max-width:700px;margin:0 auto;padding:1.2rem 1rem 0}
 
     .atv-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.1rem;margin-bottom:.9rem}
@@ -190,19 +193,20 @@
 </div>
 
 <!-- APP -->
-<header id="headerApp" style="display:none">
-  <div class="header-inner">
-    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="height:30px;width:auto;background:#fff;border-radius:6px;padding:.15rem .35rem" onerror="this.style.display='none'"/>
-    <div>
-      <div class="hdr-brand">Netturbo</div>
-      <div class="hdr-sub">Minhas Atividades</div>
-    </div>
-    <div style="flex:1"></div>
-    <a id="linkFechamentoLpu" class="btn btn-outline" style="text-decoration:none;display:none;align-items:center" href="fechamento_lpu.html">Fechamento LPU</a>
-    <a class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center" href="manutencao_preventiva.html">Preventiva</a>
-    <button class="btn btn-outline" onclick="carregarAtividades()">↻ Atualizar</button>
+<header id="headerApp" class="topbar" style="display:none">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Netturbo</div>
+    <div class="topbar-sub">Minhas Atividades</div>
   </div>
+  <div class="topbar-spacer"></div>
 </header>
+
+<div class="page-actions" id="pageActions" style="display:none">
+  <a id="linkFechamentoLpu" class="btn btn-outline" style="text-decoration:none;display:none;align-items:center" href="fechamento_lpu.html">Fechamento LPU</a>
+  <button class="btn btn-outline" onclick="carregarAtividades()">↻ Atualizar</button>
+</div>
 
 <main id="app" style="display:none">
   <div class="atv-card" style="margin-bottom:1rem;text-align:center">
@@ -367,7 +371,8 @@ async function fazerLogin(){
     sessionStorage.setItem('esteira_tecnico_logado', tecnico);
     sessionStorage.setItem('esteira_empresa_logada', empresa);
     document.getElementById('login-overlay').style.display = 'none';
-    document.getElementById('headerApp').style.display = 'block';
+    document.getElementById('headerApp').style.display = 'flex';
+    document.getElementById('pageActions').style.display = 'flex';
     document.getElementById('app').style.display = 'block';
     document.getElementById('boasVindasNome').textContent = 'Olá, ' + tecnico;
     atualizarLinkFechamentoLpu();
@@ -391,7 +396,8 @@ window.fazerLogin = fazerLogin;
     TECNICO_LOGADO = salvo;
     EMPRESA_LOGADA = salvoEmpresa;
     document.getElementById('login-overlay').style.display = 'none';
-    document.getElementById('headerApp').style.display = 'block';
+    document.getElementById('headerApp').style.display = 'flex';
+    document.getElementById('pageActions').style.display = 'flex';
     document.getElementById('app').style.display = 'block';
     document.getElementById('boasVindasNome').textContent = 'Olá, ' + salvo;
     atualizarLinkFechamentoLpu();
@@ -778,9 +784,11 @@ function renderBlocoLpu(a){
   const statusLpu = a['Status LPU'] || '';
   const avisoMotivo = (statusLpu === 'PENDENTE_PREENCHIMENTO' && a['LPU Motivo Reprovação'])
     ? `<div class="aviso-naovalidado">LPU devolvida: ${a['LPU Motivo Reprovação']}</div>` : '';
+  const tarjaDelegada = a.delegadaLpu
+    ? `<div class="atv-status" style="display:block;width:fit-content;background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)">LPU de: ${a['Técnico']||'—'}</div>` : '';
 
   if(statusLpu === 'PENDENTE_PREENCHIMENTO'){
-    return avisoMotivo + `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Pendente de Preenchimento LPU</div>
+    return tarjaDelegada + avisoMotivo + `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Pendente de Preenchimento LPU</div>
       <a class="btn-acao btn-validar" style="display:block;text-align:center;text-decoration:none" href="PREENCHIMENTO_LPU.html?rowIndex=${a.rowIndex}">Preencher LPU</a>`;
   }
   if(statusLpu === 'AGUARDANDO_APROVADOR'){
@@ -848,7 +856,9 @@ function renderCardApoioValidada(a){
   } else if(statusLpuApoio === 'PENDENTE_PREENCHIMENTO'){
     const avisoMotivo = a['LPU Apoio Motivo Reprovação']
       ? `<div class="aviso-naovalidado">LPU devolvida: ${a['LPU Apoio Motivo Reprovação']}</div>` : '';
-    corpo = avisoMotivo + `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Pendente de Preenchimento LPU</div>
+    const tarjaDelegada = a.delegadaLpuApoio
+      ? `<div class="atv-status" style="display:block;width:fit-content;background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)">Apoio de: ${a['Técnico Apoio']||'—'}</div>` : '';
+    corpo = tarjaDelegada + avisoMotivo + `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Pendente de Preenchimento LPU</div>
       <a class="btn-acao btn-validar" style="display:block;text-align:center;text-decoration:none" href="PREENCHIMENTO_LPU.html?rowIndex=${a.rowIndex}&tipoLpu=apoio">Preencher LPU</a>`;
   } else if(statusLpuApoio === 'AGUARDANDO_APROVADOR'){
     corpo = `<div class="atv-status st-iniciada" style="display:block;width:fit-content;margin-top:.6rem">Aguardando Validação do Aprovador</div>`;

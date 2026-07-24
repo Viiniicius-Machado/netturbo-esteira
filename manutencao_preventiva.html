@@ -20,12 +20,15 @@
   --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
 }
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;padding:1.5rem 1rem 6rem}
+/* Margens negativas pra cancelar o padding do body — a barra fica coladinha nas bordas/topo da viewport, igual as outras telas */
+.topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35);margin:-1.5rem -1rem 1.5rem -1rem}
+.topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+.topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+.topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+.topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+.topbar-spacer{flex:1}
 .shell{max-width:880px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.5);overflow:hidden}
-.fhd{background:linear-gradient(180deg,#0c160a,#0f0f0f);border-bottom:1px solid #1a2a12;padding:1.4rem 1.6rem;display:flex;align-items:center;gap:1.2rem}
-.lz{flex-shrink:0;width:150px;height:75px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;padding:.4rem}
-.lz img{width:100%;height:100%;object-fit:contain}
-.hi h1{font-family:'Rajdhani',sans-serif;font-size:1.35rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:.2rem}
-.hi p{font-size:.72rem;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase}
+.fhd{display:none} /* banner antigo — marca/título agora vivem só no .topbar */
 .fb{padding:1.6rem 1.6rem 2rem}
 
 /* Progress */
@@ -171,6 +174,15 @@ textarea{resize:vertical;min-height:80px}
 </div>
 
 <div id="app" style="display:none">
+<header class="topbar">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Netturbo</div>
+    <div class="topbar-sub">Manutenção Preventiva</div>
+  </div>
+  <div class="topbar-spacer"></div>
+</header>
 <div class="voltar-atividades"><a href="tecnico.html">&#8592; Minhas Atividades</a></div>
 <div class="shell">
   <div class="fhd">
