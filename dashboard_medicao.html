@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Dashboard Medição · Netturbo Esteira</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
+      --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+      --border:#252525;--border-hi:#353535;
+      --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+      --red:#e53935;--amber:#ffa000;--green:#8bc34a;--purple:#ab47bc;
+      --radius:6px;--radius-lg:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+    .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
+    .login-logo{width:120px;height:auto;object-fit:contain;background:#fff;border-radius:12px;padding:.6rem}
+    .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);text-align:center}
+    .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
+    .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
+    .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
+    .login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.92rem;padding:.7rem .9rem;width:100%}
+    .login-field input:focus{outline:none;border-color:var(--accent)}
+    .login-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+    .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
+    .login-error.visible{display:block}
+
+    .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+    .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+    .topbar-spacer{flex:1}
+
+    .page-actions{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;padding:.9rem 1.2rem 0}
+    main{max-width:1400px;margin:0 auto;padding:1.3rem 1.2rem 0}
+
+    .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.1rem}
+    .toolbar input[type="month"]{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem}
+    .btn{padding:.6rem 1.1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.82rem}
+    .btn-accent{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
+    .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+    .btn-green{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
+    .card-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.5rem}
+    .card-header small{margin-left:auto;font-size:.62rem;color:var(--text-muted);text-transform:none;letter-spacing:0;font-weight:400}
+    .card-body{padding:.9rem 1rem}
+
+    .metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1rem}
+    .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+
+    .total-box{text-align:center;padding:1.5rem 1rem}
+    .total-label{font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem}
+    .total-valor{font-family:'Rajdhani',sans-serif;font-size:2.5rem;font-weight:700;color:var(--accent);line-height:1.1}
+    .total-sub{font-size:.72rem;color:var(--text-dim);margin-top:.4rem}
+
+    .rank-item{display:flex;align-items:center;gap:.6rem;padding:.42rem 0;border-top:1px solid var(--border)}
+    .rank-item:first-child{border-top:none}
+    .rank-qtd-badge{background:var(--surface3);border:1px solid var(--border-hi);border-radius:20px;padding:.1rem .55rem;font-size:.68rem;color:var(--text-dim);flex-shrink:0;min-width:1.7rem;text-align:center}
+    .rank-main{flex:1;min-width:0}
+    .rank-nome{font-size:.78rem;display:flex;justify-content:space-between;align-items:baseline;gap:.5rem}
+    .rank-nome span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+    .rank-bar-track{height:6px;background:var(--surface2);border-radius:3px;margin-top:.3rem;overflow:hidden}
+    .rank-bar-fill{height:100%;background:var(--accent);border-radius:3px}
+    .rank-valor{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.85rem;color:var(--accent);white-space:nowrap}
+    .rank-ticket{font-size:.68rem;color:var(--text-muted);margin-top:.15rem}
+  </style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-box">
+    <img class="login-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+    <div class="login-heading">
+      <h2>Dashboard Medição</h2>
+      <p>Medição · Visão Financeira por Prestadora</p>
+    </div>
+    <div class="login-field">
+      <label>Senha</label>
+      <input type="password" id="pwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()"/>
+    </div>
+    <div class="login-error" id="loginErro">Senha incorreta.</div>
+    <button class="login-btn" onclick="tryLogin()">Entrar</button>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Dashboard Medição</div>
+    <div class="topbar-sub">Medição · Visão Financeira por Prestadora</div>
+  </div>
+  <div class="topbar-spacer"></div>
+</header>
+
+<div class="page-actions">
+  <a href="medicao.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Medição</a>
+  <a href="painel.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Painel</a>
+</div>
+
+<main id="app" style="display:none">
+
+  <div class="toolbar">
+    <input type="month" id="mesFiltro" onchange="renderDashboardMedicao()"/>
+    <button class="btn btn-outline" onclick="carregarDashboardMedicao()">↻ Atualizar</button>
+  </div>
+
+  <div class="card">
+    <div class="card-body total-box">
+      <div class="total-label">Total Aprovado e Lançado da LPU no Mês</div>
+      <div class="total-valor" id="totalGeral">R$ 0,00</div>
+      <div class="total-sub">Soma de tudo que já passou pela Medição (aprovado, pago ou não)</div>
+    </div>
+  </div>
+
+  <div class="metric-row">
+    <div class="card">
+      <div class="card-header">Mão de Obra Terceiras<small>Soma de valor + qtd. de atividades</small></div>
+      <div class="card-body"><div id="rankEmpresas"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">Descrição Contábil<small>Detalhamento por centro de custo</small></div>
+      <div class="card-body"><div id="rankDescricao"></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Gasto por Semana</div>
+    <div class="card-body"><div id="rankSemanas"></div></div>
+  </div>
+
+</main>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+const LEADERSHIP_PASSWORD = "Manutencao@101";
+
+// Só entra no dashboard quem já foi aprovado pela Medição (pago ou não) — mesmo
+// critério já validado com o Vinicius pro saldo de LPU no dashboard de gestão
+// ("Tudo aprovado, pago ou não").
+const STATUS_APROVADO = ['APROVADO_AGUARDANDO_NF', 'PAGO'];
+
+let TODOS_ITENS = [];
+
+function tryLogin(){
+  const val = document.getElementById('pwdInput').value;
+  if(val === LEADERSHIP_PASSWORD){
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    const hoje = new Date();
+    document.getElementById('mesFiltro').value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0');
+    carregarDashboardMedicao();
+    if(!window._dashMedAutoRefresh){
+      window._dashMedAutoRefresh = setInterval(carregarDashboardMedicao, 30000);
+    }
+  }else{
+    const e = document.getElementById('loginErro');
+    e.classList.add('visible');
+    document.getElementById('pwdInput').value = '';
+    setTimeout(()=>e.classList.remove('visible'), 3000);
+  }
+}
+window.tryLogin = tryLogin;
+
+// LISTAR_LPU_MEDICAO devolve um item por sub-processo LPU ativo (titular e/ou apoio,
+// já separados com `tipoLpu` em cada um) — mesmos helpers de medicao.html pra
+// escolher o prefixo de coluna certo ('LPU ' ou 'LPU Apoio ').
+function pfxLpu(a){ return a.tipoLpu === 'apoio' ? 'LPU Apoio ' : 'LPU '; }
+function campoLpu(a, campo){ return a[pfxLpu(a) + campo]; }
+
+async function carregarDashboardMedicao(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_LPU_MEDICAO');
+    const result = await resp.json();
+    TODOS_ITENS = result.itens || [];
+    renderDashboardMedicao();
+  }catch(err){
+    console.error(err);
+  }
+}
+window.carregarDashboardMedicao = carregarDashboardMedicao;
+
+function itensAprovadosDoMes(mes){
+  return TODOS_ITENS.filter(a => {
+    const statusCol = a.tipoLpu === 'apoio' ? 'Status LPU Apoio' : 'Status LPU';
+    if(STATUS_APROVADO.indexOf(a[statusCol]) === -1) return false;
+    const ts = String(campoLpu(a,'Timestamp Preenchimento')||''); // "dd/mm/aaaa, HH:MM:SS"
+    const dataParte = ts.split(',')[0].trim();
+    const partes = dataParte.split('/');
+    if(partes.length !== 3) return false;
+    return (partes[2] + '-' + partes[1]) === mes;
+  });
+}
+
+// Semana DENTRO do mês selecionado (1ª semana = dias 1-7, e assim por diante) — não
+// é semana do ano, é só pra ver a distribuição do gasto ao longo do mês corrente.
+function semanaDoMes(tsPreench){
+  const dataParte = String(tsPreench||'').split(',')[0].trim();
+  const dia = parseInt(dataParte.split('/')[0], 10);
+  return isNaN(dia) ? 1 : Math.ceil(dia/7);
+}
+
+function renderDashboardMedicao(){
+  const mes = document.getElementById('mesFiltro').value;
+  const itens = itensAprovadosDoMes(mes);
+
+  const total = itens.reduce((s,a) => s + Number(campoLpu(a,'Total')||0), 0);
+  document.getElementById('totalGeral').textContent = fmtMoeda(total);
+
+  // Mão de obra TERCEIRAS apenas — NETTURBO é mão de obra própria e não passa por
+  // LPU (nunca aparece aqui de qualquer forma, mas o filtro fica explícito mesmo
+  // assim, como pedido).
+  const porEmpresa = {}, qtdPorEmpresa = {};
+  itens.forEach(a => {
+    const empresaFallback = a.tipoLpu === 'apoio' ? a['Empresa Apoio'] : a['Empresa'];
+    const emp = campoLpu(a,'Empresa Prestadora') || empresaFallback || 'Não informado';
+    if(emp === 'NETTURBO') return;
+    porEmpresa[emp] = (porEmpresa[emp]||0) + Number(campoLpu(a,'Total')||0);
+    qtdPorEmpresa[emp] = (qtdPorEmpresa[emp]||0) + 1;
+  });
+  renderRankingValor('rankEmpresas', porEmpresa, qtdPorEmpresa);
+
+  const porDescricao = {};
+  itens.forEach(a => {
+    const desc = campoLpu(a,'Descrição Contábil') || 'Não informado';
+    porDescricao[desc] = (porDescricao[desc]||0) + Number(campoLpu(a,'Total')||0);
+  });
+  renderRankingValor('rankDescricao', porDescricao);
+
+  const porSemana = {};
+  itens.forEach(a => {
+    const sem = semanaDoMes(campoLpu(a,'Timestamp Preenchimento'));
+    const chave = `Semana ${sem}`;
+    porSemana[chave] = (porSemana[chave]||0) + Number(campoLpu(a,'Total')||0);
+  });
+  renderRankingSemanas('rankSemanas', porSemana);
+}
+
+// Barra horizontal de valor, maior pro menor. Quando `qtdMap` é passado, mostra
+// também a contagem de atividades num badge à esquerda (mesma leitura do gráfico
+// de referência: soma de valor + contagem lado a lado) e o ticket médio (valor
+// total ÷ quantidade de obras) embaixo do nome.
+function renderRankingValor(elId, mapaValores, qtdMap){
+  const el = document.getElementById(elId);
+  const entradas = Object.entries(mapaValores).sort((a,b) => b[1]-a[1]);
+  if(!entradas.length){ el.innerHTML = '<div class="empty-msg">Sem dados neste mês.</div>'; return; }
+  const max = entradas[0][1] || 1;
+  el.innerHTML = entradas.map(([nome,valor]) => {
+    const qtd = qtdMap ? (qtdMap[nome]||0) : 0;
+    const ticketMedio = qtd ? valor/qtd : 0;
+    return `
+    <div class="rank-item">
+      ${qtdMap ? `<div class="rank-qtd-badge">${qtd}</div>` : ''}
+      <div class="rank-main">
+        <div class="rank-nome"><span>${nome}</span><span class="rank-valor">${fmtMoeda(valor)}</span></div>
+        <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${Math.max(2, valor/max*100)}%"></div></div>
+        ${qtdMap ? `<div class="rank-ticket">Ticket médio: ${fmtMoeda(ticketMedio)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Mesma barra, mas em ordem cronológica (Semana 1, 2, 3...) — aqui o que importa é
+// a linha do tempo dentro do mês, não o ranking do maior pro menor.
+function renderRankingSemanas(elId, mapaValores){
+  const el = document.getElementById(elId);
+  const entradas = Object.entries(mapaValores).sort((a,b) => {
+    const na = parseInt(a[0].replace('Semana ',''),10), nb = parseInt(b[0].replace('Semana ',''),10);
+    return na - nb;
+  });
+  if(!entradas.length){ el.innerHTML = '<div class="empty-msg">Sem dados neste mês.</div>'; return; }
+  const max = Math.max(...entradas.map(e => e[1])) || 1;
+  el.innerHTML = entradas.map(([nome,valor]) => `
+    <div class="rank-item">
+      <div class="rank-main">
+        <div class="rank-nome"><span>${nome}</span><span class="rank-valor">${fmtMoeda(valor)}</span></div>
+        <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${Math.max(2, valor/max*100)}%"></div></div>
+      </div>
+    </div>`).join('');
+}
+
+function fmtMoeda(v){
+  return 'R$ ' + Number(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+</script>
+</body>
+</html>

@@ -1013,10 +1013,20 @@ window.assinarLpu = async function(){
     }
 };
 
+// CNPJ de cada prestadora — preenchido automaticamente pelo login, pra não depender
+// do técnico digitar (e errar) o CNPJ toda vez que preenche uma LPU.
+const CNPJ_POR_EMPRESA = {
+    'VAL': '47.114.651/0001-76',
+    'SOLUTEC': '37.986.202/0001-64',
+    'OLIVEIRA': '54.851.754/0001-84',
+    'PV': '54.029.825/0001-68'
+};
+
 function liberarApp(){
     document.getElementById('login-overlay').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     document.getElementById('empresa').value = EMPRESA_LOGADA;
+    document.getElementById('cnpj').value = CNPJ_POR_EMPRESA[EMPRESA_LOGADA] || '';
     document.getElementById('tecnicos').value = TECNICO_LOGADO;
     if(getTipoLpuDaURL() === 'apoio'){
         const sub = document.querySelector('.fhd .hi p');
