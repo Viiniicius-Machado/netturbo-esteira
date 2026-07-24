@@ -68,9 +68,12 @@ textarea{resize:vertical;min-height:60px}
 .btn{padding:9px 20px;border:none;border-radius:var(--r);cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;letter-spacing:.3px;transition:opacity .15s,transform .1s}
 .btn:active{transform:scale(.97)}
 .btn:hover{opacity:.85}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:disabled:hover{opacity:.4}
 .btng{background:var(--g100);color:var(--g800)}
 .btnp{background:var(--gm);color:#fff}
 .btn-lg{padding:12px 28px;font-size:14px}
+.assinatura-numero{margin-top:8px;font-size:13px;color:var(--gd);font-weight:700}
 
 /* ══ MOBILE OPTIMIZATIONS ══ */
 @media (max-width: 768px) {
@@ -285,10 +288,12 @@ textarea{resize:vertical;min-height:60px}
       <div class="fld" style="margin-top:20px">
         <label>Assinatura Prestador</label>
         <div class="assinatura-auto" id="assinaturaAutoTexto">Preenchida automaticamente ao concluir, com seu nome, data e hora.</div>
+        <div class="assinatura-numero" id="assinaturaNumeroTexto" style="display:none"></div>
+        <button type="button" class="btn btnp btn-lg" id="btnAssinar" style="width:100%;margin-top:10px;padding:14px" onclick="assinarLpu()">&#x270D; Assinar</button>
       </div>
 
       <button class="btn btnp btn-lg" style="width:100%;margin-top:16px;padding:14px" onclick="gerarPDF()">&#x2B07; Gerar Relatório PDF</button>
-      <button class="btn btnp btn-lg" id="btnConcluir" style="width:100%;margin-top:10px;padding:14px;background:#5d8a1f" onclick="concluirLPU()">Concluído — Enviar para Validação</button>
+      <button class="btn btnp btn-lg" id="btnConcluir" disabled style="width:100%;margin-top:10px;padding:14px;background:#5d8a1f" onclick="concluirLPU()">Assine acima para liberar o envio</button>
     </div>
 
   </div>
@@ -886,6 +891,8 @@ let RESPONSAVEIS = {}; // empresa -> técnico que centraliza a LPU (ex: VAL -> M
 let SEM_LPU = ['NETTURBO']; // empresas que não cobram por LPU (fallback até o backend responder)
 let TECNICO_LOGADO = '';
 let EMPRESA_LOGADA = '';
+let ASSINADO = false;      // true só depois do clique em "Assinar" — trava o envio até lá
+let ASSINATURA_NUMERO = null; // total histórico de assinaturas do técnico, devolvido pelo backend no clique
 
 function popularEmpresas(){
     // Sem empresas SEM_LPU na lista — não passam por cobrança de LPU
@@ -960,13 +967,51 @@ function montarAssinaturaAuto(){
     const agora = new Date();
     const dataBR = agora.toLocaleDateString('pt-BR');
     const horaBR = ('0'+agora.getHours()).slice(-2) + ':' + ('0'+agora.getMinutes()).slice(-2);
-    return `${TECNICO_LOGADO} — ${dataBR} ${horaBR}`;
+    const numero = ASSINATURA_NUMERO ? ` — Assinatura Nº ${ASSINATURA_NUMERO}` : '';
+    return `${TECNICO_LOGADO} — ${dataBR} ${horaBR}${numero}`;
 }
 
 function atualizarAssinaturaAutoTexto(){
     const el = document.getElementById('assinaturaAutoTexto');
     if(el) el.innerHTML = '<b>' + montarAssinaturaAuto() + '</b>';
 }
+
+// Assinatura obrigatória: só libera o envio depois que o prestador clica aqui.
+// O contador (total histórico de assinaturas do técnico, não reseta nunca) é
+// incrementado e persistido no backend nesse exato clique — é o momento real
+// da assinatura, não só um número calculado no front.
+window.assinarLpu = async function(){
+    const btn = document.getElementById('btnAssinar');
+    btn.disabled = true; btn.textContent = 'Assinando...';
+    try{
+        const resp = await fetch(APPS_SCRIPT_URL, {
+            method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+            body: JSON.stringify({ acao:'REGISTRAR_ASSINATURA_LPU', tecnico: TECNICO_LOGADO })
+        });
+        const result = await resp.json();
+        if(result.status !== 'ok'){
+            alert(result.message || 'Erro ao assinar.');
+            btn.disabled = false; btn.textContent = '✍ Assinar';
+            return;
+        }
+
+        ASSINATURA_NUMERO = result.total;
+        ASSINADO = true;
+        atualizarAssinaturaAutoTexto();
+        const numEl = document.getElementById('assinaturaNumeroTexto');
+        numEl.style.display = 'block';
+        numEl.textContent = `Assinatura Nº ${result.total} deste prestador`;
+        btn.textContent = '✓ Assinado';
+
+        const btnConcluir = document.getElementById('btnConcluir');
+        btnConcluir.disabled = false;
+        btnConcluir.textContent = 'Concluído — Enviar para Validação';
+    }catch(err){
+        console.error(err);
+        alert('Erro ao conectar com o servidor.');
+        btn.disabled = false; btn.textContent = '✍ Assinar';
+    }
+};
 
 function liberarApp(){
     document.getElementById('login-overlay').style.display = 'none';
@@ -1066,6 +1111,7 @@ window.concluirLPU = async function(){
         return;
     }
     if(!dados.length){ alert('Lance pelo menos um item antes de concluir.'); return; }
+    if(!ASSINADO){ alert('Assine o relatório antes de enviar para validação.'); return; }
 
     const btn = document.getElementById('btnConcluir');
     btn.disabled = true; btn.textContent = 'Gerando relatório...';

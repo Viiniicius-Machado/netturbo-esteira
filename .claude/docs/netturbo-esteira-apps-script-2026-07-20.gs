@@ -115,6 +115,7 @@ function doPost(e) {
     if (acao === 'REGISTRAR_ORCAMENTO_MENSAL') return registrarOrcamentoMensal(ss, data);
     if (acao === 'REGISTRAR_DISPONIBILIDADE')  return registrarDisponibilidade(ss, data);
     if (acao === 'EXCLUIR_DISPONIBILIDADE')    return excluirDisponibilidade(ss, data);
+    if (acao === 'REGISTRAR_ASSINATURA_LPU')   return registrarAssinaturaLpu(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -1530,6 +1531,40 @@ function listarDisponibilidade(ss) {
     status: row[4], observacao: row[5], registradoPor: row[6], timestamp: row[7]
   }));
   return resposta('ok', { periodos: periodos });
+}
+
+// ── CONTADOR DE ASSINATURAS DA LPU (total histórico por técnico, nunca reseta) ──
+// O botão "Assinar" em PREENCHIMENTO_LPU.html chama isso no momento do clique —
+// cada clique é uma assinatura de verdade, incrementada e persistida na hora
+// (não só um número calculado no front, pra não perder o histórico se a aba
+// mudar ou o técnico assinar em dias diferentes).
+const ABA_CONTADOR_ASSINATURAS = 'CONTADOR_ASSINATURAS_LPU';
+const HEADERS_CONTADOR_ASSINATURAS = ['Técnico', 'Total Assinaturas', 'Última Assinatura'];
+
+function garantirContadorAssinaturas(ss) {
+  return garantirAba(ss, ABA_CONTADOR_ASSINATURAS, HEADERS_CONTADOR_ASSINATURAS, '#1a1a1a', '#8bc34a');
+}
+
+function registrarAssinaturaLpu(ss, data) {
+  const sheet = garantirContadorAssinaturas(ss);
+  if (!data.tecnico) return resposta('error', { message: 'Técnico é obrigatório.' });
+  const agora = new Date().toLocaleString('pt-BR');
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow >= 2) {
+    const tecnicos = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < tecnicos.length; i++) {
+      if (tecnicos[i][0] === data.tecnico) {
+        const linha = i + 2;
+        const total = Number(sheet.getRange(linha, 2).getValue() || 0) + 1;
+        sheet.getRange(linha, 2, 1, 2).setValues([[total, agora]]);
+        return resposta('ok', { total: total });
+      }
+    }
+  }
+
+  sheet.appendRow([data.tecnico, 1, agora]);
+  return resposta('ok', { total: 1 });
 }
 
 // ══════════════════════════════════════════════════════════════
