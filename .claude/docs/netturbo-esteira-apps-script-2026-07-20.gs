@@ -1662,16 +1662,30 @@ function listarDisponibilidade(ss) {
 // ── CONTROLE GEOGRID (fila pra sala técnica replicar manualmente no GEOGRID toda
 // fusão fora do padrão — técnico desenhou ao menos uma ligação de fibra na RFO) ─
 const ABA_GEOGRID = 'CONTROLE_GEOGRID';
+// IMPORTANTE: assim como em HEADERS_ESTEIRA, campo novo SEMPRE no final do array —
+// idx()/listarGeogrid mapeiam por POSIÇÃO, não pelo texto da linha 1. 'Técnico' foi
+// inserido por engano no meio (posição 5) num commit anterior, o que desalinhava a
+// leitura/escrita de toda coluna seguinte pras 2 linhas que já existiam na planilha
+// nesse momento (confirmado com debugColunasGeogrid antes de corrigir — por sorte
+// nenhuma escrita chegou a rodar com o array errado, então nada foi corrompido).
 const HEADERS_GEOGRID = [
-  'ID Atividade','Protocolo','Cliente','Endereço','Técnico','Tipo Cabo Fusionado','Fusionou Todas',
+  'ID Atividade','Protocolo','Cliente','Endereço','Tipo Cabo Fusionado','Fusionou Todas',
   'Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas','Timestamp Registro','Status','Concluído Por','Timestamp Conclusão',
   // ── Recusa pela sala técnica (dado enviado veio confuso/incompleto) — volta pro
   // líder ajustar na Esteira de Despacho, que reenvia (PENDENTE de novo) ou exclui.
-  'Motivo Recusa','Recusado Por','Timestamp Recusa'
+  'Motivo Recusa','Recusado Por','Timestamp Recusa',
+  'Técnico'
 ];
 
 function garantirGeogrid(ss) {
-  return garantirAba(ss, ABA_GEOGRID, HEADERS_GEOGRID, '#1a1a1a', '#ab47bc');
+  const sheet = garantirAba(ss, ABA_GEOGRID, HEADERS_GEOGRID, '#1a1a1a', '#ab47bc');
+  // A linha 1 é só rótulo pra humano no Sheets — idx()/listarGeogrid nunca leem o
+  // texto dela pra decidir coluna, só a posição em HEADERS_GEOGRID. Ainda assim,
+  // mantemos sincronizada aqui (sobrescrevendo sempre) pra não ficar com rótulo
+  // desatualizado quando o array ganha campo novo — mais simples e mais seguro que
+  // tentar "diffar" o que já existe, já que isso não toca em nenhum dado das linhas.
+  sheet.getRange(1, 1, 1, HEADERS_GEOGRID.length).setValues([HEADERS_GEOGRID]);
+  return sheet;
 }
 
 // Chamado de dentro de salvarOcorrencia quando temPareamentoPreenchido(data.fusaoPareamento)
@@ -1687,14 +1701,24 @@ function registrarGeogridSeNecessario(ss, sheetEsteira, rowIndex, data) {
 
   const sheet = garantirGeogrid(ss);
   const row = sheet.getLastRow() + 1;
+  const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
   sheet.getRange(row, 1, 1, 2).setNumberFormat('@STRING@'); // ID Atividade / Protocolo — texto livre
-  sheet.getRange(row, 9, 1, 1).setNumberFormat('@STRING@'); // Fusão Pareamento (JSON) — texto livre
-  sheet.getRange(row, 1, 1, HEADERS_GEOGRID.length).setValues([[
-    idAtividade, protocolo, cliente, endereco, tecnico || '',
-    data.tipoCaboFusionado || '', data.fusionouTodas || '', data.corComCor || '', data.fusaoPareamento || '',
-    data.quantidadeCeo || '', new Date().toLocaleString('pt-BR'), 'PENDENTE', '', '',
-    '', '', ''
-  ]]);
+  sheet.getRange(row, idx('Fusão Pareamento'), 1, 1).setNumberFormat('@STRING@'); // JSON — texto livre
+  // Escreve por NOME de coluna (idx), não por posição fixa — evita reintroduzir o
+  // mesmo tipo de desalinhamento que aconteceu com 'Técnico' (ver comentário em
+  // HEADERS_GEOGRID) se o array ganhar mais campos no futuro.
+  sheet.getRange(row, idx('ID Atividade')).setValue(idAtividade);
+  sheet.getRange(row, idx('Protocolo')).setValue(protocolo);
+  sheet.getRange(row, idx('Cliente')).setValue(cliente);
+  sheet.getRange(row, idx('Endereço')).setValue(endereco);
+  sheet.getRange(row, idx('Tipo Cabo Fusionado')).setValue(data.tipoCaboFusionado || '');
+  sheet.getRange(row, idx('Fusionou Todas')).setValue(data.fusionouTodas || '');
+  sheet.getRange(row, idx('Cor com Cor')).setValue(data.corComCor || '');
+  sheet.getRange(row, idx('Fusão Pareamento')).setValue(data.fusaoPareamento || '');
+  sheet.getRange(row, idx('Quantidade CEO Trabalhadas')).setValue(data.quantidadeCeo || '');
+  sheet.getRange(row, idx('Timestamp Registro')).setValue(new Date().toLocaleString('pt-BR'));
+  sheet.getRange(row, idx('Status')).setValue('PENDENTE');
+  sheet.getRange(row, idx('Técnico')).setValue(tecnico || '');
 }
 
 function listarGeogrid(ss) {
