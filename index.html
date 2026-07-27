@@ -1340,11 +1340,15 @@ function anexosDespachoDe(a){
 }
 
 function blocoAnexoDespacho(a){
-  // Print colado (Ctrl+V) fica só na memória do navegador (ANEXOS_PASTE_STATE) até
-  // o clique em "Salvar p/ Técnico" — a atualização automática da esteira (a cada
-  // 15s) redesenha o card do zero, e sem reler esse estado aqui os prints colados
-  // sumiam da tela mesmo o dado ainda estando válido, dando a falsa impressão de
-  // que o anexo tinha se perdido.
+  // Tanto o print colado (Ctrl+V) quanto o arquivo escolhido no input ficam só na
+  // memória do navegador (ANEXOS_PASTE_STATE) até o clique em "Salvar p/ Técnico"
+  // — a atualização automática da esteira (a cada 15s) redesenha o card do zero,
+  // e o navegador não deixa restaurar a seleção de um <input type="file"> depois
+  // que ele é recriado. Sem ler o arquivo IMEDIATAMENTE ao escolher (onchange) e
+  // guardar em memória, um anexo escolhido e não salvo em menos de 15s sumia
+  // silenciosamente no próximo redesenho, antes do clique em salvar — o líder via
+  // o arquivo escolhido, clicava em salvar segundos depois, e nada chegava pro
+  // técnico. Por isso o arquivo entra na mesma lista/preview do print colado.
   const pendentes = ANEXOS_PASTE_STATE[a.rowIndex] || [];
   const existentes = anexosDespachoDe(a);
   const preenchido = existentes.length || pendentes.length || a['Mensagem Despacho'] || a['Link Medição'];
@@ -1355,7 +1359,7 @@ function blocoAnexoDespacho(a){
         ${existentes.length ? `<div style="display:flex;flex-direction:column;gap:.2rem">${existentes.map(x=>`<a href="${x.url}" target="_blank" style="font-size:.68rem;color:var(--accent)">📎 ${x.nome||'ver arquivo'}</a>`).join('')}</div>` : ''}
         <div>
           <span class="edit-label">Anexar KMZ/KML, print do projeto ou pedido de material (pode escolher mais de um de uma vez)</span>
-          <input type="file" class="edit-field" id="anexo-file-${a.rowIndex}" accept=".kmz,.kml,image/*,.pdf" multiple/>
+          <input type="file" class="edit-field" id="anexo-file-${a.rowIndex}" accept=".kmz,.kml,image/*,.pdf" multiple onchange="handleFileAnexo(event,${a.rowIndex})"/>
         </div>
         <div>
           <span class="edit-label">Mensagem para o técnico (pode colar quantos prints quiser aqui com Ctrl+V, além do texto — e ainda anexar arquivo acima, ao mesmo tempo)</span>
@@ -1379,7 +1383,7 @@ let ANEXOS_PASTE_STATE = {}; // rowIndex -> [{ dataUrl, nome }]
 function renderAnexoPreview(rowIndex){
   const pendentes = ANEXOS_PASTE_STATE[rowIndex] || [];
   if(!pendentes.length) return '';
-  return pendentes.map((p,i)=>`<div style="font-size:.66rem;color:var(--accent);display:flex;align-items:center;gap:.5rem">📎 ${p.nome} (print colado, pendente) <span style="cursor:pointer;color:#e57373;text-decoration:underline" onclick="removerAnexoColado(${rowIndex},${i})">remover</span></div>`).join('');
+  return pendentes.map((p,i)=>`<div style="font-size:.66rem;color:var(--accent);display:flex;align-items:center;gap:.5rem">📎 ${p.nome} (${p.origem}, pendente) <span style="cursor:pointer;color:#e57373;text-decoration:underline" onclick="removerAnexoColado(${rowIndex},${i})">remover</span></div>`).join('');
 }
 
 window.handlePasteAnexo = function(event, rowIndex){
@@ -1394,7 +1398,7 @@ window.handlePasteAnexo = function(event, rowIndex){
       const reader = new FileReader();
       reader.onload = () => {
         if(!ANEXOS_PASTE_STATE[rowIndex]) ANEXOS_PASTE_STATE[rowIndex] = [];
-        ANEXOS_PASTE_STATE[rowIndex].push({ dataUrl: reader.result, nome: 'print_colado_' + Date.now() + '.png' });
+        ANEXOS_PASTE_STATE[rowIndex].push({ dataUrl: reader.result, nome: 'print_colado_' + Date.now() + '.png', origem: 'print colado' });
         const prev = document.getElementById('anexo-preview-'+rowIndex);
         if(prev) prev.innerHTML = renderAnexoPreview(rowIndex);
       };
@@ -1402,6 +1406,26 @@ window.handlePasteAnexo = function(event, rowIndex){
     }
   }
   if(achouImagem) event.preventDefault(); // não deixa a(s) imagem(ns) virar(em) texto/binário na textarea
+};
+
+// Lê o(s) arquivo(s) escolhido(s) NA HORA (onchange), não só quando salvar —
+// guarda em memória junto dos prints colados. Ver comentário em blocoAnexoDespacho:
+// esperar até o clique em "Salvar" pra ler o input arrisca perder a seleção se a
+// atualização automática (15s) redesenhar o card antes disso.
+window.handleFileAnexo = function(event, rowIndex){
+  const arquivos = event.target.files ? Array.from(event.target.files) : [];
+  if(!arquivos.length) return;
+  if(!ANEXOS_PASTE_STATE[rowIndex]) ANEXOS_PASTE_STATE[rowIndex] = [];
+  arquivos.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      ANEXOS_PASTE_STATE[rowIndex].push({ dataUrl: reader.result, nome: file.name, origem: 'arquivo' });
+      const prev = document.getElementById('anexo-preview-'+rowIndex);
+      if(prev) prev.innerHTML = renderAnexoPreview(rowIndex);
+    };
+    reader.readAsDataURL(file);
+  });
+  event.target.value = ''; // já foi lido e guardado em memória — limpa o input pra poder escolher mais depois
 };
 
 window.removerAnexoColado = function(rowIndex, idx){
@@ -1412,29 +1436,16 @@ window.removerAnexoColado = function(rowIndex, idx){
   if(prev) prev.innerHTML = renderAnexoPreview(rowIndex);
 };
 
-// Junta os arquivos escolhidos no input (podem ser vários) com os prints
-// colados pendentes (também podem ser vários) e manda tudo numa chamada só —
-// anexo é opcional, então salvar só mensagem ou só o link não obriga anexar nada.
+// Tudo (prints colados + arquivos escolhidos) já está em ANEXOS_PASTE_STATE desde
+// o momento em que foi colado/escolhido — aqui só manda numa chamada só. Anexo é
+// opcional, então salvar só mensagem ou só o link não obriga anexar nada.
 window.salvarInfoDespacho = async function(rowIndex){
-  const fileInput = document.getElementById('anexo-file-'+rowIndex);
   const mensagem = document.getElementById('anexo-msg-'+rowIndex).value.trim();
   const linkMedicao = document.getElementById('anexo-link-'+rowIndex).value.trim();
   const pendentes = ANEXOS_PASTE_STATE[rowIndex] || [];
-  const arquivos = fileInput && fileInput.files ? Array.from(fileInput.files) : [];
-
-  const lerComoDataUrl = file => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve({ base64: reader.result, nome: file.name });
-    reader.onerror = () => reject(new Error('Não foi possível ler ' + file.name));
-    reader.readAsDataURL(file);
-  });
 
   try{
-    const dosArquivos = await Promise.all(arquivos.map(lerComoDataUrl));
-    const anexos = [
-      ...pendentes.map(p => ({ base64: p.dataUrl, nome: p.nome })),
-      ...dosArquivos
-    ];
+    const anexos = pendentes.map(p => ({ base64: p.dataUrl, nome: p.nome }));
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
       body: JSON.stringify({ acao:'SALVAR_INFO_DESPACHO', rowIndex, anexos, mensagem, linkMedicao })
