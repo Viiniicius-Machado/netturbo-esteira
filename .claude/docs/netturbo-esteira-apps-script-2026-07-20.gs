@@ -1701,24 +1701,24 @@ function registrarGeogridSeNecessario(ss, sheetEsteira, rowIndex, data) {
 
   const sheet = garantirGeogrid(ss);
   const row = sheet.getLastRow() + 1;
-  const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
+  const idxGeo = h => HEADERS_GEOGRID.indexOf(h) + 1;
   sheet.getRange(row, 1, 1, 2).setNumberFormat('@STRING@'); // ID Atividade / Protocolo — texto livre
-  sheet.getRange(row, idx('Fusão Pareamento'), 1, 1).setNumberFormat('@STRING@'); // JSON — texto livre
-  // Escreve por NOME de coluna (idx), não por posição fixa — evita reintroduzir o
-  // mesmo tipo de desalinhamento que aconteceu com 'Técnico' (ver comentário em
+  sheet.getRange(row, idxGeo('Fusão Pareamento'), 1, 1).setNumberFormat('@STRING@'); // JSON — texto livre
+  // Escreve por NOME de coluna (idxGeo), não por posição fixa — evita reintroduzir
+  // o mesmo tipo de desalinhamento que aconteceu com 'Técnico' (ver comentário em
   // HEADERS_GEOGRID) se o array ganhar mais campos no futuro.
-  sheet.getRange(row, idx('ID Atividade')).setValue(idAtividade);
-  sheet.getRange(row, idx('Protocolo')).setValue(protocolo);
-  sheet.getRange(row, idx('Cliente')).setValue(cliente);
-  sheet.getRange(row, idx('Endereço')).setValue(endereco);
-  sheet.getRange(row, idx('Tipo Cabo Fusionado')).setValue(data.tipoCaboFusionado || '');
-  sheet.getRange(row, idx('Fusionou Todas')).setValue(data.fusionouTodas || '');
-  sheet.getRange(row, idx('Cor com Cor')).setValue(data.corComCor || '');
-  sheet.getRange(row, idx('Fusão Pareamento')).setValue(data.fusaoPareamento || '');
-  sheet.getRange(row, idx('Quantidade CEO Trabalhadas')).setValue(data.quantidadeCeo || '');
-  sheet.getRange(row, idx('Timestamp Registro')).setValue(new Date().toLocaleString('pt-BR'));
-  sheet.getRange(row, idx('Status')).setValue('PENDENTE');
-  sheet.getRange(row, idx('Técnico')).setValue(tecnico || '');
+  sheet.getRange(row, idxGeo('ID Atividade')).setValue(idAtividade);
+  sheet.getRange(row, idxGeo('Protocolo')).setValue(protocolo);
+  sheet.getRange(row, idxGeo('Cliente')).setValue(cliente);
+  sheet.getRange(row, idxGeo('Endereço')).setValue(endereco);
+  sheet.getRange(row, idxGeo('Tipo Cabo Fusionado')).setValue(data.tipoCaboFusionado || '');
+  sheet.getRange(row, idxGeo('Fusionou Todas')).setValue(data.fusionouTodas || '');
+  sheet.getRange(row, idxGeo('Cor com Cor')).setValue(data.corComCor || '');
+  sheet.getRange(row, idxGeo('Fusão Pareamento')).setValue(data.fusaoPareamento || '');
+  sheet.getRange(row, idxGeo('Quantidade CEO Trabalhadas')).setValue(data.quantidadeCeo || '');
+  sheet.getRange(row, idxGeo('Timestamp Registro')).setValue(new Date().toLocaleString('pt-BR'));
+  sheet.getRange(row, idxGeo('Status')).setValue('PENDENTE');
+  sheet.getRange(row, idxGeo('Técnico')).setValue(tecnico || '');
 }
 
 function listarGeogrid(ss) {
