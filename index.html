@@ -1339,6 +1339,51 @@ function anexosDespachoDe(a){
   return lista;
 }
 
+// ── RASCUNHO LOCAL DO ANEXO/MENSAGEM (sobrevive a fechar a aba/recarregar) ──
+// O estado em memória (ANEXOS_PASTE_STATE) já sobrevive ao redesenho automático
+// da esteira (15s), mas não sobrevive a um F5, fechar a aba ou o notebook
+// suspender — exatamente o mesmo problema que já resolvemos pro rascunho do RFO
+// em tecnico.html, com a mesma solução: guardar em localStorage e só limpar
+// quando "Salvar p/ Técnico" der certo.
+function chaveRascunhoAnexo(rowIndex){ return 'netturbo_despacho_anexo_rascunho_' + rowIndex; }
+
+function salvarRascunhoAnexo(rowIndex){
+  const mensagemEl = document.getElementById('anexo-msg-'+rowIndex);
+  const linkEl = document.getElementById('anexo-link-'+rowIndex);
+  const draft = {
+    anexos: ANEXOS_PASTE_STATE[rowIndex] || [],
+    mensagem: mensagemEl ? mensagemEl.value : '',
+    linkMedicao: linkEl ? linkEl.value : ''
+  };
+  // Print/arquivo em base64 pode ser grande — se estourar a cota do localStorage,
+  // só não persiste (o estado em memória continua funcionando normalmente
+  // enquanto a aba ficar aberta); não é motivo pra travar o preenchimento.
+  try{ localStorage.setItem(chaveRascunhoAnexo(rowIndex), JSON.stringify(draft)); }catch(e){}
+}
+
+function limparRascunhoAnexo(rowIndex){
+  try{ localStorage.removeItem(chaveRascunhoAnexo(rowIndex)); }catch(e){}
+}
+
+// Só tenta restaurar do localStorage na primeira vez que a atividade é desenhada
+// nesta sessão da página — depois disso o estado em memória já manda (e cada
+// mudança já vai re-salvando via salvarRascunhoAnexo), então reler o
+// localStorage de novo a cada redesenho (15s) só re-aplicaria um rascunho já
+// desatualizado por cima do que está em memória.
+let ANEXO_RASCUNHO_CARREGADO = {}; // rowIndex -> true depois de já ter tentado restaurar
+
+function restaurarRascunhoAnexoSeNecessario(rowIndex){
+  if(ANEXO_RASCUNHO_CARREGADO[rowIndex]) return null;
+  ANEXO_RASCUNHO_CARREGADO[rowIndex] = true;
+  let draft;
+  try{ draft = JSON.parse(localStorage.getItem(chaveRascunhoAnexo(rowIndex))); }catch(e){ draft = null; }
+  if(!draft) return null;
+  if(Array.isArray(draft.anexos) && draft.anexos.length && !ANEXOS_PASTE_STATE[rowIndex]){
+    ANEXOS_PASTE_STATE[rowIndex] = draft.anexos;
+  }
+  return draft;
+}
+
 function blocoAnexoDespacho(a){
   // Tanto o print colado (Ctrl+V) quanto o arquivo escolhido no input ficam só na
   // memória do navegador (ANEXOS_PASTE_STATE) até o clique em "Salvar p/ Técnico"
@@ -1349,9 +1394,16 @@ function blocoAnexoDespacho(a){
   // silenciosamente no próximo redesenho, antes do clique em salvar — o líder via
   // o arquivo escolhido, clicava em salvar segundos depois, e nada chegava pro
   // técnico. Por isso o arquivo entra na mesma lista/preview do print colado.
+  // O rascunho (localStorage) cobre o caso além disso: fechar a aba/recarregar
+  // a página antes de salvar.
+  const draft = restaurarRascunhoAnexoSeNecessario(a.rowIndex);
   const pendentes = ANEXOS_PASTE_STATE[a.rowIndex] || [];
   const existentes = anexosDespachoDe(a);
-  const preenchido = existentes.length || pendentes.length || a['Mensagem Despacho'] || a['Link Medição'];
+  // Rascunho local sobrepõe o que veio do servidor — se existe, é porque tinha
+  // texto digitado e ainda não salvo (mais recente que o que já está na planilha).
+  const mensagemValor = (draft && draft.mensagem) ? draft.mensagem : (a['Mensagem Despacho']||'');
+  const linkValor = (draft && draft.linkMedicao) ? draft.linkMedicao : (a['Link Medição']||'');
+  const preenchido = existentes.length || pendentes.length || mensagemValor || linkValor;
   return `
     <details style="margin-top:.4rem">
       <summary style="font-size:.65rem;color:var(--text-muted);cursor:pointer">📎 Projeto / Medição (KMZ)${preenchido?' — preenchido':''}</summary>
@@ -1363,12 +1415,12 @@ function blocoAnexoDespacho(a){
         </div>
         <div>
           <span class="edit-label">Mensagem para o técnico (pode colar quantos prints quiser aqui com Ctrl+V, além do texto — e ainda anexar arquivo acima, ao mesmo tempo)</span>
-          <textarea class="edit-field" id="anexo-msg-${a.rowIndex}" placeholder="Ex.: chegar pela rua X, o rompimento fica entre os postes Y e Z... (cole um ou mais prints aqui se quiser)" onpaste="handlePasteAnexo(event,${a.rowIndex})">${a['Mensagem Despacho']||''}</textarea>
+          <textarea class="edit-field" id="anexo-msg-${a.rowIndex}" placeholder="Ex.: chegar pela rua X, o rompimento fica entre os postes Y e Z... (cole um ou mais prints aqui se quiser)" onpaste="handlePasteAnexo(event,${a.rowIndex})" oninput="salvarRascunhoAnexo(${a.rowIndex})">${mensagemValor}</textarea>
           <div id="anexo-preview-${a.rowIndex}" style="margin-top:.3rem">${renderAnexoPreview(a.rowIndex)}</div>
         </div>
         <div>
           <span class="edit-label">Onde fazer as medições? (link do Maps)</span>
-          <input type="text" class="edit-field" id="anexo-link-${a.rowIndex}" placeholder="https://maps.google.com/?q=lat,long" value="${a['Link Medição']||''}"/>
+          <input type="text" class="edit-field" id="anexo-link-${a.rowIndex}" placeholder="https://maps.google.com/?q=lat,long" value="${linkValor}" oninput="salvarRascunhoAnexo(${a.rowIndex})"/>
         </div>
         <button type="button" class="btn btn-outline" style="padding:.4rem;font-size:.7rem" onclick="salvarInfoDespacho(${a.rowIndex})">Salvar p/ Técnico</button>
       </div>
@@ -1401,6 +1453,7 @@ window.handlePasteAnexo = function(event, rowIndex){
         ANEXOS_PASTE_STATE[rowIndex].push({ dataUrl: reader.result, nome: 'print_colado_' + Date.now() + '.png', origem: 'print colado' });
         const prev = document.getElementById('anexo-preview-'+rowIndex);
         if(prev) prev.innerHTML = renderAnexoPreview(rowIndex);
+        salvarRascunhoAnexo(rowIndex);
       };
       reader.readAsDataURL(file);
     }
@@ -1422,6 +1475,7 @@ window.handleFileAnexo = function(event, rowIndex){
       ANEXOS_PASTE_STATE[rowIndex].push({ dataUrl: reader.result, nome: file.name, origem: 'arquivo' });
       const prev = document.getElementById('anexo-preview-'+rowIndex);
       if(prev) prev.innerHTML = renderAnexoPreview(rowIndex);
+      salvarRascunhoAnexo(rowIndex);
     };
     reader.readAsDataURL(file);
   });
@@ -1434,6 +1488,7 @@ window.removerAnexoColado = function(rowIndex, idx){
   lista.splice(idx, 1);
   const prev = document.getElementById('anexo-preview-'+rowIndex);
   if(prev) prev.innerHTML = renderAnexoPreview(rowIndex);
+  salvarRascunhoAnexo(rowIndex);
 };
 
 // Tudo (prints colados + arquivos escolhidos) já está em ANEXOS_PASTE_STATE desde
@@ -1453,6 +1508,7 @@ window.salvarInfoDespacho = async function(rowIndex){
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast((result.message||'Erro ao salvar.')); return; }
     delete ANEXOS_PASTE_STATE[rowIndex];
+    limparRascunhoAnexo(rowIndex);
     showToast('Informações salvas — o técnico já vai ver na atividade.');
     carregarEsteira();
   }catch(err){
