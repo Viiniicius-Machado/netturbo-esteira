@@ -61,6 +61,10 @@
 
     .aviso-naovalidado{margin-top:.7rem;font-size:.78rem;font-weight:600;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:8px;padding:.6rem .8rem}
 
+    .bloco-despacho{margin-top:.7rem;font-size:.78rem;color:var(--text);background:var(--accent-dim);border:1px solid rgba(168,201,60,.3);border-radius:8px;padding:.6rem .8rem;display:flex;flex-direction:column;gap:.4rem}
+    .bloco-despacho .titulo{font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.68rem;color:var(--accent)}
+    .bloco-despacho a{color:var(--accent);font-weight:600}
+
     .form-ocorrencia{margin-top:.9rem;display:flex;flex-direction:column;gap:.7rem}
     .form-ocorrencia label{font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)}
     .form-ocorrencia textarea, .form-ocorrencia input{width:100%;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem;font-family:inherit}
@@ -88,6 +92,20 @@
     .ceo-options{display:flex;flex-direction:column;gap:.4rem}
     .ceo-opt{padding:.55rem .75rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);font-size:.78rem;cursor:pointer;color:var(--text-dim)}
     .ceo-opt.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent);font-weight:600}
+
+    .fusao-diagrama{position:relative;display:flex;justify-content:space-between;gap:1.4rem;overflow-x:auto;padding:.3rem 0}
+    .fusao-svg{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+    .fusao-coluna{display:flex;flex-direction:column;gap:3px;min-width:100px}
+    .fusao-coluna-wrap{display:flex;flex-direction:column}
+    .fusao-coluna-titulo{font-size:.6rem;color:var(--text-muted);text-align:center;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em}
+    .fibra-row{display:flex;align-items:center;gap:.3rem;padding:.22rem .35rem;border-radius:4px;cursor:pointer;font-size:.66rem;background:var(--surface3);border:1px solid var(--border-hi);white-space:nowrap}
+    .fibra-row.armado{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim)}
+    .fibra-row.pareada{color:var(--text-dim)}
+    .fibra-row.fibra-splitter-in{border-color:var(--accent);background:rgba(168,201,60,.1)}
+    .fibra-num{width:1.3rem;text-align:center;color:var(--text-dim);font-weight:700;flex-shrink:0}
+    .fibra-cor-dot{width:13px;height:13px;border-radius:3px;flex-shrink:0;border:1px solid rgba(255,255,255,.25)}
+    .fibra-anchor{width:6px;height:6px;border-radius:50%;background:var(--text-muted);flex-shrink:0}
+    .fibra-par{font-size:.6rem;color:var(--accent)}
 
     .gps-block{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .7rem;margin-top:.3rem}
     .btn-gps{width:100%;padding:.55rem;background:rgba(168,201,60,.1);border:1px solid rgba(168,201,60,.3);border-radius:var(--radius);color:var(--accent);font-size:.78rem;font-weight:600;cursor:pointer}
@@ -594,8 +612,13 @@ async function carregarAtividades(){
 const CONFIG_CAUSAS = {
   'ROMPIMENTO':['Rompimento Troca de Poste','Rompimento Carga Alta','Rompimento Vandalismo','Rompimento Acidente em Via','Rompimento Queimadas','Rompimento Parcial','Rompimento Descarga Elétrica','Rompimento Poda Árvore','Rompimento Subterrâneo','Degradação Rede Externa','Degradação Rede Externa (Atenuação)','Visita Cliente (Rompimento Interno)','Improdutiva Chamado Improcedente','Improdutiva Cliente','Improdutiva Clima / Fator Externo','Improdutiva Comercial','Improdutiva Delivery','Improdutiva Documentação (APR/NR)','Improdutiva Documentação (ART/DWG)','Improdutiva Infraestrutura (Rede)','Improdutiva Last Mile','Improdutiva Logística','Improdutiva NOC','Improdutiva OEM','Improdutiva Terceiro (DER/Cia Elétrica)','Improdutiva Validação','Insetos'],
   'MASSIVA':['Rompimento Troca de Poste','Rompimento Carga Alta','Rompimento Vandalismo','Rompimento Acidente em Via','Rompimento Queimadas','Rompimento Parcial','Rompimento Descarga Elétrica','Rompimento Poda Árvore','Rompimento Subterrâneo','Degradação Rede Externa','Degradação Rede Externa (Atenuação)','Visita Cliente (Rompimento Interno)','Improdutiva Chamado Improcedente','Improdutiva Cliente','Improdutiva Clima / Fator Externo','Improdutiva Comercial','Improdutiva Delivery','Improdutiva Documentação (APR/NR)','Improdutiva Documentação (ART/DWG)','Improdutiva Infraestrutura (Rede)','Improdutiva Last Mile','Improdutiva Logística','Improdutiva NOC','Improdutiva OEM','Improdutiva Terceiro (DER/Cia Elétrica)','Improdutiva Validação','Insetos'],
-  'ACOMPANHAMENTO CPFL':[], 'PREVENTIVA':[], 'AGENDAMENTO':['SEM ACESSO','GTD','TRANSMISSÃO']
+  'ACOMPANHAMENTO CPFL':[], 'PREVENTIVA':[], 'AGENDAMENTO':['SEM ACESSO','GTD','TRANSMISSÃO'],
+  'IMPLANTAÇÃO':[], 'GTD':[], 'EXTENSÃO DE FIBRA':[], 'TRANSMISSÃO':[]
 };
+
+// Tipos sem lista de causa pré-definida — o técnico descreve livremente, e a
+// causa não é obrigatória pra enviar (mesma regra já usada pra PREVENTIVA/CPFL).
+const TIPOS_CAUSA_LIVRE_OPCIONAL = ['ACOMPANHAMENTO CPFL','PREVENTIVA','IMPLANTAÇÃO','GTD','EXTENSÃO DE FIBRA','TRANSMISSÃO'];
 
 let ATIVIDADES_CACHE = [];
 
@@ -637,12 +660,14 @@ function renderAtividades(atividades){
     }
 
     const infoApoio = a['Técnico Apoio'] ? `<div class="atv-meta" style="color:var(--accent)">Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}</div>` : '';
+    const blocoDespacho = renderBlocoDespacho(a);
 
     return `<div class="atv-card">
       <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="atv-cliente">${a['Cliente']||'—'}</div>
       <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
       ${infoApoio}
+      ${blocoDespacho}
       <span class="atv-status ${statusClass}">${statusLabel}</span>
       ${corpo}
     </div>`;
@@ -657,6 +682,7 @@ function renderAtividades(atividades){
         document.querySelectorAll(`#ceo-opts-${a.rowIndex} .ceo-opt`).forEach(el=>el.classList.toggle('active', el.dataset.ceo===ceoCodigo));
         CEO_STATE[a.rowIndex] = ceoCodigo;
         renderLocalCeoExtra(a.rowIndex, ceoCodigo, a);
+        renderFusaoBlock(a.rowIndex, a);
       }
       // Restaura o que o técnico já tinha digitado antes do app fechar/celular ficar
       // parado (sobrepõe o que veio do servidor acima, já que é mais recente) e liga
@@ -686,11 +712,13 @@ function salvarRascunho(rowIndex){
   const chipAtivo = document.querySelector(`#chips-${rowIndex} .chip.active`);
   const causaAtiva = document.querySelector(`#causas-${rowIndex} .causa-item.active`);
   const causaLivreEl = document.getElementById('causaLivre-'+rowIndex);
+  const causaCpflNumeroEl = document.getElementById('causaCpflNumero-'+rowIndex);
   const ceoAtivo = document.querySelector(`#ceo-opts-${rowIndex} .ceo-opt.active`);
 
   const draft = {
     tipo: chipAtivo ? chipAtivo.dataset.tipo : '',
     causaLivre: causaLivreEl ? causaLivreEl.value : null,
+    causaCpflNumero: causaCpflNumeroEl ? causaCpflNumeroEl.value : null,
     causa: causaAtiva ? causaAtiva.dataset.causa : null,
     solucao: (document.getElementById('solucao-'+rowIndex)||{}).value || '',
     melhoria: (document.getElementById('melhoria-'+rowIndex)||{}).value || '',
@@ -698,9 +726,12 @@ function salvarRascunho(rowIndex){
     ceo: ceoAtivo ? ceoAtivo.dataset.ceo : (CEO_STATE[rowIndex] || null),
     numeroCeoA: pegarNumeroCeo(rowIndex,'A'),
     numeroCeoB: pegarNumeroCeo(rowIndex,'B'),
+    fusao: FUSAO_STATE[rowIndex] || null,
     gps: {}
   };
-  ['falha','ceoA','ceoB'].forEach(key=>{
+  const chavesGps = ['falha','ceoA','ceoB'];
+  if(FUSAO_STATE[rowIndex]) FUSAO_STATE[rowIndex].diagramas.forEach((d,i)=>chavesGps.push('fusaoCeo'+i));
+  chavesGps.forEach(key=>{
     const manualEl = document.getElementById(`gpsmanual-${rowIndex}-${key}`);
     const valEl = document.getElementById(`gpsval-${rowIndex}-${key}`);
     draft.gps[key] = {
@@ -743,6 +774,10 @@ function restaurarRascunho(rowIndex){
   } else if(draft.causa){
     selecionarCausa(rowIndex, draft.causa);
   }
+  if(draft.causaCpflNumero){
+    const elCpfl = document.getElementById('causaCpflNumero-'+rowIndex);
+    if(elCpfl) elCpfl.value = draft.causaCpflNumero;
+  }
   const solEl = document.getElementById('solucao-'+rowIndex);
   if(solEl) solEl.value = draft.solucao || '';
   const melEl = document.getElementById('melhoria-'+rowIndex);
@@ -774,6 +809,33 @@ function restaurarRascunho(rowIndex){
     });
     if(draft.numeroCeoA){ const elA = document.getElementById('numceo-'+rowIndex+'-A'); if(elA) elA.value = draft.numeroCeoA; }
     if(draft.numeroCeoB){ const elB = document.getElementById('numceo-'+rowIndex+'-B'); if(elB) elB.value = draft.numeroCeoB; }
+    if(draft.fusao){
+      // Rascunho pode ter sido salvo numa versão anterior desta tela (tipo de
+      // cabo era único pra RFO inteira, formato de pareamento diferente, ou sem
+      // o array "diagramas") — normaliza pra não travar o painel quando o
+      // formato salvo é mais antigo que o código atual.
+      try{
+        const bruto = draft.fusao;
+        const diagramasBrutos = Array.isArray(bruto.diagramas) ? bruto.diagramas
+          : (Array.isArray(bruto.pareamento) ? [{ pareamento: bruto.pareamento }] : []);
+        FUSAO_STATE[rowIndex] = {
+          fusionouTodas: bruto.fusionouTodas || '',
+          diagramas: diagramasBrutos.length ? diagramasBrutos.map((d,i)=>normalizarDiagramaFusao(d,i,bruto.tipoCabo)) : [novoDiagramaFusao(1)],
+          aberto: !!bruto.aberto
+        };
+        renderFusaoBlock(rowIndex, null);
+        FUSAO_STATE[rowIndex].diagramas.forEach((d,i)=>{
+          const key = 'fusaoCeo'+i;
+          if(!g[key]) return;
+          if(g[key].link) GPS_STATE[rowIndex+'-'+key] = g[key].link;
+          if(g[key].coords) GPS_COORDS[rowIndex+'-'+key] = g[key].coords;
+          if(g[key].cidade) GPS_CIDADE_STATE[rowIndex+'-'+key] = g[key].cidade;
+          restaurarGpsVisual(rowIndex, key, g[key]);
+        });
+      }catch(e){
+        console.error('Rascunho de fusão em formato inesperado, ignorando:', e);
+      }
+    }
   }
 }
 
@@ -832,6 +894,7 @@ function renderCardApoio(a){
     <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
     <div class="atv-cliente">${a['Cliente']||'—'}</div>
     <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>Titular: ${a['Técnico']||'—'} (${a['Empresa']||''})</div>
+    ${renderBlocoDespacho(a)}
     <span class="atv-status st-despachada">Você é EQUIPE DE APOIO</span>
     ${botao}
     ${formMateriais}
@@ -937,7 +1000,7 @@ window.salvarECopiarApoio = async function(rowIndex){
 function renderFormOcorrencia(a){
   const tipoAtual = a['Ocorrência'] || '';
   const ceoAtual = CEO_LABELS_REVERSA[a['CEO']] || a['CEO'] || '';
-  const tipos = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO'];
+  const tipos = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO','IMPLANTAÇÃO','GTD','EXTENSÃO DE FIBRA','TRANSMISSÃO'];
   const isFibra = (tipoAtual === 'ROMPIMENTO' || tipoAtual === 'MASSIVA');
   return `
     <div class="form-ocorrencia" id="form-${a.rowIndex}">
@@ -964,6 +1027,7 @@ function renderFormOcorrencia(a){
         </div>
       </div>
       <div id="local-ceo-extra-${a.rowIndex}" style="display:none"></div>
+      <div id="fusao-block-${a.rowIndex}" style="display:none"></div>
       <div>
         <label>Houve uso de material?</label>
         <div class="toggle-row">
@@ -983,6 +1047,36 @@ function renderFormOcorrencia(a){
       <button class="btn-acao btn-validar" onclick="solicitarValidacao(${a.rowIndex})">Solicitar Validação NOC</button>
     </div>
   `;
+}
+
+// Mensagem/KMZ/link de medição que a liderança deixou pro técnico direto no card
+// de despacho (index.html, "Projeto / Medição") — aparece em qualquer status,
+// já que o técnico pode precisar do projeto antes mesmo de iniciar o deslocamento.
+function renderBlocoDespacho(a){
+  const mensagem = a['Mensagem Despacho'];
+  const anexoUrl = a['Anexo Despacho URL'];
+  const anexoNome = a['Anexo Despacho Nome'] || '';
+  const linkMedicao = a['Link Medição'];
+  if(!mensagem && !anexoUrl && !linkMedicao) return '';
+
+  // Print (imagem) mostra miniatura direto no card — mais rápido de entender em
+  // campo do que abrir um link de download. KMZ/KML continua como link mesmo,
+  // já que precisa abrir noutro app (Google Earth etc).
+  let blocoAnexo = '';
+  if(anexoUrl){
+    const ehImagem = /\.(png|jpe?g|gif|webp)$/i.test(anexoNome);
+    const idDrive = anexoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    const thumbUrl = (ehImagem && idDrive) ? `https://drive.google.com/thumbnail?id=${idDrive[1]}&sz=w1000` : '';
+    blocoAnexo = `<a href="${anexoUrl}" target="_blank">${thumbUrl ? `<img src="${thumbUrl}" style="max-width:100%;border-radius:6px;display:block;margin-top:.2rem"/>` : ('📎 Baixar projeto ('+(anexoNome||'KMZ')+')')}</a>`;
+  }
+
+  return `
+    <div class="bloco-despacho">
+      <div class="titulo">Recebido do Despacho</div>
+      ${mensagem ? `<div>${mensagem.replace(/\n/g,'<br>')}</div>` : ''}
+      ${blocoAnexo}
+      ${linkMedicao ? `<a href="${linkMedicao}" target="_blank">📍 ONDE FAZER AS MEDIÇÕES? — Abrir no Maps</a>` : ''}
+    </div>`;
 }
 
 // Campo pro técnico informar uma estimativa de chegada antes de bater "Cheguei no
@@ -1067,6 +1161,9 @@ window.selecionarTipo = function(rowIndex, tipo){
   if(!isFibra){
     CEO_STATE[rowIndex] = null;
     if(ceoExtra) ceoExtra.style.display = 'none';
+    delete FUSAO_STATE[rowIndex];
+    const fusaoBlock = document.getElementById('fusao-block-'+rowIndex);
+    if(fusaoBlock){ fusaoBlock.style.display = 'none'; fusaoBlock.innerHTML = ''; }
   }
 };
 
@@ -1074,6 +1171,7 @@ window.selecionarCEO = function(rowIndex, ceo){
   document.querySelectorAll(`#ceo-opts-${rowIndex} .ceo-opt`).forEach(el=>el.classList.toggle('active', el.dataset.ceo===ceo));
   CEO_STATE[rowIndex] = ceo;
   renderLocalCeoExtra(rowIndex, ceo, null);
+  renderFusaoBlock(rowIndex, null);
 };
 
 // Monta o bloco de localização da(s) caixa(s) nova(s):
@@ -1115,6 +1213,414 @@ function renderLocalCeoExtra(rowIndex, ceo, atividade){
 function pegarNumeroCeo(rowIndex, key){
   const el = document.getElementById('numceo-'+rowIndex+'-'+key);
   return el ? el.value.trim() : '';
+}
+
+// ── PERGUNTAS RÁPIDAS DE FUSÃO + EDITOR VISUAL (só aparece com uma CEO
+// selecionada em ROMPIMENTO/MASSIVA) ────────────────────────────────────────
+const QTD_FIBRAS_POR_CABO = { '01F':1, '04F':4, '12F':12, '24F':24, '72F':72 };
+// Padrão de cores de fibra óptica (ABNT/Furukawa, 12 fibras) — repete a cada 12
+// posições pros cabos de 24F/72F (tubo 2 usa as mesmas 12 cores do tubo 1).
+const CORES_FIBRA = ['#00A651','#FFF200','#FFFFFF','#0072BC','#ED1C24','#92278F','#603813','#EC008C','#000000','#A6A6A6','#F7941E','#00AEEF'];
+function corFibra(n){ return CORES_FIBRA[(n-1) % 12]; }
+
+function novoDiagramaFusao(numeroCeo){
+  return { numeroCeo: String(numeroCeo), nomA:'', nomB:'', gpsCeo:'', tipoCaboA:'', tipoCaboB:'', splitter:'', splitterTipo1x2:'', pareamento:[], armado:null };
+}
+
+const QTD_SPLITTER = { '1x2':2, '1x4':4, '1x8':8, '1x16':16 };
+const OPCOES_SPLITTER = ['Nenhum','1x2','1x4','1x8','1x16'];
+// Só existe pra splitter 1x2 — os outros tamanhos (1x4/1x8/1x16) são sempre balanceados.
+const OPCOES_SPLITTER_1X2 = ['5/95','10/90','15/85','20/80','25/75','30/70','40/60','50/50'];
+
+// rowIndex -> { fusionouTodas,
+//               diagramas:[{numeroCeo,nomA,nomB,tipoCaboA,tipoCaboB,splitter,splitterTipo1x2,
+//                           pareamento:[{ponto1:{lado,num},ponto2:{lado,num}}],armado}], aberto }
+// Não existe mais pergunta "Cor com Cor?" — o diagrama de fusão fica sempre
+// disponível assim que "Perguntas rápidas de fusão" é aberto; desenhar (ou
+// não) fica a critério do técnico.
+// Tipo de cabo é por LADO de cada CEO (o cabo que entra pelo Lado A pode ser
+// diferente do que sai pelo Lado B, ex.: 4F de um lado, 12F do outro) — não
+// existe mais um valor único nem por diagrama, nem por RFO inteira. A
+// quantidade de CEO também não é mais perguntada — é sempre diagramas.length
+// no momento de enviar (ver solicitarValidacao).
+let FUSAO_STATE = {};
+
+// Migração defensiva: versões anteriores desta tela salvaram o pareamento em
+// formatos diferentes — {a,b} (2 lados, sem splitter) ou até sem "diagramas"
+// nenhum (1 diagrama só, formato bem antigo), e o tipo de cabo já foi um campo
+// único fora do diagrama, e depois um único POR diagrama (mesmo cabo nos dois
+// lados). Um rascunho local (localStorage) ou um "Fusão Pareamento" já salvo no
+// servidor numa versão anterior podem trazer qualquer um desses formatos — sem
+// normalizar, o código novo quebra ao ler propriedades que só existem no
+// formato atual, travando o painel inteiro sem mostrar nada.
+function normalizarParFusao(p){
+  if(!p) return null;
+  if(p.ponto1 && p.ponto2 && p.ponto1.lado && p.ponto2.lado) return { ponto1: p.ponto1, ponto2: p.ponto2 };
+  if(typeof p.a === 'number' && typeof p.b === 'number') return { ponto1:{lado:'a',num:p.a}, ponto2:{lado:'b',num:p.b} };
+  return null;
+}
+function normalizarDiagramaFusao(d, i, tipoCaboFallback){
+  const bruto = d || {};
+  const paresBrutos = Array.isArray(bruto.pareamento) ? bruto.pareamento : (Array.isArray(bruto.pares) ? bruto.pares : []);
+  // "tipoCabo" (singular) é o formato antigo, mesmo cabo nos dois lados — usado
+  // como valor inicial dos dois lados quando não há tipoCaboA/tipoCaboB salvos.
+  const legado = bruto.tipoCabo || tipoCaboFallback || '';
+  return {
+    numeroCeo: bruto.numeroCeo || String(i+1),
+    nomA: bruto.nomA || bruto.nomenclaturaA || '',
+    nomB: bruto.nomB || bruto.nomenclaturaB || '',
+    gpsCeo: bruto.gpsCeo || '',
+    tipoCaboA: bruto.tipoCaboA || legado,
+    tipoCaboB: bruto.tipoCaboB || legado,
+    splitter: bruto.splitter || '',
+    splitterTipo1x2: bruto.splitterTipo1x2 || '',
+    armado: null,
+    pareamento: paresBrutos.map(normalizarParFusao).filter(Boolean)
+  };
+}
+
+function initFusaoState(rowIndex, atividade){
+  if(FUSAO_STATE[rowIndex]) return FUSAO_STATE[rowIndex];
+  let diagramas = [];
+  const tipoCaboLegado = atividade && atividade['Tipo Cabo Fusionado']; // versão antiga: campo único fora do diagrama
+  if(atividade && atividade['Fusão Pareamento']){
+    try{
+      const parsed = JSON.parse(atividade['Fusão Pareamento']);
+      if(Array.isArray(parsed)) diagramas = parsed.map((d,i)=>normalizarDiagramaFusao(d,i,tipoCaboLegado));
+    }catch(e){ diagramas = []; }
+  }
+  if(!diagramas.length) diagramas = [novoDiagramaFusao(1)];
+
+  FUSAO_STATE[rowIndex] = {
+    fusionouTodas: (atividade && atividade['Fusionou Todas']) || '',
+    diagramas: diagramas,
+    // 'Cor com Cor' não existe mais como pergunta — 'aberto' agora se baseia em
+    // já ter cabo/pareamento salvo. Mantém checagem legada de 'Cor com Cor' só
+    // pra reabrir corretamente atividades antigas (NAO_VALIDADA) salvas antes
+    // dessa mudança.
+    aberto: !!(atividade && (atividade['Tipo Cabo Fusionado'] || atividade['Cor com Cor'] || atividade['Fusão Pareamento']))
+  };
+  return FUSAO_STATE[rowIndex];
+}
+
+// Container fica escondido até uma CEO ser escolhida (mesmo gatilho do bloco de
+// localização da caixa) — chamado de selecionarCEO e da restauração do servidor/rascunho.
+function renderFusaoBlock(rowIndex, atividade){
+  const cont = document.getElementById('fusao-block-'+rowIndex);
+  if(!cont) return;
+  if(!CEO_STATE[rowIndex]){ cont.style.display = 'none'; cont.innerHTML = ''; return; }
+  const st = initFusaoState(rowIndex, atividade);
+  cont.style.display = 'block';
+  cont.innerHTML = `
+    <button type="button" class="btn-gps" style="margin-top:.6rem" onclick="toggleFusaoPerguntas(${rowIndex})">${st.aberto?'▲':'▼'} Perguntas rápidas de fusão</button>
+    <div id="fusao-perguntas-${rowIndex}" style="display:${st.aberto?'block':'none'};margin-top:.5rem">${renderFusaoPerguntas(rowIndex)}</div>`;
+  if(st.aberto) requestAnimationFrame(()=>st.diagramas.forEach((d,i)=>desenharLinhasFusao(rowIndex,i)));
+}
+
+window.toggleFusaoPerguntas = function(rowIndex){
+  const st = FUSAO_STATE[rowIndex];
+  if(!st) return;
+  st.aberto = !st.aberto;
+  renderFusaoBlock(rowIndex, null);
+  salvarRascunho(rowIndex);
+};
+
+function renderFusaoPerguntas(rowIndex){
+  const st = FUSAO_STATE[rowIndex];
+  return `
+    <div>
+      <label style="font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">Fusionou todas as fibras?</label>
+      <div class="toggle-row" style="margin-top:.3rem">
+        <button type="button" class="toggle-btn${st.fusionouTodas==='Sim'?' on-yes':''}" onclick="responderFusao(${rowIndex},'fusionouTodas','Sim')">Sim</button>
+        <button type="button" class="toggle-btn${st.fusionouTodas==='Não'?' on-no':''}" onclick="responderFusao(${rowIndex},'fusionouTodas','Não')">Não</button>
+      </div>
+    </div>
+    <div id="fusao-diagramas-${rowIndex}" style="margin-top:.6rem">${renderFusaoDiagramas(rowIndex)}</div>
+  `;
+}
+
+window.responderFusao = function(rowIndex, campo, valor){
+  const st = FUSAO_STATE[rowIndex];
+  if(!st) return;
+  st[campo] = valor;
+  const painel = document.getElementById('fusao-perguntas-'+rowIndex);
+  if(painel) painel.innerHTML = renderFusaoPerguntas(rowIndex);
+  requestAnimationFrame(()=>st.diagramas.forEach((d,i)=>desenharLinhasFusao(rowIndex,i)));
+  salvarRascunho(rowIndex);
+};
+
+// Lista de diagramas — um por CEO em que o técnico trabalhou a fusão fora do
+// padrão. "+ Adicionar" só mexe no próprio container da lista, preservando o
+// que já foi digitado (nomenclatura/nº CEO) nos diagramas já existentes.
+function renderFusaoDiagramas(rowIndex){
+  const st = FUSAO_STATE[rowIndex];
+  return `
+    <div id="fusao-diagramas-lista-${rowIndex}">${st.diagramas.map((d,i)=>renderFusaoDiagramaBloco(rowIndex,i)).join('')}</div>
+    <button type="button" class="btn-gps" style="margin-top:.5rem" onclick="adicionarDiagramaFusao(${rowIndex})">+ Adicionar fusão de outra CEO</button>
+  `;
+}
+
+window.adicionarDiagramaFusao = function(rowIndex){
+  const st = FUSAO_STATE[rowIndex];
+  if(!st) return;
+  st.diagramas.push(novoDiagramaFusao(st.diagramas.length+1));
+  const lista = document.getElementById('fusao-diagramas-lista-'+rowIndex);
+  const idx = st.diagramas.length-1;
+  if(lista){
+    lista.insertAdjacentHTML('beforeend', renderFusaoDiagramaBloco(rowIndex, idx));
+    requestAnimationFrame(()=>desenharLinhasFusao(rowIndex, idx));
+  }
+  salvarRascunho(rowIndex);
+};
+
+window.removerDiagramaFusao = function(rowIndex, diagIdx){
+  const st = FUSAO_STATE[rowIndex];
+  if(!st || st.diagramas.length <= 1) return;
+  st.diagramas.splice(diagIdx, 1);
+  const lista = document.getElementById('fusao-diagramas-lista-'+rowIndex);
+  if(lista){
+    lista.innerHTML = st.diagramas.map((d,i)=>renderFusaoDiagramaBloco(rowIndex,i)).join('');
+    requestAnimationFrame(()=>st.diagramas.forEach((d,i)=>desenharLinhasFusao(rowIndex,i)));
+  }
+  salvarRascunho(rowIndex);
+};
+
+window.atualizarDiagramaCampo = function(rowIndex, diagIdx, campo, valor){
+  const st = FUSAO_STATE[rowIndex];
+  if(!st || !st.diagramas[diagIdx]) return;
+  st.diagramas[diagIdx][campo] = valor;
+  salvarRascunho(rowIndex);
+};
+
+// Bloco de UMA CEO: nº da CEO + nomenclatura do cabo dos dois lados (mesma
+// info do retângulo do print de referência) + o diagrama de fibras em si.
+// A parte de fibras fica num container próprio pra clique nela não derrubar o
+// foco/valor dos campos de texto ao lado (que não são recriados no clique).
+function renderFusaoDiagramaBloco(rowIndex, diagIdx){
+  const st = FUSAO_STATE[rowIndex];
+  const d = st.diagramas[diagIdx];
+  const podeRemover = st.diagramas.length > 1;
+  const cabos = Object.keys(QTD_FIBRAS_POR_CABO);
+  return `
+    <div class="fusao-diagrama-bloco" id="fusao-diagrama-bloco-${rowIndex}-${diagIdx}" style="border:1px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .7rem;margin-top:${diagIdx>0?'.6rem':'0'}">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <label style="font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);white-space:nowrap">Fusão — CEO Nº</label>
+        <input type="text" inputmode="numeric" style="max-width:70px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem" value="${d.numeroCeo||''}" oninput="this.value=this.value.replace(/\\D/g,'');atualizarDiagramaCampo(${rowIndex},${diagIdx},'numeroCeo',this.value)"/>
+        ${podeRemover ? `<button type="button" style="margin-left:auto;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;border-radius:var(--radius);font-size:.65rem;padding:.35rem .6rem;cursor:pointer" onclick="removerDiagramaFusao(${rowIndex},${diagIdx})">Remover</button>` : ''}
+      </div>
+      <div style="margin-top:.5rem">
+        <label style="font-size:.62rem;color:var(--text-muted)">Endereço/localização dessa CEO</label>
+        ${gpsWidget(rowIndex, 'fusaoCeo'+diagIdx, d.gpsCeo||'')}
+      </div>
+      <div style="display:flex;gap:.5rem;margin-top:.5rem">
+        <div style="flex:1">
+          <label style="font-size:.62rem;color:var(--text-muted)">Tipo de cabo — Lado A</label>
+          <div class="chip-group" style="margin-top:.3rem">
+            ${cabos.map(c=>`<div class="chip${d.tipoCaboA===c?' active':''}" onclick="atualizarTipoCaboDiagrama(${rowIndex},${diagIdx},'A','${c}')">${c}</div>`).join('')}
+          </div>
+          <label style="font-size:.62rem;color:var(--text-muted);margin-top:.5rem;display:block">Nomenclatura do cabo — Lado A</label>
+          <input type="text" style="width:100%;margin-top:.2rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem .5rem" placeholder="Ex.: LBN029" value="${d.nomA||''}" oninput="atualizarDiagramaCampo(${rowIndex},${diagIdx},'nomA',this.value)"/>
+        </div>
+        <div style="flex:1">
+          <label style="font-size:.62rem;color:var(--text-muted)">Tipo de cabo — Lado B</label>
+          <div class="chip-group" style="margin-top:.3rem">
+            ${cabos.map(c=>`<div class="chip${d.tipoCaboB===c?' active':''}" onclick="atualizarTipoCaboDiagrama(${rowIndex},${diagIdx},'B','${c}')">${c}</div>`).join('')}
+          </div>
+          <label style="font-size:.62rem;color:var(--text-muted);margin-top:.5rem;display:block">Nomenclatura do cabo — Lado B</label>
+          <input type="text" style="width:100%;margin-top:.2rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem .5rem" placeholder="Ex.: LBN030" value="${d.nomB||''}" oninput="atualizarDiagramaCampo(${rowIndex},${diagIdx},'nomB',this.value)"/>
+        </div>
+      </div>
+      <div style="margin-top:.5rem">
+        <label style="font-size:.62rem;color:var(--text-muted)">Splitter (se houver, nessa CEO)</label>
+        <div class="chip-group" style="margin-top:.3rem">
+          ${OPCOES_SPLITTER.map(s=>`<div class="chip${(d.splitter||'Nenhum')===s?' active':''}" onclick="atualizarSplitterDiagrama(${rowIndex},${diagIdx},'${s}')">${s}</div>`).join('')}
+        </div>
+      </div>
+      ${d.splitter === '1x2' ? `
+      <div style="margin-top:.5rem">
+        <label style="font-size:.62rem;color:var(--text-muted)">SPLITTER 1/2 TIPO</label>
+        <div class="chip-group" style="margin-top:.3rem">
+          ${OPCOES_SPLITTER_1X2.map(t=>`<div class="chip${d.splitterTipo1x2===t?' active':''}" onclick="atualizarSplitterTipo1x2(${rowIndex},${diagIdx},'${t}')">${t}</div>`).join('')}
+        </div>
+      </div>` : ''}
+      <div id="fusao-fibras-${rowIndex}-${diagIdx}" style="margin-top:.5rem">${renderFusaoFibras(rowIndex, diagIdx)}</div>
+    </div>`;
+}
+
+// Chips (tipo de cabo/splitter/splitter tipo) sempre re-renderizam o bloco
+// inteiro — diferente do clique numa fibra (renderFusaoFibras isolado), aqui o
+// layout pode mudar de verdade (nº de fibras, aparecer/sumir coluna do splitter
+// ou a pergunta de tipo). Como nomA/nomB/nºCEO já ficam sincronizados no estado
+// a cada tecla (atualizarDiagramaCampo), recriar o bloco não perde nada digitado.
+window.atualizarTipoCaboDiagrama = function(rowIndex, diagIdx, lado, valor){
+  const st = FUSAO_STATE[rowIndex];
+  const d = st && st.diagramas[diagIdx];
+  if(!d) return;
+  const campo = lado === 'A' ? 'tipoCaboA' : 'tipoCaboB';
+  if(valor !== d[campo]){ d.pareamento = []; d.armado = null; } // qtd de fibras desse lado mudou
+  d[campo] = valor;
+  const bloco = document.getElementById(`fusao-diagrama-bloco-${rowIndex}-${diagIdx}`);
+  if(bloco) bloco.outerHTML = renderFusaoDiagramaBloco(rowIndex, diagIdx);
+  requestAnimationFrame(()=>desenharLinhasFusao(rowIndex, diagIdx));
+  salvarRascunho(rowIndex);
+};
+
+window.atualizarSplitterDiagrama = function(rowIndex, diagIdx, valor){
+  const st = FUSAO_STATE[rowIndex];
+  const d = st && st.diagramas[diagIdx];
+  if(!d) return;
+  const novoSplitter = valor === 'Nenhum' ? '' : valor;
+  if(novoSplitter !== d.splitter){
+    // Portas mudaram (ou splitter foi removido) — ligações antigas com o splitter não fazem mais sentido.
+    d.pareamento = d.pareamento.filter(p => p.ponto1.lado !== 'splitter' && p.ponto2.lado !== 'splitter');
+    if(d.armado && d.armado.lado === 'splitter') d.armado = null;
+    if(novoSplitter !== '1x2') d.splitterTipo1x2 = '';
+  }
+  d.splitter = novoSplitter;
+  const bloco = document.getElementById(`fusao-diagrama-bloco-${rowIndex}-${diagIdx}`);
+  if(bloco) bloco.outerHTML = renderFusaoDiagramaBloco(rowIndex, diagIdx);
+  requestAnimationFrame(()=>desenharLinhasFusao(rowIndex, diagIdx));
+  salvarRascunho(rowIndex);
+};
+
+window.atualizarSplitterTipo1x2 = function(rowIndex, diagIdx, valor){
+  const st = FUSAO_STATE[rowIndex];
+  const d = st && st.diagramas[diagIdx];
+  if(!d) return;
+  d.splitterTipo1x2 = valor;
+  const bloco = document.getElementById(`fusao-diagrama-bloco-${rowIndex}-${diagIdx}`);
+  if(bloco) bloco.outerHTML = renderFusaoDiagramaBloco(rowIndex, diagIdx);
+  salvarRascunho(rowIndex);
+};
+
+function acharParDe(pareamento, lado, num){
+  return pareamento.find(p => (p.ponto1.lado===lado && p.ponto1.num===num) || (p.ponto2.lado===lado && p.ponto2.num===num));
+}
+function outroPonto(par, lado, num){
+  return (par.ponto1.lado===lado && par.ponto1.num===num) ? par.ponto2 : par.ponto1;
+}
+function rotuloPonto(ponto){
+  if(ponto.lado === 'splitter') return ponto.num === 0 ? 'Splitter IN' : 'Splitter P'+ponto.num;
+  return (ponto.lado==='a' ? 'A' : 'B') + ponto.num;
+}
+
+// Diagrama: Lado A (esquerda, alimentação) — Splitter no meio (quando houver,
+// porta "IN" recebe a fibra que alimenta ele, portas P1..PN saem pro Lado B) —
+// Lado B (direita). Toca num ponto de dois grupos diferentes pra ligar (desenha
+// a linha), toca num ponto já ligado pra desfazer. Nº de fibras de cada coluna
+// vem do tipo de cabo DAQUELE lado — os dois lados podem ser cabos diferentes
+// (ex.: 4F entrando no Lado A, 12F saindo no Lado B), por isso são duas
+// contagens independentes em vez de uma só pro diagrama inteiro.
+function renderFusaoFibras(rowIndex, diagIdx){
+  const st = FUSAO_STATE[rowIndex];
+  const d = st.diagramas[diagIdx];
+  const nA = QTD_FIBRAS_POR_CABO[d.tipoCaboA];
+  const nB = QTD_FIBRAS_POR_CABO[d.tipoCaboB];
+  if(!nA || !nB){
+    return `<div style="font-size:.68rem;color:var(--text-muted);font-style:italic">Escolha o tipo de cabo dos dois lados (acima) para abrir o diagrama.</div>`;
+  }
+  const fibrasA = Array.from({length:nA}, (_,i)=>i+1);
+  const fibrasB = Array.from({length:nB}, (_,i)=>i+1);
+  const nSplitter = QTD_SPLITTER[d.splitter] || 0;
+  // Porta 0 = "IN" (alimentação vinda do Lado A) — 1..N = saídas pro Lado B.
+  const portasSplitter = nSplitter ? Array.from({length:nSplitter+1}, (_,i)=>i) : [];
+
+  const linhaA = num => {
+    const armado = d.armado && d.armado.lado==='a' && d.armado.num===num;
+    const par = acharParDe(d.pareamento, 'a', num);
+    return `<div class="fibra-row${armado?' armado':''}${par?' pareada':''}" onclick="clicarFibra(${rowIndex},${diagIdx},'a',${num})">
+      <span class="fibra-num">${num}</span>
+      <span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>
+      ${par ? `<span class="fibra-par">→${rotuloPonto(outroPonto(par,'a',num))}</span>` : ''}
+      <span class="fibra-anchor" id="fibra-a-${rowIndex}-${diagIdx}-${num}"></span>
+    </div>`;
+  };
+  const linhaB = num => {
+    const armado = d.armado && d.armado.lado==='b' && d.armado.num===num;
+    const par = acharParDe(d.pareamento, 'b', num);
+    return `<div class="fibra-row${armado?' armado':''}${par?' pareada':''}" onclick="clicarFibra(${rowIndex},${diagIdx},'b',${num})">
+      <span class="fibra-anchor" id="fibra-b-${rowIndex}-${diagIdx}-${num}"></span>
+      ${par ? `<span class="fibra-par">${rotuloPonto(outroPonto(par,'b',num))}←</span>` : ''}
+      <span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>
+      <span class="fibra-num">${num}</span>
+    </div>`;
+  };
+  const linhaSplitter = num => {
+    const ehIn = num === 0;
+    const armado = d.armado && d.armado.lado==='splitter' && d.armado.num===num;
+    const par = acharParDe(d.pareamento, 'splitter', num);
+    return `<div class="fibra-row${armado?' armado':''}${par?' pareada':''}${ehIn?' fibra-splitter-in':''}" onclick="clicarFibra(${rowIndex},${diagIdx},'splitter',${num})">
+      <span class="fibra-num" style="width:auto;padding:0 .2rem">${ehIn ? 'IN' : 'P'+num}</span>
+      ${par ? `<span class="fibra-par">${rotuloPonto(outroPonto(par,'splitter',num))}</span>` : ''}
+      <span class="fibra-anchor" id="fibra-splitter-${rowIndex}-${diagIdx}-${num}"></span>
+    </div>`;
+  };
+
+  return `
+    <div style="font-size:.64rem;color:var(--text-muted);margin-bottom:.4rem">Toque num ponto de cada lado (ou do splitter) pra ligar. Toque num ponto já ligado pra desfazer.${nSplitter ? ' O splitter fica no meio: ligue a fibra do Lado A que alimenta ele em "IN".' : ''}</div>
+    <div class="fusao-diagrama" id="fusao-diagrama-${rowIndex}-${diagIdx}">
+      <svg class="fusao-svg" id="fusao-svg-${rowIndex}-${diagIdx}"></svg>
+      <div class="fusao-coluna-wrap">
+        <div class="fusao-coluna-titulo">Lado A · ${d.tipoCaboA}</div>
+        <div class="fusao-coluna">${fibrasA.map(linhaA).join('')}</div>
+      </div>
+      ${nSplitter ? `<div class="fusao-coluna-wrap">
+        <div class="fusao-coluna-titulo">Splitter</div>
+        <div class="fusao-coluna fusao-coluna-splitter">${portasSplitter.map(linhaSplitter).join('')}</div>
+      </div>` : ''}
+      <div class="fusao-coluna-wrap">
+        <div class="fusao-coluna-titulo">Lado B · ${d.tipoCaboB}</div>
+        <div class="fusao-coluna">${fibrasB.map(linhaB).join('')}</div>
+      </div>
+    </div>
+    <div style="font-size:.64rem;color:var(--text-dim);margin-top:.4rem">${d.pareamento.length} ligação(ões)${nSplitter ? ' · Splitter ' + d.splitter + (d.splitterTipo1x2?' ('+d.splitterTipo1x2+')':'') + ' (IN + ' + nSplitter + ' saídas)' : ''}</div>
+  `;
+}
+
+window.clicarFibra = function(rowIndex, diagIdx, lado, num){
+  const st = FUSAO_STATE[rowIndex];
+  const d = st && st.diagramas[diagIdx];
+  if(!d) return;
+
+  const parExistente = acharParDe(d.pareamento, lado, num);
+  if(parExistente){
+    d.pareamento.splice(d.pareamento.indexOf(parExistente), 1);
+    d.armado = null;
+  } else if(d.armado && !(d.armado.lado === lado && d.armado.num === num)){
+    d.pareamento.push({ ponto1: d.armado, ponto2: { lado, num } });
+    d.armado = null;
+  } else {
+    d.armado = { lado, num };
+  }
+
+  const fibrasEl = document.getElementById(`fusao-fibras-${rowIndex}-${diagIdx}`);
+  if(fibrasEl) fibrasEl.innerHTML = renderFusaoFibras(rowIndex, diagIdx);
+  requestAnimationFrame(()=>desenharLinhasFusao(rowIndex, diagIdx));
+  salvarRascunho(rowIndex);
+};
+
+// Mede a posição real dos "anchors" (bolinha de cada ponto) depois do render e
+// desenha as linhas SVG ligando os pares — precisa ser depois do innerHTML
+// aplicado, senão getBoundingClientRect pega posição antiga/zerada.
+function desenharLinhasFusao(rowIndex, diagIdx){
+  const svg = document.getElementById(`fusao-svg-${rowIndex}-${diagIdx}`);
+  const wrap = document.getElementById(`fusao-diagrama-${rowIndex}-${diagIdx}`);
+  const st = FUSAO_STATE[rowIndex];
+  const d = st && st.diagramas[diagIdx];
+  if(!svg || !wrap || !d) return;
+  const wrapRect = wrap.getBoundingClientRect();
+  svg.setAttribute('width', wrapRect.width);
+  svg.setAttribute('height', wrapRect.height);
+  svg.innerHTML = d.pareamento.map(p=>{
+    const el1 = document.getElementById(`fibra-${p.ponto1.lado}-${rowIndex}-${diagIdx}-${p.ponto1.num}`);
+    const el2 = document.getElementById(`fibra-${p.ponto2.lado}-${rowIndex}-${diagIdx}-${p.ponto2.num}`);
+    if(!el1 || !el2) return '';
+    const r1 = el1.getBoundingClientRect(), r2 = el2.getBoundingClientRect();
+    const x1 = r1.left - wrapRect.left + r1.width/2, y1 = r1.top - wrapRect.top + r1.height/2;
+    const x2 = r2.left - wrapRect.left + r2.width/2, y2 = r2.top - wrapRect.top + r2.height/2;
+    const numCor = p.ponto1.lado !== 'splitter' ? p.ponto1.num : p.ponto2.num;
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${corFibra(numCor)}" stroke-width="2"/>`;
+  }).join('');
 }
 
 window.capturarGPS = function(rowIndex, key){
@@ -1198,12 +1704,21 @@ window.renderCausasTecnico = function(rowIndex, causaAtual){
   const cont = document.getElementById('causas-'+rowIndex);
   if(!cont) return;
 
+  // ACOMPANHAMENTO CPFL: primeiro a categoria (chips), depois o nº da notificação —
+  // as duas coisas juntas viram a "Causa" salva, no formato "Categoria - Nº XXXX".
   if(tipo === 'ACOMPANHAMENTO CPFL'){
-    cont.innerHTML = `<input type="text" id="causaLivre-${rowIndex}" placeholder="Nº da Notificação CPFL..." value="${causaAtual}"/>`;
+    const opcoesCpfl = ['Acompanhamento','Improdutiva','Preventiva'];
+    let categoriaAtual = '', numeroAtual = '';
+    const m = String(causaAtual||'').match(/^(Acompanhamento|Improdutiva|Preventiva)(?:\s*-\s*Nº\s*(.*))?$/);
+    if(m){ categoriaAtual = m[1]; numeroAtual = m[2] || ''; }
+    cont.innerHTML = `
+      <div class="causa-grid">${opcoesCpfl.map(c=>`<div class="causa-item${c===categoriaAtual?' active':''}" data-causa="${c}" onclick="selecionarCausa(${rowIndex},'${c}')">${c}</div>`).join('')}</div>
+      <input type="text" id="causaCpflNumero-${rowIndex}" placeholder="Nº da Notificação CPFL..." value="${numeroAtual}" style="margin-top:.5rem"/>
+    `;
     return;
   }
-  if(tipo === 'PREVENTIVA'){
-    cont.innerHTML = `<input type="text" id="causaLivre-${rowIndex}" placeholder="Descreva a causa..." value="${causaAtual}"/>`;
+  if(TIPOS_CAUSA_LIVRE_OPCIONAL.includes(tipo) && tipo !== 'ACOMPANHAMENTO CPFL'){
+    cont.innerHTML = `<input type="text" id="causaLivre-${rowIndex}" placeholder="Descreva a causa/observação..." value="${causaAtual}"/>`;
     return;
   }
   const lista = CONFIG_CAUSAS[tipo] || [];
@@ -1219,6 +1734,16 @@ window.selecionarCausa = function(rowIndex, causa){
 };
 
 function pegarCausaAtual(rowIndex){
+  const chipAtivo = document.querySelector(`#chips-${rowIndex} .chip.active`);
+  const tipo = chipAtivo ? chipAtivo.dataset.tipo : '';
+  if(tipo === 'ACOMPANHAMENTO CPFL'){
+    const ativo = document.querySelector(`#causas-${rowIndex} .causa-item.active`);
+    const numeroEl = document.getElementById('causaCpflNumero-'+rowIndex);
+    const categoria = ativo ? ativo.dataset.causa : '';
+    const numero = numeroEl ? numeroEl.value.trim() : '';
+    if(!categoria && !numero) return '';
+    return categoria + (numero ? ' - Nº ' + numero : '');
+  }
   const livre = document.getElementById('causaLivre-'+rowIndex);
   if(livre) return livre.value.trim();
   const ativo = document.querySelector(`#causas-${rowIndex} .causa-item.active`);
@@ -1234,8 +1759,8 @@ window.solicitarValidacao = async function(rowIndex){
   const estadoMat = MATERIAIS_STATE[rowIndex];
 
   if(!tipo){ showToast('Selecione o tipo de ocorrência.'); return; }
-  // Causa é obrigatória, exceto pra ACOMPANHAMENTO CPFL e PREVENTIVA (mesma regra do RFO Técnico original)
-  if(tipo !== 'ACOMPANHAMENTO CPFL' && tipo !== 'PREVENTIVA' && !causa){
+  // Causa é obrigatória, exceto pros tipos de causa livre opcional (mesma regra do RFO Técnico original)
+  if(!TIPOS_CAUSA_LIVRE_OPCIONAL.includes(tipo) && !causa){
     showToast('Selecione a Causa Principal.'); return;
   }
   if(!estadoMat || estadoMat.usaMat === null || estadoMat.usaMat === undefined){ showToast('Informe se houve uso de material.'); return; }
@@ -1269,15 +1794,39 @@ window.solicitarValidacao = async function(rowIndex){
 
   const materiais = montarStringMateriais(rowIndex);
 
+  // Perguntas rápidas de fusão — só existem em ROMPIMENTO/MASSIVA com CEO selecionada.
+  // Não existe mais "Cor com Cor?" — o diagrama fica sempre disponível, então só
+  // manda pro servidor os diagramas que o técnico realmente preencheu (tem
+  // ligação desenhada, cabo ou nomenclatura informados), pra não gerar entrada
+  // vazia no GEOGRID/relatório em atividades onde o desenho nem foi usado.
+  // Tipo de cabo é por CEO (cada diagrama tem o seu, um valor por lado); "Tipo
+  // Cabo Fusionado" no topo vira um resumo (tipos únicos usados) só pra manter
+  // WhatsApp/GEOGRID legíveis. Quantidade de CEO não é mais perguntada — é
+  // sempre a contagem de diagramas preenchidos.
+  const fusaoSt = isFibra ? FUSAO_STATE[rowIndex] : null;
+  const fusionouTodas = fusaoSt ? fusaoSt.fusionouTodas : '';
+  const diagramasComIndice = fusaoSt ? fusaoSt.diagramas.map((d,i)=>({d,i})) : [];
+  const diagramasRelevantes = diagramasComIndice.filter(({d}) => d.pareamento.length > 0 || d.tipoCaboA || d.tipoCaboB || d.nomA || d.nomB || d.splitter);
+  const quantidadeCeo = diagramasRelevantes.length ? String(diagramasRelevantes.length) : '';
+  const tipoCaboFusionado = diagramasRelevantes.length ? [...new Set(diagramasRelevantes.flatMap(({d})=>[d.tipoCaboA,d.tipoCaboB]).filter(Boolean))].join(', ') : '';
+  // Endereço da CEO vem do widget de GPS (mesmo padrão de Local da Falha/Caixa Nova),
+  // lido aqui na hora de enviar — não fica guardado em d.gpsCeo durante a sessão.
+  const diagramasSerializados = diagramasRelevantes.map(({d,i}) => ({
+    numeroCeo: d.numeroCeo, nomenclaturaA: d.nomA, nomenclaturaB: d.nomB,
+    gpsCeo: pegarGPS(rowIndex, 'fusaoCeo'+i),
+    tipoCaboA: d.tipoCaboA, tipoCaboB: d.tipoCaboB, splitter: d.splitter, splitterTipo1x2: d.splitterTipo1x2, pares: d.pareamento
+  }));
+  const fusaoPareamento = diagramasSerializados.length ? JSON.stringify(diagramasSerializados) : '';
+
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha })
+      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, fusaoPareamento, quantidadeCeo })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao salvar.')); return; }
 
-    copiarRelatorioWhats(rowIndex, { tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha });
+    copiarRelatorioWhats(rowIndex, { tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, quantidadeCeo, diagramas: diagramasSerializados });
     limparRascunho(rowIndex);
     showToast('Enviado e copiado! Cole no grupo do WhatsApp.');
     carregarAtividades();
@@ -1306,6 +1855,19 @@ function copiarRelatorioWhats(rowIndex, campos){
   if(campos.numeroCeoA) t += (campos.ceo === 'existente' ? '*Nº CEO:* ' : '*Nº CEO A:* ') + campos.numeroCeoA + '\n';
   if(campos.gpsCeoB) t += '*CAIXA NOVA B:* ' + campos.gpsCeoB + '\n';
   if(campos.numeroCeoB) t += '*Nº CEO B:* ' + campos.numeroCeoB + '\n';
+  if(campos.quantidadeCeo) t += '*QUANTIDADE DE CEO TRABALHADAS:* ' + campos.quantidadeCeo + '\n';
+  if(campos.tipoCaboFusionado) t += '*CABO FUSIONADO:* ' + campos.tipoCaboFusionado + '\n';
+  if(campos.fusionouTodas) t += '*FUSIONOU TODAS AS FIBRAS:* ' + campos.fusionouTodas + '\n';
+  if(campos.diagramas && campos.diagramas.length){
+    const rotulo = ponto => ponto.lado==='splitter' ? (ponto.num===0?'Splitter IN':'Splitter P'+ponto.num) : (ponto.lado==='a'?'A':'B')+ponto.num;
+    campos.diagramas.forEach(d=>{
+      if(!d.pares || !d.pares.length) return;
+      const infoSplitter = d.splitter ? ' — Splitter ' + d.splitter + (d.splitterTipo1x2?' ('+d.splitterTipo1x2+')':'') : '';
+      const infoCabo = (d.tipoCaboA || d.tipoCaboB) ? ' — Cabo A: ' + (d.tipoCaboA||'?') + ' · Cabo B: ' + (d.tipoCaboB||'?') : '';
+      t += '*FUSÃO CEO Nº' + (d.numeroCeo||'?') + '* (' + (d.nomenclaturaA||'?') + ' → ' + (d.nomenclaturaB||'?') + ')' + infoCabo + infoSplitter + ': ' + d.pares.map(p=>rotulo(p.ponto1)+'→'+rotulo(p.ponto2)).join(', ') + '\n';
+      if(d.gpsCeo) t += 'Localização dessa CEO: ' + d.gpsCeo + '\n';
+    });
+  }
   t += '\n*MATERIAIS:*\n' + campos.materiais + '\n';
   t += '\n*SOLUÇÃO:*\n' + campos.solucao + '\n';
   t += '\n*MELHORIA NA REDE:*\n' + campos.melhoria;

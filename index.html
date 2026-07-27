@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <meta name="theme-color" content="#0a0a0a"/>
-  <title>Esteira de Despacho · Netturbo</title>
+  <title>Esteira Despacho - Manutenção · Netturbo</title>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <style>
@@ -103,7 +103,7 @@
     <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:120px;height:auto;background:#fff;border-radius:12px;padding:.6rem" onerror="this.style.display='none'"/>
     <div class="login-heading">
       <h2>Netturbo</h2>
-      <p>Esteira de Despacho · Liderança</p>
+      <p>Esteira Despacho - Manutenção · Liderança</p>
     </div>
     <div class="login-field">
       <label>Senha</label>
@@ -119,7 +119,7 @@
   <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
   <div>
     <div class="topbar-brand">Netturbo</div>
-    <div class="topbar-sub">Esteira de Despacho</div>
+    <div class="topbar-sub">Esteira Despacho - Manutenção</div>
   </div>
   <div class="topbar-spacer"></div>
 </header>
@@ -429,13 +429,24 @@ async function confirmarAtividade(){
 window.confirmarAtividade = confirmarAtividade;
 
 // ── ESTEIRA ──────────────────────────────────────────────────
+// A atualização automática (a cada 15s) e o refresh manual (depois de salvar
+// anexo, despachar, etc.) chamam esta função de forma independente — se as
+// respostas chegarem fora de ordem (ex.: o refresh manual, mais rápido,
+// termina DEPOIS de já ter sido chamado, mas o poll automático que começou
+// antes dele demora mais e responde por último), a resposta mais velha
+// sobrescrevia a tela com dado desatualizado (ex.: anexo que acabou de ser
+// salvo "sumindo" segundos depois). Um número de sequência garante que só a
+// chamada mais recente tem permissão de atualizar ATIVIDADES/tela.
+let CARGA_ESTEIRA_SEQ = 0;
 async function carregarEsteira(){
+  const minhaSeq = ++CARGA_ESTEIRA_SEQ;
   try{
     const [respEsteira, respDisp] = await Promise.all([
       fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA'),
       fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE')
     ]);
     const [resultEsteira, resultDisp] = await Promise.all([respEsteira.json(), respDisp.json()]);
+    if(minhaSeq !== CARGA_ESTEIRA_SEQ) return; // uma chamada mais nova já respondeu antes desta — descarta
     ATIVIDADES = resultEsteira.atividades || [];
     TODOS_PERIODOS_DISPONIBILIDADE = resultDisp.periodos || [];
     renderEsteira();
@@ -473,14 +484,31 @@ window.toggleDisponibilidade = function(){
   btn.textContent = aberto ? '▼' : '▲';
 };
 
+// Painel mostra só o que ainda é relevante — senão os períodos ficam se
+// acumulando pra sempre. "Relevante" = ainda não terminou antes do mês atual
+// começar: cobre o mês corrente, indisponibilidade que atravessa a virada do
+// mês (começou num mês, termina no seguinte) e períodos futuros já agendados.
+// O que já acabou num mês anterior some do painel, mas continua na planilha
+// (histórico/relatórios de efetividade seguem usando tudo, sem filtro).
+function primeiroDiaMesAtual(){
+  const hoje = new Date();
+  return hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-01';
+}
+
+function periodosDisponibilidadeRelevantes(){
+  const limite = primeiroDiaMesAtual();
+  return TODOS_PERIODOS_DISPONIBILIDADE.filter(p => p.dataFim >= limite);
+}
+
 function renderListaDisponibilidade(){
-  document.getElementById('countDisponibilidade').textContent = TODOS_PERIODOS_DISPONIBILIDADE.length;
+  const periodos = periodosDisponibilidadeRelevantes();
+  document.getElementById('countDisponibilidade').textContent = periodos.length;
   const el = document.getElementById('listaDisponibilidade');
-  if(!TODOS_PERIODOS_DISPONIBILIDADE.length){
-    el.innerHTML = '<div class="empty-msg">Nenhum período registrado.</div>';
+  if(!periodos.length){
+    el.innerHTML = '<div class="empty-msg">Nenhum período em aberto neste mês.</div>';
     return;
   }
-  const ordenados = [...TODOS_PERIODOS_DISPONIBILIDADE].sort((a,b) => String(b.dataInicio).localeCompare(String(a.dataInicio)));
+  const ordenados = [...periodos].sort((a,b) => String(b.dataInicio).localeCompare(String(a.dataInicio)));
   el.innerHTML = ordenados.map(p => `
     <div class="atv-card">
       <div class="protocolo">${p.tecnico}</div>
@@ -546,8 +574,11 @@ function renderEsteira(){
   // Captura QUALQUER coisa que o líder já tenha selecionado/digitado nas 3 colunas
   // (selects de empresa/técnico, campos de edição, e se algum "+ Equipe de Apoio"
   // estava aberto) — ANTES de redesenhar, senão a atualização automática apaga tudo.
+  // input[type=file] fica de fora: o navegador não deixa restaurar a seleção
+  // programaticamente (por segurança) — tentar setar .value de volta derruba a
+  // função inteira com exceção, apagando a atualização de todos os outros campos.
   const edicoesEmAndamento = {};
-  document.querySelectorAll('.board select, .board input, .board textarea').forEach(el=>{
+  document.querySelectorAll('.board select, .board input:not([type="file"]), .board textarea').forEach(el=>{
     if(el.id) edicoesEmAndamento[el.id] = el.value;
   });
   const detalhesAbertos = {};
@@ -584,6 +615,7 @@ function renderEsteira(){
           <select class="mini" id="sel-tecnico-apoio-${a.rowIndex}"><option value="">Técnico apoio...</option></select>
         </div>
       </details>
+      ${blocoAnexoDespacho(a)}
       <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.4rem" onclick="despachar(${a.rowIndex})">Despachar</button>
       <button class="btn" style="width:100%;margin-top:.3rem;padding:.35rem;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;font-size:.68rem" onclick="excluirAtividade(${a.rowIndex})">Excluir (foi engano)</button>
     </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando despacho.</div>';
@@ -599,6 +631,7 @@ function renderEsteira(){
       ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
       ${a['Técnico Apoio'] ? `<div class="meta" style="color:var(--accent)">Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}${a['Hora Início Apoio']?' ('+a['Hora Início Apoio']+(a['Hora Chegada Apoio']?' → '+a['Hora Chegada Apoio']:'')+')':''}</div>` : ''}
       <button class="btn" style="width:100%;margin-top:.5rem;padding:.35rem;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-size:.68rem" onclick="desfazerDespacho(${a.rowIndex})">↩ Desfazer Despacho</button>
+      ${blocoAnexoDespacho(a)}
       ${!a['Técnico Apoio'] ? `
       <details style="margin-top:.4rem">
         <summary style="font-size:.62rem;color:var(--text-muted);cursor:pointer">+ Adicionar Equipe de Apoio</summary>
@@ -861,6 +894,111 @@ window.excluirAtividade = async function(rowIndex){
   }catch(err){
     console.error(err);
     showToast('Erro ao conectar com o backend.');
+  }
+};
+
+// Bloco "Projeto / Medição (KMZ)" — reaproveitado nos cards de "Aguardando
+// Despacho" e "Despachadas / Em Campo" (o despacho pode anexar antes ou depois
+// de despachar, não só num momento fixo do fluxo).
+function blocoAnexoDespacho(a){
+  // Print colado (Ctrl+V) fica só na memória do navegador (ANEXO_PASTE_STATE) até
+  // o clique em "Salvar p/ Técnico" — a atualização automática da esteira (a cada
+  // 15s) redesenha o card do zero, e sem reler esse estado aqui o aviso "print
+  // colado" sumia da tela mesmo o dado ainda estando válido, dando a falsa
+  // impressão de que o anexo tinha se perdido.
+  const coladoPendente = ANEXO_PASTE_STATE[a.rowIndex];
+  const preenchido = a['Anexo Despacho Nome'] || a['Mensagem Despacho'] || a['Link Medição'] || coladoPendente;
+  return `
+    <details style="margin-top:.4rem">
+      <summary style="font-size:.65rem;color:var(--text-muted);cursor:pointer">📎 Projeto / Medição (KMZ)${preenchido?' — preenchido':''}</summary>
+      <div style="margin-top:.5rem;display:flex;flex-direction:column;gap:.4rem">
+        ${a['Anexo Despacho URL'] ? `<a href="${a['Anexo Despacho URL']}" target="_blank" style="font-size:.68rem;color:var(--accent)">Anexo atual: ${a['Anexo Despacho Nome']||'ver arquivo'}</a>` : ''}
+        <div>
+          <span class="edit-label">Anexar KMZ/KML ou print do projeto</span>
+          <input type="file" class="edit-field" id="anexo-file-${a.rowIndex}" accept=".kmz,.kml,image/*" onchange="limparPasteAnexo(${a.rowIndex})"/>
+        </div>
+        <div>
+          <span class="edit-label">Mensagem para o técnico (pode colar um print aqui com Ctrl+V, junto do texto)</span>
+          <textarea class="edit-field" id="anexo-msg-${a.rowIndex}" placeholder="Ex.: chegar pela rua X, o rompimento fica entre os postes Y e Z... (cole um print aqui se quiser)" onpaste="handlePasteAnexo(event,${a.rowIndex})">${a['Mensagem Despacho']||''}</textarea>
+          <div id="anexo-preview-${a.rowIndex}" style="font-size:.66rem;color:var(--accent);margin-top:.3rem">${coladoPendente ? '📎 Print colado ('+coladoPendente.nome+') pronto — clique em "Salvar p/ Técnico" pra enviar.' : ''}</div>
+        </div>
+        <div>
+          <span class="edit-label">Onde fazer as medições? (link do Maps)</span>
+          <input type="text" class="edit-field" id="anexo-link-${a.rowIndex}" placeholder="https://maps.google.com/?q=lat,long" value="${a['Link Medição']||''}"/>
+        </div>
+        <button type="button" class="btn btn-outline" style="padding:.4rem;font-size:.7rem" onclick="salvarInfoDespacho(${a.rowIndex})">Salvar p/ Técnico</button>
+      </div>
+    </details>`;
+}
+
+// Print colado (Ctrl+V) na mensagem — vira o anexo da atividade, junto do texto
+// já digitado. Tem prioridade sobre o input de arquivo (evita mandar os dois).
+let ANEXO_PASTE_STATE = {}; // rowIndex -> { dataUrl, nome }
+
+window.handlePasteAnexo = function(event, rowIndex){
+  const items = (event.clipboardData || window.clipboardData).items;
+  if(!items) return;
+  for(const item of items){
+    if(item.type && item.type.indexOf('image/') === 0){
+      const file = item.getAsFile();
+      if(!file) continue;
+      event.preventDefault(); // não deixa a imagem ser "colada" como texto/binário na textarea
+      const reader = new FileReader();
+      reader.onload = () => {
+        ANEXO_PASTE_STATE[rowIndex] = { dataUrl: reader.result, nome: 'print_colado_' + Date.now() + '.png' };
+        const prev = document.getElementById('anexo-preview-'+rowIndex);
+        if(prev) prev.textContent = '📎 Print colado será enviado como anexo junto com a mensagem.';
+        const fileInput = document.getElementById('anexo-file-'+rowIndex);
+        if(fileInput) fileInput.value = '';
+      };
+      reader.readAsDataURL(file);
+      break;
+    }
+  }
+};
+
+window.limparPasteAnexo = function(rowIndex){
+  delete ANEXO_PASTE_STATE[rowIndex];
+  const prev = document.getElementById('anexo-preview-'+rowIndex);
+  if(prev) prev.textContent = '';
+};
+
+// Lê o arquivo (print colado tem prioridade; senão o escolhido no input) como
+// data-URL e manda junto com a mensagem/link — anexo é opcional em cada chamada,
+// então salvar só mensagem ou só o link não obriga anexar de novo.
+window.salvarInfoDespacho = async function(rowIndex){
+  const fileInput = document.getElementById('anexo-file-'+rowIndex);
+  const mensagem = document.getElementById('anexo-msg-'+rowIndex).value.trim();
+  const linkMedicao = document.getElementById('anexo-link-'+rowIndex).value.trim();
+  const colado = ANEXO_PASTE_STATE[rowIndex];
+  const arquivo = fileInput && fileInput.files && fileInput.files[0];
+
+  const enviar = async (anexoBase64, anexoNome) => {
+    try{
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+        body: JSON.stringify({ acao:'SALVAR_INFO_DESPACHO', rowIndex, anexoBase64, anexoNome, mensagem, linkMedicao })
+      });
+      const result = await resp.json();
+      if(result.status !== 'ok'){ showToast((result.message||'Erro ao salvar.')); return; }
+      delete ANEXO_PASTE_STATE[rowIndex];
+      showToast('Informações salvas — o técnico já vai ver na atividade.');
+      carregarEsteira();
+    }catch(err){
+      console.error(err);
+      showToast('Erro ao conectar com o backend.');
+    }
+  };
+
+  if(colado){
+    enviar(colado.dataUrl, colado.nome);
+  }else if(arquivo){
+    const reader = new FileReader();
+    reader.onload = () => enviar(reader.result, arquivo.name);
+    reader.onerror = () => showToast('Não foi possível ler o arquivo.');
+    reader.readAsDataURL(arquivo);
+  }else{
+    enviar(null, null);
   }
 };
 

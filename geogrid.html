@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Controle GEOGRID · Netturbo Esteira</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
+      --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+      --border:#252525;--border-hi:#353535;
+      --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+      --red:#e53935;--amber:#ffa000;--green:#8bc34a;--purple:#ab47bc;
+      --radius:6px;--radius-lg:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+    .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
+    .login-logo{width:120px;height:auto;object-fit:contain;background:#fff;border-radius:12px;padding:.6rem}
+    .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);text-align:center}
+    .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
+    .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
+    .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
+    .login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.92rem;padding:.7rem .9rem;width:100%}
+    .login-field input:focus{outline:none;border-color:var(--accent)}
+    .login-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+    .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
+    .login-error.visible{display:block}
+
+    .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+    .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+    .topbar-spacer{flex:1}
+
+    .page-actions{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.9rem 1.1rem 0}
+    main{max-width:900px;margin:0 auto;padding:1.3rem 1.1rem 0}
+
+    .btn{padding:.6rem 1.1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.82rem}
+    .btn-accent{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
+    .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+
+    .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.1rem}
+    .toolbar select{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem;min-width:220px}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
+    .card-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.5rem}
+    .card-header .contagem{background:var(--surface3);border:1px solid var(--border-hi);border-radius:20px;padding:.1rem .55rem;font-size:.68rem;color:var(--text-dim);margin-left:auto}
+    .card-body{padding:.9rem 1rem}
+    .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+
+    .item-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.75rem .9rem;margin-bottom:.65rem}
+    .item-card .protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.9rem}
+    .item-card .cliente{font-size:.8rem;margin-top:.1rem}
+    .item-card .meta{font-size:.7rem;color:var(--text-muted);margin-top:.4rem;line-height:1.6}
+    .item-card .concluido-info{font-size:.72rem;color:var(--green);margin-top:.5rem}
+    .item-card .acoes{margin-top:.6rem;display:flex;gap:.5rem;align-items:center}
+
+    .fusao-item-bloco{background:var(--surface2);border:1px solid var(--border-hi);border-radius:8px;padding:.65rem .7rem;margin-top:.5rem}
+    .fusao-item-titulo{font-size:.72rem;color:var(--accent);margin-bottom:.5rem;font-weight:600}
+    .fusao-item-titulo a{color:var(--accent)}
+    .fusao-item-rodape{font-size:.62rem;color:var(--text-dim);margin-top:.4rem}
+    .fusao-diagrama{position:relative;display:flex;justify-content:space-between;gap:1.4rem;overflow-x:auto;padding:.3rem 0}
+    .fusao-svg{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+    .fusao-coluna{display:flex;flex-direction:column;gap:3px;min-width:100px}
+    .fusao-coluna-wrap{display:flex;flex-direction:column}
+    .fusao-coluna-titulo{font-size:.6rem;color:var(--text-muted);text-align:center;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em}
+    .fibra-row{display:flex;align-items:center;gap:.3rem;padding:.22rem .35rem;border-radius:4px;font-size:.66rem;background:var(--surface3);border:1px solid var(--border-hi);white-space:nowrap;color:var(--text-muted)}
+    .fibra-row.pareada{color:var(--text);border-color:#3a3a3a}
+    .fibra-row.fibra-splitter-in{border-color:var(--accent);background:rgba(168,201,60,.1)}
+    .fibra-num{width:1.3rem;text-align:center;color:var(--text-dim);font-weight:700;flex-shrink:0}
+    .fibra-cor-dot{width:13px;height:13px;border-radius:3px;flex-shrink:0;border:1px solid rgba(255,255,255,.25)}
+    .fibra-anchor{width:6px;height:6px;border-radius:50%;background:var(--text-muted);flex-shrink:0}
+    .fibra-par{font-size:.6rem;color:var(--accent)}
+
+    #toast.show{transform:translateX(-50%) translateY(0)}
+  </style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-box">
+    <img class="login-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+    <div class="login-heading">
+      <h2>Controle GEOGRID</h2>
+      <p>Sala Técnica · Fusões fora do padrão</p>
+    </div>
+    <div class="login-field">
+      <label>Senha</label>
+      <input type="password" id="pwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()"/>
+    </div>
+    <div class="login-error" id="loginErro">Senha incorreta.</div>
+    <button class="login-btn" onclick="tryLogin()">Entrar</button>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Controle GEOGRID</div>
+    <div class="topbar-sub">Sala Técnica · Fusões fora do padrão</div>
+  </div>
+  <div class="topbar-spacer"></div>
+</header>
+
+<div class="page-actions">
+  <a href="painel.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Painel</a>
+</div>
+
+<main id="app" style="display:none">
+
+  <div class="toolbar">
+    <select id="selNome">
+      <option value="">Quem está concluindo?</option>
+    </select>
+    <input type="text" id="inputNomeOutro" placeholder="Ou digite seu nome..." style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem"/>
+    <button class="btn btn-outline" onclick="carregarGeogrid()">↻ Atualizar</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Pendentes de atualização no GEOGRID<span class="contagem" id="countPendentes">0</span></div>
+    <div class="card-body" id="listaPendentes"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Concluídos (histórico)<span class="contagem" id="countConcluidos">0</span></div>
+    <div class="card-body" id="listaConcluidos"></div>
+  </div>
+
+</main>
+
+<div id="toast" style="position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap"></div>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+const LEADERSHIP_PASSWORD = "Manutencao@101";
+const NOMES_SALA_TECNICA = ["Vinicius Machado","Weslley Rodrigues","Leonardo Egídio","Reginaldo Venâncio"];
+
+let TODOS_ITENS = [];
+
+// Mesma paleta/contagem de fibras por tipo de cabo usada em tecnico.html — precisa
+// bater exatamente pra o desenho aqui sair igual ao que o técnico preencheu.
+const QTD_FIBRAS_POR_CABO = { '01F':1, '04F':4, '12F':12, '24F':24, '72F':72 };
+const CORES_FIBRA = ['#00A651','#FFF200','#FFFFFF','#0072BC','#ED1C24','#92278F','#603813','#EC008C','#000000','#A6A6A6','#F7941E','#00AEEF'];
+function corFibra(n){ return CORES_FIBRA[(n-1) % 12]; }
+const QTD_SPLITTER = { '1x2':2, '1x4':4, '1x8':8, '1x16':16 };
+
+function acharParDe(pareamento, lado, num){
+  return pareamento.find(p => (p.ponto1.lado===lado && p.ponto1.num===num) || (p.ponto2.lado===lado && p.ponto2.num===num));
+}
+function outroPonto(par, lado, num){
+  return (par.ponto1.lado===lado && par.ponto1.num===num) ? par.ponto2 : par.ponto1;
+}
+
+function tryLogin(){
+  const val = document.getElementById('pwdInput').value;
+  if(val === LEADERSHIP_PASSWORD){
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('selNome').innerHTML = '<option value="">Quem está concluindo?</option>' + NOMES_SALA_TECNICA.map(n=>`<option value="${n}">${n}</option>`).join('');
+    carregarGeogrid();
+  }else{
+    const e = document.getElementById('loginErro');
+    e.classList.add('visible');
+    document.getElementById('pwdInput').value = '';
+    setTimeout(()=>e.classList.remove('visible'), 3000);
+  }
+}
+window.tryLogin = tryLogin;
+
+async function carregarGeogrid(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_GEOGRID');
+    const result = await resp.json();
+    TODOS_ITENS = result.itens || [];
+    renderGeogrid();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao carregar a fila.');
+  }
+}
+window.carregarGeogrid = carregarGeogrid;
+
+// 'Fusão Pareamento' guarda um item por CEO trabalhada: { numeroCeo, nomenclaturaA,
+// nomenclaturaB, tipoCabo, splitter, splitterTipo1x2, pares:[{ponto1:{lado,num},
+// ponto2:{lado,num}}] } — uma linha de resumo por CEO (cada CEO pode ter um cabo
+// diferente), pra sala técnica saber exatamente qual caixa cada mapeamento de
+// fibra (ou porta de splitter) se refere. Porta 0 do splitter é sempre "IN"
+// (alimentação vinda do Lado A); 1..N são as saídas pro Lado B.
+function rotuloPontoGeogrid(ponto){
+  if(ponto.lado==='splitter') return ponto.num===0 ? 'Splitter IN' : 'Splitter P'+ponto.num;
+  return (ponto.lado==='a'?'A':'B') + ponto.num;
+}
+function diagramasFusao(item){
+  if(!item['Fusão Pareamento']) return [];
+  try{
+    const diagramas = JSON.parse(item['Fusão Pareamento']);
+    if(!Array.isArray(diagramas)) return [];
+    return diagramas.filter(d => Array.isArray(d.pares) && d.pares.length);
+  }catch(e){ return []; }
+}
+
+// Desenho igual ao que o técnico viu em tecnico.html (mesmas cores, mesmas colunas
+// Lado A / Splitter / Lado B) — só que sem clique, é read-only pra sala técnica.
+function renderDiagramaFusaoGeogrid(rowIndex, diagIdx, d){
+  const nA = QTD_FIBRAS_POR_CABO[d.tipoCaboA] || 0;
+  const nB = QTD_FIBRAS_POR_CABO[d.tipoCaboB] || 0;
+  if(!nA && !nB) return '';
+  const fibrasA = Array.from({length:nA}, (_,i)=>i+1);
+  const fibrasB = Array.from({length:nB}, (_,i)=>i+1);
+  const nSplitter = QTD_SPLITTER[d.splitter] || 0;
+  const portasSplitter = nSplitter ? Array.from({length:nSplitter+1}, (_,i)=>i) : [];
+  const pareamento = Array.isArray(d.pares) ? d.pares : [];
+
+  const linhaA = num => {
+    const par = acharParDe(pareamento, 'a', num);
+    return `<div class="fibra-row${par?' pareada':''}">
+      <span class="fibra-num">${num}</span>
+      <span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>
+      ${par ? `<span class="fibra-par">→${rotuloPontoGeogrid(outroPonto(par,'a',num))}</span>` : ''}
+      <span class="fibra-anchor" id="fibra-geo-a-${rowIndex}-${diagIdx}-${num}"></span>
+    </div>`;
+  };
+  const linhaB = num => {
+    const par = acharParDe(pareamento, 'b', num);
+    return `<div class="fibra-row${par?' pareada':''}">
+      <span class="fibra-anchor" id="fibra-geo-b-${rowIndex}-${diagIdx}-${num}"></span>
+      ${par ? `<span class="fibra-par">${rotuloPontoGeogrid(outroPonto(par,'b',num))}←</span>` : ''}
+      <span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>
+      <span class="fibra-num">${num}</span>
+    </div>`;
+  };
+  const linhaSplitter = num => {
+    const ehIn = num === 0;
+    const par = acharParDe(pareamento, 'splitter', num);
+    return `<div class="fibra-row${par?' pareada':''}${ehIn?' fibra-splitter-in':''}">
+      <span class="fibra-num" style="width:auto;padding:0 .2rem">${ehIn ? 'IN' : 'P'+num}</span>
+      ${par ? `<span class="fibra-par">${rotuloPontoGeogrid(outroPonto(par,'splitter',num))}</span>` : ''}
+      <span class="fibra-anchor" id="fibra-geo-splitter-${rowIndex}-${diagIdx}-${num}"></span>
+    </div>`;
+  };
+
+  return `
+    <div class="fusao-diagrama" id="fusao-diagrama-geo-${rowIndex}-${diagIdx}">
+      <svg class="fusao-svg" id="fusao-svg-geo-${rowIndex}-${diagIdx}"></svg>
+      ${nA ? `<div class="fusao-coluna-wrap">
+        <div class="fusao-coluna-titulo">Lado A · ${d.tipoCaboA}</div>
+        <div class="fusao-coluna">${fibrasA.map(linhaA).join('')}</div>
+      </div>` : ''}
+      ${nSplitter ? `<div class="fusao-coluna-wrap">
+        <div class="fusao-coluna-titulo">Splitter ${d.splitter}${d.splitterTipo1x2?' ('+d.splitterTipo1x2+')':''}</div>
+        <div class="fusao-coluna fusao-coluna-splitter">${portasSplitter.map(linhaSplitter).join('')}</div>
+      </div>` : ''}
+      ${nB ? `<div class="fusao-coluna-wrap">
+        <div class="fusao-coluna-titulo">Lado B · ${d.tipoCaboB}</div>
+        <div class="fusao-coluna">${fibrasB.map(linhaB).join('')}</div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function blocoDiagramasFusao(item){
+  const diagramas = diagramasFusao(item);
+  if(!diagramas.length) return '';
+  return diagramas.map((d,i) => {
+    const gps = d.gpsCeo || '';
+    const infoGps = gps ? (gps.startsWith('http') ? ` · <a href="${gps}" target="_blank" rel="noopener">Local no mapa</a>` : ` · Local: ${gps}`) : '';
+    return `<div class="fusao-item-bloco">
+      <div class="fusao-item-titulo">CEO Nº${d.numeroCeo||'?'} · ${d.nomenclaturaA||'?'} → ${d.nomenclaturaB||'?'}${infoGps}</div>
+      ${renderDiagramaFusaoGeogrid(item.rowIndex, i, d)}
+      <div class="fusao-item-rodape">${d.pares.length} ligação(ões)</div>
+    </div>`;
+  }).join('');
+}
+
+// Mede as bolinhas âncora depois do innerHTML aplicado e desenha as linhas SVG —
+// precisa rodar depois do render, senão getBoundingClientRect pega posição zerada.
+function desenharLinhasFusaoGeogrid(rowIndex, diagIdx, d){
+  const svg = document.getElementById(`fusao-svg-geo-${rowIndex}-${diagIdx}`);
+  const wrap = document.getElementById(`fusao-diagrama-geo-${rowIndex}-${diagIdx}`);
+  if(!svg || !wrap) return;
+  const pareamento = Array.isArray(d.pares) ? d.pares : [];
+  const wrapRect = wrap.getBoundingClientRect();
+  svg.setAttribute('width', wrapRect.width);
+  svg.setAttribute('height', wrapRect.height);
+  svg.innerHTML = pareamento.map(p=>{
+    const el1 = document.getElementById(`fibra-geo-${p.ponto1.lado}-${rowIndex}-${diagIdx}-${p.ponto1.num}`);
+    const el2 = document.getElementById(`fibra-geo-${p.ponto2.lado}-${rowIndex}-${diagIdx}-${p.ponto2.num}`);
+    if(!el1 || !el2) return '';
+    const r1 = el1.getBoundingClientRect(), r2 = el2.getBoundingClientRect();
+    const x1 = r1.left - wrapRect.left + r1.width/2, y1 = r1.top - wrapRect.top + r1.height/2;
+    const x2 = r2.left - wrapRect.left + r2.width/2, y2 = r2.top - wrapRect.top + r2.height/2;
+    const numCor = p.ponto1.lado !== 'splitter' ? p.ponto1.num : p.ponto2.num;
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${corFibra(numCor)}" stroke-width="2"/>`;
+  }).join('');
+}
+
+function renderGeogrid(){
+  const pendentes = TODOS_ITENS.filter(i => i['Status'] === 'PENDENTE');
+  const concluidos = TODOS_ITENS.filter(i => i['Status'] === 'CONCLUIDO')
+    .sort((a,b) => String(b['Timestamp Conclusão']||'').localeCompare(String(a['Timestamp Conclusão']||'')));
+
+  document.getElementById('countPendentes').textContent = pendentes.length;
+  document.getElementById('countConcluidos').textContent = concluidos.length;
+
+  const elP = document.getElementById('listaPendentes');
+  elP.innerHTML = pendentes.length ? pendentes.map(item => `
+    <div class="item-card">
+      <div class="protocolo">${item['Protocolo']||'—'}</div>
+      <div class="cliente">${item['Cliente']||'—'}</div>
+      <div class="meta">${item['Endereço']||''}<br>Fusionou todas: ${item['Fusionou Todas']||'—'} · Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}<br>Registrado em ${item['Timestamp Registro']||'—'}</div>
+      ${blocoDiagramasFusao(item)}
+      <div class="acoes">
+        <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem" onclick="concluir(${item.rowIndex})">Marcar como concluído no GEOGRID</button>
+      </div>
+    </div>`).join('') : '<div class="empty-msg">Nenhuma fusão pendente.</div>';
+
+  const elC = document.getElementById('listaConcluidos');
+  elC.innerHTML = concluidos.length ? concluidos.map(item => `
+    <div class="item-card">
+      <div class="protocolo">${item['Protocolo']||'—'}</div>
+      <div class="cliente">${item['Cliente']||'—'}</div>
+      <div class="meta">${item['Endereço']||''}<br>Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}</div>
+      ${blocoDiagramasFusao(item)}
+      <div class="concluido-info">✓ Concluído por ${item['Concluído Por']||'—'} em ${item['Timestamp Conclusão']||'—'}</div>
+    </div>`).join('') : '<div class="empty-msg">Nenhum item concluído ainda.</div>';
+
+  // Precisa medir depois do innerHTML já aplicado no DOM, senão as âncoras das
+  // fibras ainda não existem / estão com posição zerada.
+  requestAnimationFrame(() => {
+    [...pendentes, ...concluidos].forEach(item => {
+      diagramasFusao(item).forEach((d, i) => desenharLinhasFusaoGeogrid(item.rowIndex, i, d));
+    });
+  });
+}
+
+window.concluir = async function(rowIndex){
+  const nome = (document.getElementById('inputNomeOutro').value.trim()) || document.getElementById('selNome').value;
+  if(!nome){ showToast('Informe quem está concluindo antes.'); return; }
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'CONCLUIR_GEOGRID', rowIndex, concluidoPor: nome })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao concluir.'); return; }
+    showToast('Marcado como concluído no GEOGRID!');
+    carregarGeogrid();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+};
+
+let toastTimeout;
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(()=>el.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

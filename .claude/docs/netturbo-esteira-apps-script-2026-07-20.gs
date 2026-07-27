@@ -45,7 +45,17 @@ const HEADERS_ESTEIRA = [
   'LPU Apoio NF URL','LPU Apoio Timestamp NF','LPU Apoio Pago Por','LPU Apoio Timestamp Pago',
   // Reprovação do fechamento pela Medição (NF errada/ilegível/valor divergente etc.) —
   // distinto de 'LPU Motivo Reprovação' (que é sobre o preenchimento original da LPU).
-  'LPU Motivo Reprovação NF','LPU Apoio Motivo Reprovação NF'
+  'LPU Motivo Reprovação NF','LPU Apoio Motivo Reprovação NF',
+  // ── Anexo do despacho (KMZ/print do projeto) + mensagem + local de medição —
+  // preenchido pela liderança direto no card "Aguardando Despacho", chega pro
+  // técnico junto da atividade despachada (ver index.html / tecnico.html).
+  'Anexo Despacho URL','Anexo Despacho Nome','Mensagem Despacho','Link Medição',
+  // ── Perguntas rápidas de fusão (RFO de ROMPIMENTO/MASSIVA, depois da CEO) —
+  // 'Fusão Pareamento' só é preenchido quando 'Cor com Cor' = 'Não' — JSON com um
+  // item por CEO trabalhada (numeroCeo, nomenclaturaA/B, pares de fibra ligados),
+  // ver renderFusaoDiagramaBloco em tecnico.html. 'Quantidade CEO Trabalhadas' é
+  // sempre preenchido junto (não só quando "Não") — quantas caixas o técnico mexeu.
+  'Tipo Cabo Fusionado','Fusionou Todas','Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas'
 ];
 
 function garantirAba(ss, nome, headers, corFundo, corTexto) {
@@ -116,6 +126,8 @@ function doPost(e) {
     if (acao === 'REGISTRAR_DISPONIBILIDADE')  return registrarDisponibilidade(ss, data);
     if (acao === 'EXCLUIR_DISPONIBILIDADE')    return excluirDisponibilidade(ss, data);
     if (acao === 'REGISTRAR_ASSINATURA_LPU')   return registrarAssinaturaLpu(ss, data);
+    if (acao === 'SALVAR_INFO_DESPACHO') return salvarInfoDespacho(ss, data);
+    if (acao === 'CONCLUIR_GEOGRID')     return concluirGeogrid(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -140,6 +152,7 @@ function doGet(e) {
   if (params.acao === 'LPU_OBTER_PDF') return obterLpuPdf(ss, params);
   if (params.acao === 'LISTAR_ORCAMENTOS_MENSAIS') return listarOrcamentosMensais(ss);
   if (params.acao === 'LISTAR_DISPONIBILIDADE') return listarDisponibilidade(ss);
+  if (params.acao === 'LISTAR_GEOGRID') return listarGeogrid(ss);
   return resposta('ok', { sistema: 'Netturbo Esteira de Despacho' });
 }
 
@@ -204,6 +217,52 @@ function despacharAtividade(ss, data) {
   // Equipe de apoio é opcional — pode vir junto no despacho ou ser definida depois
   if (data.empresaApoio) sheet.getRange(rowIndex, HEADERS_ESTEIRA.indexOf('Empresa Apoio') + 1).setValue(data.empresaApoio);
   if (data.tecnicoApoio) sheet.getRange(rowIndex, HEADERS_ESTEIRA.indexOf('Técnico Apoio') + 1).setValue(data.tecnicoApoio);
+
+  return resposta('ok', {});
+}
+
+// Cria (uma vez) ou reaproveita a pasta do Drive onde ficam os anexos (KMZ/KML ou
+// print do projeto) que a liderança sobe pro técnico direto no card de despacho.
+function getOrCriarPastaAnexoDespacho() {
+  const NOME_PASTA = 'Netturbo Esteira - Anexos Despacho';
+  const pastas = DriveApp.getFoldersByName(NOME_PASTA);
+  if (pastas.hasNext()) return pastas.next();
+  return DriveApp.createFolder(NOME_PASTA);
+}
+
+// ── ANEXO KMZ + MENSAGEM + LINK DE MEDIÇÃO (liderança → técnico, preenchido no
+// card "Aguardando Despacho" de index.html) ─────────────────────────────────
+function salvarInfoDespacho(ss, data) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
+
+  // Anexo é opcional em cada chamada — só sobe um arquivo novo pro Drive quando vem
+  // base64 (permite salvar só mensagem/link sem re-subir o anexo já enviado antes).
+  if (data.anexoBase64) {
+    try {
+      const bruto = String(data.anexoBase64);
+      const partes = bruto.split(',');
+      const base64Puro = partes.length > 1 ? partes[1] : partes[0];
+      const mimeMatch = bruto.match(/^data:([^;]+);base64,/);
+      const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+      const nomeArquivo = data.anexoNome || ('anexo_' + rowIndex);
+      const bytes = Utilities.base64Decode(base64Puro);
+      const blob = Utilities.newBlob(bytes, mime, nomeArquivo);
+      const pasta = getOrCriarPastaAnexoDespacho();
+      const arquivo = pasta.createFile(blob);
+      arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      sheet.getRange(rowIndex, idx('Anexo Despacho URL')).setValue(arquivo.getUrl());
+      sheet.getRange(rowIndex, idx('Anexo Despacho Nome')).setValue(nomeArquivo);
+    } catch (e) {
+      return resposta('error', { message: 'Falha ao salvar o anexo: ' + e.toString() });
+    }
+  }
+
+  if (data.mensagem !== undefined) sheet.getRange(rowIndex, idx('Mensagem Despacho')).setValue(data.mensagem || '');
+  if (data.linkMedicao !== undefined) sheet.getRange(rowIndex, idx('Link Medição')).setValue(data.linkMedicao || '');
 
   return resposta('ok', {});
 }
@@ -738,6 +797,20 @@ function marcarInicioOuChegada(ss, data) {
   }
 }
 
+// Verifica se o JSON de "Fusão Pareamento" (array de diagramas por CEO) tem
+// pelo menos um par de fibra desenhado em algum diagrama — usado como gatilho
+// da fila do GEOGRID desde que a pergunta "Cor com Cor?" deixou de existir.
+function temPareamentoPreenchido(fusaoPareamentoJson) {
+  if (!fusaoPareamentoJson) return false;
+  try {
+    const diagramas = JSON.parse(fusaoPareamentoJson);
+    if (!Array.isArray(diagramas)) return false;
+    return diagramas.some(function(d) { return Array.isArray(d.pares) && d.pares.length > 0; });
+  } catch (e) {
+    return false;
+  }
+}
+
 // ── SALVAR OCORRÊNCIA (técnico preenche e solicita validação) ───
 function salvarOcorrencia(ss, data) {
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
@@ -762,6 +835,26 @@ function salvarOcorrencia(ss, data) {
   sheet.getRange(rowIndex, idx('Cidade Falha')).setValue(data.cidadeFalha || '');
   sheet.getRange(rowIndex, idx('Status')).setValue('AGUARDANDO_VALIDACAO');
   sheet.getRange(rowIndex, idx('Motivo Não Validado')).setValue('');
+
+  // Perguntas rápidas de fusão — só existem em ROMPIMENTO/MASSIVA com CEO selecionada;
+  // ficam vazias nos outros tipos de ocorrência. "Cor com Cor" não é mais pergunta
+  // no front-end (coluna preservada só por histórico de atividades antigas).
+  sheet.getRange(rowIndex, idx('Tipo Cabo Fusionado')).setValue(data.tipoCaboFusionado || '');
+  sheet.getRange(rowIndex, idx('Fusionou Todas')).setValue(data.fusionouTodas || '');
+  sheet.getRange(rowIndex, idx('Cor com Cor')).setValue(data.corComCor || '');
+  sheet.getRange(rowIndex, idx('Fusão Pareamento'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(rowIndex, idx('Fusão Pareamento')).setValue(data.fusaoPareamento || '');
+  sheet.getRange(rowIndex, idx('Quantidade CEO Trabalhadas'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(rowIndex, idx('Quantidade CEO Trabalhadas')).setValue(data.quantidadeCeo || '');
+
+  // O diagrama de fusão agora fica sempre disponível (não existe mais pergunta
+  // "Cor com Cor?") — o gatilho da fila do GEOGRID passa a ser "o técnico
+  // desenhou pelo menos uma ligação de fibra" (fusaoPareamento com algum par
+  // preenchido), já que isso indica uma fusão fora do padrão que precisa ser
+  // replicada manualmente no GEOGRID por alguém da sala técnica.
+  if (temPareamentoPreenchido(data.fusaoPareamento)) {
+    registrarGeogridSeNecessario(ss, sheet, rowIndex, data);
+  }
 
   // TMC (Tempo Médio de Campo) = Hora Chegada → agora (momento em que o técnico pede
   // validação) — fecha aqui mesmo, sem esperar a liderança validar depois (diferente do MTTR).
@@ -1533,6 +1626,72 @@ function listarDisponibilidade(ss) {
   return resposta('ok', { periodos: periodos });
 }
 
+// ── CONTROLE GEOGRID (fila pra sala técnica replicar manualmente no GEOGRID toda
+// fusão fora do padrão — técnico desenhou ao menos uma ligação de fibra na RFO) ─
+const ABA_GEOGRID = 'CONTROLE_GEOGRID';
+const HEADERS_GEOGRID = [
+  'ID Atividade','Protocolo','Cliente','Endereço','Tipo Cabo Fusionado','Fusionou Todas',
+  'Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas','Timestamp Registro','Status','Concluído Por','Timestamp Conclusão'
+];
+
+function garantirGeogrid(ss) {
+  return garantirAba(ss, ABA_GEOGRID, HEADERS_GEOGRID, '#1a1a1a', '#ab47bc');
+}
+
+// Chamado de dentro de salvarOcorrencia quando temPareamentoPreenchido(data.fusaoPareamento)
+// é true. Recebe a aba ESTEIRA já aberta (evita reabrir) e os mesmos dados já validados/salvos ali.
+function registrarGeogridSeNecessario(ss, sheetEsteira, rowIndex, data) {
+  const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
+  const idAtividade = sheetEsteira.getRange(rowIndex, idx('ID Atividade')).getValue();
+  const protocolo = sheetEsteira.getRange(rowIndex, idx('Protocolo O&M')).getValue()
+    || sheetEsteira.getRange(rowIndex, idx('Protocolo NOC')).getValue();
+  const cliente = sheetEsteira.getRange(rowIndex, idx('Cliente')).getValue();
+  const endereco = sheetEsteira.getRange(rowIndex, idx('Endereço')).getValue();
+
+  const sheet = garantirGeogrid(ss);
+  const row = sheet.getLastRow() + 1;
+  sheet.getRange(row, 1, 1, 2).setNumberFormat('@STRING@'); // ID Atividade / Protocolo — texto livre
+  sheet.getRange(row, 8, 1, 1).setNumberFormat('@STRING@'); // Fusão Pareamento (JSON) — texto livre
+  sheet.getRange(row, 1, 1, HEADERS_GEOGRID.length).setValues([[
+    idAtividade, protocolo, cliente, endereco,
+    data.tipoCaboFusionado || '', data.fusionouTodas || '', data.corComCor || '', data.fusaoPareamento || '',
+    data.quantidadeCeo || '', new Date().toLocaleString('pt-BR'), 'PENDENTE', '', ''
+  ]]);
+}
+
+function listarGeogrid(ss) {
+  const sheet = garantirGeogrid(ss);
+  if (sheet.getLastRow() < 2) return resposta('ok', { itens: [] });
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS_GEOGRID.length).getValues();
+  const itens = data.map((row, i) => {
+    const obj = { rowIndex: i + 2 };
+    HEADERS_GEOGRID.forEach((h, j) => obj[h] = row[j]);
+    return obj;
+  });
+  return resposta('ok', { itens: itens });
+}
+
+// Sala técnica marca que já replicou a fusão no GEOGRID — nome de quem concluiu
+// fica registrado pra responsabilização (pedido da liderança).
+function concluirGeogrid(ss, data) {
+  const sheet = garantirGeogrid(ss);
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  if (!data.concluidoPor) return resposta('error', { message: 'Informe quem está concluindo.' });
+
+  const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
+  const statusAtual = sheet.getRange(rowIndex, idx('Status')).getValue();
+  if (statusAtual !== 'PENDENTE') {
+    return resposta('error', { message: 'Este item já foi concluído.' });
+  }
+
+  sheet.getRange(rowIndex, idx('Status')).setValue('CONCLUIDO');
+  sheet.getRange(rowIndex, idx('Concluído Por')).setValue(data.concluidoPor);
+  sheet.getRange(rowIndex, idx('Timestamp Conclusão'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(rowIndex, idx('Timestamp Conclusão')).setValue(new Date().toLocaleString('pt-BR'));
+  return resposta('ok', {});
+}
+
 // ── CONTADOR DE ASSINATURAS DA LPU (total histórico por técnico, nunca reseta) ──
 // O botão "Assinar" em PREENCHIMENTO_LPU.html chama isso no momento do clique —
 // cada clique é uma assinatura de verdade, incrementada e persistida na hora
@@ -1657,7 +1816,9 @@ function adicionarColunasNovas() {
     'Número CEO A','Número CEO B',
     'LPU NF URL','LPU Timestamp NF','LPU Pago Por','LPU Timestamp Pago',
     'LPU Apoio NF URL','LPU Apoio Timestamp NF','LPU Apoio Pago Por','LPU Apoio Timestamp Pago',
-    'LPU Motivo Reprovação NF','LPU Apoio Motivo Reprovação NF'
+    'LPU Motivo Reprovação NF','LPU Apoio Motivo Reprovação NF',
+    'Anexo Despacho URL','Anexo Despacho Nome','Mensagem Despacho','Link Medição',
+    'Tipo Cabo Fusionado','Fusionou Todas','Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas'
   ];
   novos.forEach(h => {
     if (headerRow.indexOf(h) === -1) {
