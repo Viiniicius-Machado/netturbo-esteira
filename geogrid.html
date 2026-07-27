@@ -90,7 +90,7 @@
     <img class="login-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
     <div class="login-heading">
       <h2>Controle GEOGRID</h2>
-      <p>Sala Técnica · Fusões fora do padrão</p>
+      <p>Sala Técnica</p>
     </div>
     <div class="login-field">
       <label>Senha</label>
@@ -106,7 +106,7 @@
   <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
   <div>
     <div class="topbar-brand">Controle GEOGRID</div>
-    <div class="topbar-sub">Sala Técnica · Fusões fora do padrão</div>
+    <div class="topbar-sub">Sala Técnica</div>
   </div>
   <div class="topbar-spacer"></div>
 </header>
@@ -119,7 +119,7 @@
 
   <div class="toolbar">
     <select id="selNome">
-      <option value="">Quem está concluindo?</option>
+      <option value="">Seu nome (pra concluir ou recusar)</option>
     </select>
     <input type="text" id="inputNomeOutro" placeholder="Ou digite seu nome..." style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem"/>
     <button class="btn btn-outline" onclick="carregarGeogrid()">↻ Atualizar</button>
@@ -128,6 +128,11 @@
   <div class="card">
     <div class="card-header">Pendentes de atualização no GEOGRID<span class="contagem" id="countPendentes">0</span></div>
     <div class="card-body" id="listaPendentes"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Aguardando ajuste do líder (recusados)<span class="contagem" id="countRecusados">0</span></div>
+    <div class="card-body" id="listaRecusados"></div>
   </div>
 
   <div class="card">
@@ -165,7 +170,7 @@ function tryLogin(){
   if(val === LEADERSHIP_PASSWORD){
     document.getElementById('login-overlay').style.display = 'none';
     document.getElementById('app').style.display = 'block';
-    document.getElementById('selNome').innerHTML = '<option value="">Quem está concluindo?</option>' + NOMES_SALA_TECNICA.map(n=>`<option value="${n}">${n}</option>`).join('');
+    document.getElementById('selNome').innerHTML = '<option value="">Seu nome (pra concluir ou recusar)</option>' + NOMES_SALA_TECNICA.map(n=>`<option value="${n}">${n}</option>`).join('');
     carregarGeogrid();
   }else{
     const e = document.getElementById('loginErro');
@@ -190,79 +195,91 @@ async function carregarGeogrid(){
 window.carregarGeogrid = carregarGeogrid;
 
 // 'Fusão Pareamento' guarda um item por CEO trabalhada: { numeroCeo, nomenclaturaA,
-// nomenclaturaB, tipoCabo, splitter, splitterTipo1x2, pares:[{ponto1:{lado,num},
-// ponto2:{lado,num}}] } — uma linha de resumo por CEO (cada CEO pode ter um cabo
-// diferente), pra sala técnica saber exatamente qual caixa cada mapeamento de
-// fibra (ou porta de splitter) se refere. Porta 0 do splitter é sempre "IN"
-// (alimentação vinda do Lado A); 1..N são as saídas pro Lado B.
+// nomenclaturaB, tipoCaboA, tipoCaboB, splitter1, splitter1Tipo1x2, splitter2,
+// splitter2Tipo1x2, pares:[{ponto1:{lado,num},ponto2:{lado,num}}] } — uma linha
+// de resumo por CEO (cada CEO pode ter um cabo diferente), pra sala técnica saber
+// exatamente qual caixa cada mapeamento de fibra (ou porta de splitter) se refere.
+// Cabo A, Splitter 1, Splitter 2 e Cabo B formam uma cadeia (nessa ordem), todos
+// opcionais — mesmo modelo do editor em tecnico.html. Porta 0 de cada splitter é
+// sempre "IN" (recebe a fibra da coluna anterior); 1..N são as saídas pra próxima.
 function rotuloPontoGeogrid(ponto){
-  if(ponto.lado==='splitter') return ponto.num===0 ? 'Splitter IN' : 'Splitter P'+ponto.num;
+  if(ponto.lado==='splitter1') return ponto.num===0 ? 'Splitter 1 IN' : 'Splitter 1 P'+ponto.num;
+  if(ponto.lado==='splitter2') return ponto.num===0 ? 'Splitter 2 IN' : 'Splitter 2 P'+ponto.num;
   return (ponto.lado==='a'?'A':'B') + ponto.num;
+}
+function colunasFusaoGeogrid(d){
+  const cols = [];
+  if(d.tipoCaboA) cols.push('a');
+  if(d.splitter1) cols.push('splitter1');
+  if(d.splitter2) cols.push('splitter2');
+  if(d.tipoCaboB) cols.push('b');
+  return cols;
+}
+// Itens registrados antes da cascata de splitters vinham num formato mais simples
+// (splitter/splitterTipo1x2 único, pares com lado:'splitter') — normaliza pro
+// formato atual (splitter1/splitter2) pra desenhar certo mesmo o que já está
+// registrado na planilha de produção.
+function normalizarDiagramaFusaoGeogrid(d){
+  const remapLado = l => l === 'splitter' ? 'splitter1' : l;
+  return {
+    numeroCeo: d.numeroCeo, nomenclaturaA: d.nomenclaturaA, nomenclaturaB: d.nomenclaturaB, gpsCeo: d.gpsCeo,
+    tipoCaboA: d.tipoCaboA, tipoCaboB: d.tipoCaboB,
+    splitter1: d.splitter1 || d.splitter || '', splitter1Tipo1x2: d.splitter1Tipo1x2 || d.splitterTipo1x2 || '',
+    splitter2: d.splitter2 || '', splitter2Tipo1x2: d.splitter2Tipo1x2 || '',
+    pares: (Array.isArray(d.pares) ? d.pares : []).map(p => ({
+      ponto1:{lado:remapLado(p.ponto1.lado),num:p.ponto1.num}, ponto2:{lado:remapLado(p.ponto2.lado),num:p.ponto2.num}
+    }))
+  };
 }
 function diagramasFusao(item){
   if(!item['Fusão Pareamento']) return [];
   try{
     const diagramas = JSON.parse(item['Fusão Pareamento']);
     if(!Array.isArray(diagramas)) return [];
-    return diagramas.filter(d => Array.isArray(d.pares) && d.pares.length);
+    return diagramas.map(normalizarDiagramaFusaoGeogrid).filter(d => d.pares.length);
   }catch(e){ return []; }
 }
 
 // Desenho igual ao que o técnico viu em tecnico.html (mesmas cores, mesmas colunas
-// Lado A / Splitter / Lado B) — só que sem clique, é read-only pra sala técnica.
+// Lado A / Splitter 1 / Splitter 2 / Lado B) — só que sem clique, é read-only pra sala técnica.
 function renderDiagramaFusaoGeogrid(rowIndex, diagIdx, d){
-  const nA = QTD_FIBRAS_POR_CABO[d.tipoCaboA] || 0;
-  const nB = QTD_FIBRAS_POR_CABO[d.tipoCaboB] || 0;
-  if(!nA && !nB) return '';
-  const fibrasA = Array.from({length:nA}, (_,i)=>i+1);
-  const fibrasB = Array.from({length:nB}, (_,i)=>i+1);
-  const nSplitter = QTD_SPLITTER[d.splitter] || 0;
-  const portasSplitter = nSplitter ? Array.from({length:nSplitter+1}, (_,i)=>i) : [];
-  const pareamento = Array.isArray(d.pares) ? d.pares : [];
+  const cols = colunasFusaoGeogrid(d);
+  if(cols.length < 2) return '';
+  const pareamento = d.pares;
 
-  const linhaA = num => {
-    const par = acharParDe(pareamento, 'a', num);
-    return `<div class="fibra-row${par?' pareada':''}">
-      <span class="fibra-num">${num}</span>
-      <span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>
-      ${par ? `<span class="fibra-par">→${rotuloPontoGeogrid(outroPonto(par,'a',num))}</span>` : ''}
-      <span class="fibra-anchor" id="fibra-geo-a-${rowIndex}-${diagIdx}-${num}"></span>
-    </div>`;
+  const tituloColuna = lado => {
+    if(lado === 'a') return 'Lado A · ' + d.tipoCaboA;
+    if(lado === 'b') return 'Lado B · ' + d.tipoCaboB;
+    const num = lado === 'splitter1' ? '1' : '2';
+    const valor = lado === 'splitter1' ? d.splitter1 : d.splitter2;
+    const tipo1x2 = lado === 'splitter1' ? d.splitter1Tipo1x2 : d.splitter2Tipo1x2;
+    return 'Splitter ' + num + ' · ' + valor + (tipo1x2 ? ' (' + tipo1x2 + ')' : '');
   };
-  const linhaB = num => {
-    const par = acharParDe(pareamento, 'b', num);
-    return `<div class="fibra-row${par?' pareada':''}">
-      <span class="fibra-anchor" id="fibra-geo-b-${rowIndex}-${diagIdx}-${num}"></span>
-      ${par ? `<span class="fibra-par">${rotuloPontoGeogrid(outroPonto(par,'b',num))}←</span>` : ''}
-      <span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>
-      <span class="fibra-num">${num}</span>
-    </div>`;
+  const portasDe = lado => {
+    if(lado === 'a') return Array.from({length: QTD_FIBRAS_POR_CABO[d.tipoCaboA] || 0}, (_,i)=>i+1);
+    if(lado === 'b') return Array.from({length: QTD_FIBRAS_POR_CABO[d.tipoCaboB] || 0}, (_,i)=>i+1);
+    const n = QTD_SPLITTER[lado === 'splitter1' ? d.splitter1 : d.splitter2] || 0;
+    return n ? Array.from({length: n+1}, (_,i)=>i) : [];
   };
-  const linhaSplitter = num => {
-    const ehIn = num === 0;
-    const par = acharParDe(pareamento, 'splitter', num);
+  const linhaPorto = (lado, num) => {
+    const ehSplitter = lado === 'splitter1' || lado === 'splitter2';
+    const ehIn = ehSplitter && num === 0;
+    const par = acharParDe(pareamento, lado, num);
     return `<div class="fibra-row${par?' pareada':''}${ehIn?' fibra-splitter-in':''}">
-      <span class="fibra-num" style="width:auto;padding:0 .2rem">${ehIn ? 'IN' : 'P'+num}</span>
-      ${par ? `<span class="fibra-par">${rotuloPontoGeogrid(outroPonto(par,'splitter',num))}</span>` : ''}
-      <span class="fibra-anchor" id="fibra-geo-splitter-${rowIndex}-${diagIdx}-${num}"></span>
+      <span class="fibra-num"${ehSplitter?' style="width:auto;padding:0 .2rem"':''}>${ehSplitter ? (ehIn?'IN':'P'+num) : num}</span>
+      ${ehSplitter ? '' : `<span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>`}
+      ${par ? `<span class="fibra-par">${rotuloPontoGeogrid(outroPonto(par,lado,num))}</span>` : ''}
+      <span class="fibra-anchor" id="fibra-geo-${lado}-${rowIndex}-${diagIdx}-${num}"></span>
     </div>`;
   };
 
   return `
     <div class="fusao-diagrama" id="fusao-diagrama-geo-${rowIndex}-${diagIdx}">
       <svg class="fusao-svg" id="fusao-svg-geo-${rowIndex}-${diagIdx}"></svg>
-      ${nA ? `<div class="fusao-coluna-wrap">
-        <div class="fusao-coluna-titulo">Lado A · ${d.tipoCaboA}</div>
-        <div class="fusao-coluna">${fibrasA.map(linhaA).join('')}</div>
-      </div>` : ''}
-      ${nSplitter ? `<div class="fusao-coluna-wrap">
-        <div class="fusao-coluna-titulo">Splitter ${d.splitter}${d.splitterTipo1x2?' ('+d.splitterTipo1x2+')':''}</div>
-        <div class="fusao-coluna fusao-coluna-splitter">${portasSplitter.map(linhaSplitter).join('')}</div>
-      </div>` : ''}
-      ${nB ? `<div class="fusao-coluna-wrap">
-        <div class="fusao-coluna-titulo">Lado B · ${d.tipoCaboB}</div>
-        <div class="fusao-coluna">${fibrasB.map(linhaB).join('')}</div>
-      </div>` : ''}
+      ${cols.map(lado => `<div class="fusao-coluna-wrap">
+        <div class="fusao-coluna-titulo">${tituloColuna(lado)}</div>
+        <div class="fusao-coluna${lado.indexOf('splitter')===0?' fusao-coluna-splitter':''}">${portasDe(lado).map(num=>linhaPorto(lado,num)).join('')}</div>
+      </div>`).join('')}
     </div>
   `;
 }
@@ -298,37 +315,58 @@ function desenharLinhasFusaoGeogrid(rowIndex, diagIdx, d){
     const r1 = el1.getBoundingClientRect(), r2 = el2.getBoundingClientRect();
     const x1 = r1.left - wrapRect.left + r1.width/2, y1 = r1.top - wrapRect.top + r1.height/2;
     const x2 = r2.left - wrapRect.left + r2.width/2, y2 = r2.top - wrapRect.top + r2.height/2;
-    const numCor = p.ponto1.lado !== 'splitter' ? p.ponto1.num : p.ponto2.num;
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${corFibra(numCor)}" stroke-width="2"/>`;
+    const ehCabo = pt => pt.lado === 'a' || pt.lado === 'b';
+    const ptCor = ehCabo(p.ponto1) ? p.ponto1 : (ehCabo(p.ponto2) ? p.ponto2 : p.ponto1);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${corFibra(ptCor.num)}" stroke-width="2"/>`;
   }).join('');
 }
 
 function renderGeogrid(){
   const pendentes = TODOS_ITENS.filter(i => i['Status'] === 'PENDENTE');
+  const recusados = TODOS_ITENS.filter(i => i['Status'] === 'RECUSADO');
   const concluidos = TODOS_ITENS.filter(i => i['Status'] === 'CONCLUIDO')
     .sort((a,b) => String(b['Timestamp Conclusão']||'').localeCompare(String(a['Timestamp Conclusão']||'')));
 
   document.getElementById('countPendentes').textContent = pendentes.length;
+  document.getElementById('countRecusados').textContent = recusados.length;
   document.getElementById('countConcluidos').textContent = concluidos.length;
+
+  const infoTecnico = item => item['Técnico'] ? `Técnico: ${item['Técnico']}<br>` : '';
 
   const elP = document.getElementById('listaPendentes');
   elP.innerHTML = pendentes.length ? pendentes.map(item => `
     <div class="item-card">
       <div class="protocolo">${item['Protocolo']||'—'}</div>
       <div class="cliente">${item['Cliente']||'—'}</div>
-      <div class="meta">${item['Endereço']||''}<br>Fusionou todas: ${item['Fusionou Todas']||'—'} · Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}<br>Registrado em ${item['Timestamp Registro']||'—'}</div>
+      <div class="meta">${infoTecnico(item)}${item['Endereço']||''}<br>Fusionou todas: ${item['Fusionou Todas']||'—'} · Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}<br>Registrado em ${item['Timestamp Registro']||'—'}</div>
       ${blocoDiagramasFusao(item)}
+      <div id="recusa-form-${item.rowIndex}" style="display:none;margin-top:.6rem">
+        <textarea id="recusa-motivo-${item.rowIndex}" placeholder="Por que está recusando? (obrigatório)" style="width:100%;min-height:60px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.5rem .6rem;font-family:inherit"></textarea>
+      </div>
       <div class="acoes">
         <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem" onclick="concluir(${item.rowIndex})">Marcar como concluído no GEOGRID</button>
+        <button class="btn btn-outline" style="padding:.45rem .8rem;font-size:.75rem;border-color:rgba(229,57,53,.35);color:#e57373" onclick="toggleRecusarForm(${item.rowIndex})">Recusar</button>
+        <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem;display:none" id="recusa-confirmar-${item.rowIndex}" onclick="recusar(${item.rowIndex})">Confirmar recusa</button>
       </div>
     </div>`).join('') : '<div class="empty-msg">Nenhuma fusão pendente.</div>';
+
+  const elR = document.getElementById('listaRecusados');
+  elR.innerHTML = recusados.length ? recusados.map(item => `
+    <div class="item-card">
+      <div class="protocolo">${item['Protocolo']||'—'}</div>
+      <div class="cliente">${item['Cliente']||'—'}</div>
+      <div class="meta">${infoTecnico(item)}${item['Endereço']||''}</div>
+      ${blocoDiagramasFusao(item)}
+      <div class="meta" style="color:var(--red);margin-top:.5rem">Motivo da recusa (${item['Recusado Por']||'—'}, ${item['Timestamp Recusa']||'—'}): ${item['Motivo Recusa']||'—'}</div>
+      <div class="meta" style="margin-top:.3rem">Aguardando o líder ajustar na Esteira de Despacho e reenviar.</div>
+    </div>`).join('') : '<div class="empty-msg">Nenhum item aguardando ajuste do líder.</div>';
 
   const elC = document.getElementById('listaConcluidos');
   elC.innerHTML = concluidos.length ? concluidos.map(item => `
     <div class="item-card">
       <div class="protocolo">${item['Protocolo']||'—'}</div>
       <div class="cliente">${item['Cliente']||'—'}</div>
-      <div class="meta">${item['Endereço']||''}<br>Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}</div>
+      <div class="meta">${infoTecnico(item)}${item['Endereço']||''}<br>Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}</div>
       ${blocoDiagramasFusao(item)}
       <div class="concluido-info">✓ Concluído por ${item['Concluído Por']||'—'} em ${item['Timestamp Conclusão']||'—'}</div>
     </div>`).join('') : '<div class="empty-msg">Nenhum item concluído ainda.</div>';
@@ -336,7 +374,7 @@ function renderGeogrid(){
   // Precisa medir depois do innerHTML já aplicado no DOM, senão as âncoras das
   // fibras ainda não existem / estão com posição zerada.
   requestAnimationFrame(() => {
-    [...pendentes, ...concluidos].forEach(item => {
+    [...pendentes, ...recusados, ...concluidos].forEach(item => {
       diagramasFusao(item).forEach((d, i) => desenharLinhasFusaoGeogrid(item.rowIndex, i, d));
     });
   });
@@ -353,6 +391,36 @@ window.concluir = async function(rowIndex){
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao concluir.'); return; }
     showToast('Marcado como concluído no GEOGRID!');
+    carregarGeogrid();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+};
+
+window.toggleRecusarForm = function(rowIndex){
+  const form = document.getElementById('recusa-form-'+rowIndex);
+  const confirmar = document.getElementById('recusa-confirmar-'+rowIndex);
+  if(!form || !confirmar) return;
+  const abrindo = form.style.display === 'none';
+  form.style.display = abrindo ? 'block' : 'none';
+  confirmar.style.display = abrindo ? 'inline-flex' : 'none';
+};
+
+window.recusar = async function(rowIndex){
+  const nome = (document.getElementById('inputNomeOutro').value.trim()) || document.getElementById('selNome').value;
+  if(!nome){ showToast('Informe quem está recusando antes.'); return; }
+  const motivoEl = document.getElementById('recusa-motivo-'+rowIndex);
+  const motivo = motivoEl ? motivoEl.value.trim() : '';
+  if(!motivo){ showToast('Escreva o motivo da recusa.'); return; }
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'RECUSAR_GEOGRID', rowIndex, motivo, recusadoPor: nome })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao recusar.'); return; }
+    showToast('Recusado — vai aparecer pro líder na Esteira de Despacho.');
     carregarGeogrid();
   }catch(err){
     console.error(err);

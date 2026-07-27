@@ -128,6 +128,9 @@ function doPost(e) {
     if (acao === 'REGISTRAR_ASSINATURA_LPU')   return registrarAssinaturaLpu(ss, data);
     if (acao === 'SALVAR_INFO_DESPACHO') return salvarInfoDespacho(ss, data);
     if (acao === 'CONCLUIR_GEOGRID')     return concluirGeogrid(ss, data);
+    if (acao === 'RECUSAR_GEOGRID')      return recusarGeogrid(ss, data);
+    if (acao === 'REENVIAR_GEOGRID')     return reenviarGeogrid(ss, data);
+    if (acao === 'EXCLUIR_GEOGRID')      return excluirGeogrid(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -1630,8 +1633,11 @@ function listarDisponibilidade(ss) {
 // fusão fora do padrão — técnico desenhou ao menos uma ligação de fibra na RFO) ─
 const ABA_GEOGRID = 'CONTROLE_GEOGRID';
 const HEADERS_GEOGRID = [
-  'ID Atividade','Protocolo','Cliente','Endereço','Tipo Cabo Fusionado','Fusionou Todas',
-  'Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas','Timestamp Registro','Status','Concluído Por','Timestamp Conclusão'
+  'ID Atividade','Protocolo','Cliente','Endereço','Técnico','Tipo Cabo Fusionado','Fusionou Todas',
+  'Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas','Timestamp Registro','Status','Concluído Por','Timestamp Conclusão',
+  // ── Recusa pela sala técnica (dado enviado veio confuso/incompleto) — volta pro
+  // líder ajustar na Esteira de Despacho, que reenvia (PENDENTE de novo) ou exclui.
+  'Motivo Recusa','Recusado Por','Timestamp Recusa'
 ];
 
 function garantirGeogrid(ss) {
@@ -1647,15 +1653,17 @@ function registrarGeogridSeNecessario(ss, sheetEsteira, rowIndex, data) {
     || sheetEsteira.getRange(rowIndex, idx('Protocolo NOC')).getValue();
   const cliente = sheetEsteira.getRange(rowIndex, idx('Cliente')).getValue();
   const endereco = sheetEsteira.getRange(rowIndex, idx('Endereço')).getValue();
+  const tecnico = sheetEsteira.getRange(rowIndex, idx('Técnico')).getValue();
 
   const sheet = garantirGeogrid(ss);
   const row = sheet.getLastRow() + 1;
   sheet.getRange(row, 1, 1, 2).setNumberFormat('@STRING@'); // ID Atividade / Protocolo — texto livre
-  sheet.getRange(row, 8, 1, 1).setNumberFormat('@STRING@'); // Fusão Pareamento (JSON) — texto livre
+  sheet.getRange(row, 9, 1, 1).setNumberFormat('@STRING@'); // Fusão Pareamento (JSON) — texto livre
   sheet.getRange(row, 1, 1, HEADERS_GEOGRID.length).setValues([[
-    idAtividade, protocolo, cliente, endereco,
+    idAtividade, protocolo, cliente, endereco, tecnico || '',
     data.tipoCaboFusionado || '', data.fusionouTodas || '', data.corComCor || '', data.fusaoPareamento || '',
-    data.quantidadeCeo || '', new Date().toLocaleString('pt-BR'), 'PENDENTE', '', ''
+    data.quantidadeCeo || '', new Date().toLocaleString('pt-BR'), 'PENDENTE', '', '',
+    '', '', ''
   ]]);
 }
 
@@ -1689,6 +1697,72 @@ function concluirGeogrid(ss, data) {
   sheet.getRange(rowIndex, idx('Concluído Por')).setValue(data.concluidoPor);
   sheet.getRange(rowIndex, idx('Timestamp Conclusão'), 1, 1).setNumberFormat('@STRING@');
   sheet.getRange(rowIndex, idx('Timestamp Conclusão')).setValue(new Date().toLocaleString('pt-BR'));
+  return resposta('ok', {});
+}
+
+// Sala técnica recusa um item (dado veio confuso/incompleto) — motivo é obrigatório.
+// Item some da fila de pendentes da sala técnica e passa a aparecer pro líder em
+// index.html, que decide reenviar (ajustado) ou excluir de vez.
+function recusarGeogrid(ss, data) {
+  const sheet = garantirGeogrid(ss);
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  if (!data.motivo) return resposta('error', { message: 'Informe o motivo da recusa.' });
+  if (!data.recusadoPor) return resposta('error', { message: 'Informe quem está recusando.' });
+
+  const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
+  const statusAtual = sheet.getRange(rowIndex, idx('Status')).getValue();
+  if (statusAtual !== 'PENDENTE') {
+    return resposta('error', { message: 'Este item não está mais pendente.' });
+  }
+
+  sheet.getRange(rowIndex, idx('Status')).setValue('RECUSADO');
+  sheet.getRange(rowIndex, idx('Motivo Recusa')).setValue(data.motivo);
+  sheet.getRange(rowIndex, idx('Recusado Por')).setValue(data.recusadoPor);
+  sheet.getRange(rowIndex, idx('Timestamp Recusa'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(rowIndex, idx('Timestamp Recusa')).setValue(new Date().toLocaleString('pt-BR'));
+  return resposta('ok', {});
+}
+
+// Líder ajusta o diagrama/dados na Esteira de Despacho (index.html) e reenvia pro
+// GEOGRID — volta pro status PENDENTE (some da visão do líder, reaparece pra sala
+// técnica) e limpa o motivo de recusa anterior.
+function reenviarGeogrid(ss, data) {
+  const sheet = garantirGeogrid(ss);
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+
+  const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
+  const statusAtual = sheet.getRange(rowIndex, idx('Status')).getValue();
+  if (statusAtual !== 'RECUSADO') {
+    return resposta('error', { message: 'Este item não está aguardando ajuste.' });
+  }
+
+  sheet.getRange(rowIndex, idx('Fusão Pareamento'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(rowIndex, idx('Fusão Pareamento')).setValue(data.fusaoPareamento || '');
+  if (data.tipoCaboFusionado !== undefined) sheet.getRange(rowIndex, idx('Tipo Cabo Fusionado')).setValue(data.tipoCaboFusionado || '');
+  if (data.quantidadeCeo !== undefined) sheet.getRange(rowIndex, idx('Quantidade CEO Trabalhadas')).setValue(data.quantidadeCeo || '');
+  sheet.getRange(rowIndex, idx('Status')).setValue('PENDENTE');
+  sheet.getRange(rowIndex, idx('Motivo Recusa')).setValue('');
+  sheet.getRange(rowIndex, idx('Recusado Por')).setValue('');
+  sheet.getRange(rowIndex, idx('Timestamp Recusa')).setValue('');
+  return resposta('ok', {});
+}
+
+// Líder decide excluir de vez (ex.: fusão duplicada, ou não precisa mais ir pro
+// GEOGRID) — remove a linha inteira da planilha, sem deixar rastro no histórico.
+function excluirGeogrid(ss, data) {
+  const sheet = garantirGeogrid(ss);
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+
+  const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
+  const statusAtual = sheet.getRange(rowIndex, idx('Status')).getValue();
+  if (statusAtual !== 'RECUSADO') {
+    return resposta('error', { message: 'Só é possível excluir um item recusado.' });
+  }
+
+  sheet.deleteRow(rowIndex);
   return resposta('ok', {});
 }
 

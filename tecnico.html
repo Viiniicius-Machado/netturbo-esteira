@@ -1224,16 +1224,19 @@ const CORES_FIBRA = ['#00A651','#FFF200','#FFFFFF','#0072BC','#ED1C24','#92278F'
 function corFibra(n){ return CORES_FIBRA[(n-1) % 12]; }
 
 function novoDiagramaFusao(numeroCeo){
-  return { numeroCeo: String(numeroCeo), nomA:'', nomB:'', gpsCeo:'', tipoCaboA:'', tipoCaboB:'', splitter:'', splitterTipo1x2:'', pareamento:[], armado:null };
+  return { numeroCeo: String(numeroCeo), nomA:'', nomB:'', gpsCeo:'', tipoCaboA:'', tipoCaboB:'',
+    splitter1:'', splitter1Tipo1x2:'', splitter2:'', splitter2Tipo1x2:'', pareamento:[], armado:null };
 }
 
 const QTD_SPLITTER = { '1x2':2, '1x4':4, '1x8':8, '1x16':16 };
 const OPCOES_SPLITTER = ['Nenhum','1x2','1x4','1x8','1x16'];
+const OPCOES_CABO = ['Nenhum','01F','04F','12F','24F','72F'];
 // Só existe pra splitter 1x2 — os outros tamanhos (1x4/1x8/1x16) são sempre balanceados.
 const OPCOES_SPLITTER_1X2 = ['5/95','10/90','15/85','20/80','25/75','30/70','40/60','50/50'];
 
 // rowIndex -> { fusionouTodas,
-//               diagramas:[{numeroCeo,nomA,nomB,tipoCaboA,tipoCaboB,splitter,splitterTipo1x2,
+//               diagramas:[{numeroCeo,nomA,nomB,tipoCaboA,tipoCaboB,splitter1,splitter1Tipo1x2,
+//                           splitter2,splitter2Tipo1x2,
 //                           pareamento:[{ponto1:{lado,num},ponto2:{lado,num}}],armado}], aberto }
 // Não existe mais pergunta "Cor com Cor?" — o diagrama de fusão fica sempre
 // disponível assim que "Perguntas rápidas de fusão" é aberto; desenhar (ou
@@ -1243,7 +1246,29 @@ const OPCOES_SPLITTER_1X2 = ['5/95','10/90','15/85','20/80','25/75','30/70','40/
 // existe mais um valor único nem por diagrama, nem por RFO inteira. A
 // quantidade de CEO também não é mais perguntada — é sempre diagramas.length
 // no momento de enviar (ver solicitarValidacao).
+// Cabo A, Splitter 1, Splitter 2 e Cabo B formam uma cadeia (nessa ordem) e são
+// TODOS opcionais — cobre fusão direta A↔B, cascata de splitters (A entra num
+// 1/2, que alimenta um 1/8, que sai pro B) e casos parciais (ex.: só Splitter↔B,
+// quando a alimentação já vem de outra CEO fora desse diagrama). Splitter 2 só
+// existe em cascata com o Splitter 1 (não dá pra pular direto pro 2). Uma
+// ligação de fibra só pode existir entre colunas VIZINHAS dessa cadeia — uma
+// fusão física sempre liga pontos adjacentes, nunca pula uma etapa (ver
+// colunasFusao/colunasVizinhas e a checagem em clicarFibra).
 let FUSAO_STATE = {};
+
+function colunasFusao(d){
+  const cols = [];
+  if(d.tipoCaboA) cols.push('a');
+  if(d.splitter1) cols.push('splitter1');
+  if(d.splitter2) cols.push('splitter2');
+  if(d.tipoCaboB) cols.push('b');
+  return cols;
+}
+function colunasVizinhas(d, ladoX, ladoY){
+  const cols = colunasFusao(d);
+  const ix = cols.indexOf(ladoX), iy = cols.indexOf(ladoY);
+  return ix !== -1 && iy !== -1 && Math.abs(ix-iy) === 1;
+}
 
 // Migração defensiva: versões anteriores desta tela salvaram o pareamento em
 // formatos diferentes — {a,b} (2 lados, sem splitter) ou até sem "diagramas"
@@ -1255,7 +1280,12 @@ let FUSAO_STATE = {};
 // formato atual, travando o painel inteiro sem mostrar nada.
 function normalizarParFusao(p){
   if(!p) return null;
-  if(p.ponto1 && p.ponto2 && p.ponto1.lado && p.ponto2.lado) return { ponto1: p.ponto1, ponto2: p.ponto2 };
+  // Formato antigo (antes da cascata) tinha um único splitter, lado:'splitter' —
+  // vira o Splitter 1, que ocupa a mesma posição na cadeia (logo depois do Lado A).
+  const remapLado = l => l === 'splitter' ? 'splitter1' : l;
+  if(p.ponto1 && p.ponto2 && p.ponto1.lado && p.ponto2.lado){
+    return { ponto1:{lado:remapLado(p.ponto1.lado),num:p.ponto1.num}, ponto2:{lado:remapLado(p.ponto2.lado),num:p.ponto2.num} };
+  }
   if(typeof p.a === 'number' && typeof p.b === 'number') return { ponto1:{lado:'a',num:p.a}, ponto2:{lado:'b',num:p.b} };
   return null;
 }
@@ -1272,8 +1302,11 @@ function normalizarDiagramaFusao(d, i, tipoCaboFallback){
     gpsCeo: bruto.gpsCeo || '',
     tipoCaboA: bruto.tipoCaboA || legado,
     tipoCaboB: bruto.tipoCaboB || legado,
-    splitter: bruto.splitter || '',
-    splitterTipo1x2: bruto.splitterTipo1x2 || '',
+    // "splitter"/"splitterTipo1x2" (singular) é o formato antigo, sem cascata — vira o Splitter 1.
+    splitter1: bruto.splitter1 || bruto.splitter || '',
+    splitter1Tipo1x2: bruto.splitter1Tipo1x2 || bruto.splitterTipo1x2 || '',
+    splitter2: bruto.splitter2 || '',
+    splitter2Tipo1x2: bruto.splitter2Tipo1x2 || '',
     armado: null,
     pareamento: paresBrutos.map(normalizarParFusao).filter(Boolean)
   };
@@ -1400,7 +1433,6 @@ function renderFusaoDiagramaBloco(rowIndex, diagIdx){
   const st = FUSAO_STATE[rowIndex];
   const d = st.diagramas[diagIdx];
   const podeRemover = st.diagramas.length > 1;
-  const cabos = Object.keys(QTD_FIBRAS_POR_CABO);
   return `
     <div class="fusao-diagrama-bloco" id="fusao-diagrama-bloco-${rowIndex}-${diagIdx}" style="border:1px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .7rem;margin-top:${diagIdx>0?'.6rem':'0'}">
       <div style="display:flex;align-items:center;gap:.5rem">
@@ -1416,33 +1448,47 @@ function renderFusaoDiagramaBloco(rowIndex, diagIdx){
         <div style="flex:1">
           <label style="font-size:.62rem;color:var(--text-muted)">Tipo de cabo — Lado A</label>
           <div class="chip-group" style="margin-top:.3rem">
-            ${cabos.map(c=>`<div class="chip${d.tipoCaboA===c?' active':''}" onclick="atualizarTipoCaboDiagrama(${rowIndex},${diagIdx},'A','${c}')">${c}</div>`).join('')}
+            ${OPCOES_CABO.map(c=>`<div class="chip${(d.tipoCaboA||'Nenhum')===c?' active':''}" onclick="atualizarTipoCaboDiagrama(${rowIndex},${diagIdx},'A','${c}')">${c}</div>`).join('')}
           </div>
-          <label style="font-size:.62rem;color:var(--text-muted);margin-top:.5rem;display:block">Nomenclatura do cabo — Lado A</label>
-          <input type="text" style="width:100%;margin-top:.2rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem .5rem" placeholder="Ex.: LBN029" value="${d.nomA||''}" oninput="atualizarDiagramaCampo(${rowIndex},${diagIdx},'nomA',this.value)"/>
+          ${d.tipoCaboA ? `<label style="font-size:.62rem;color:var(--text-muted);margin-top:.5rem;display:block">Nomenclatura do cabo — Lado A</label>
+          <input type="text" style="width:100%;margin-top:.2rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem .5rem" placeholder="Ex.: LBN029" value="${d.nomA||''}" oninput="atualizarDiagramaCampo(${rowIndex},${diagIdx},'nomA',this.value)"/>` : ''}
         </div>
         <div style="flex:1">
           <label style="font-size:.62rem;color:var(--text-muted)">Tipo de cabo — Lado B</label>
           <div class="chip-group" style="margin-top:.3rem">
-            ${cabos.map(c=>`<div class="chip${d.tipoCaboB===c?' active':''}" onclick="atualizarTipoCaboDiagrama(${rowIndex},${diagIdx},'B','${c}')">${c}</div>`).join('')}
+            ${OPCOES_CABO.map(c=>`<div class="chip${(d.tipoCaboB||'Nenhum')===c?' active':''}" onclick="atualizarTipoCaboDiagrama(${rowIndex},${diagIdx},'B','${c}')">${c}</div>`).join('')}
           </div>
-          <label style="font-size:.62rem;color:var(--text-muted);margin-top:.5rem;display:block">Nomenclatura do cabo — Lado B</label>
-          <input type="text" style="width:100%;margin-top:.2rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem .5rem" placeholder="Ex.: LBN030" value="${d.nomB||''}" oninput="atualizarDiagramaCampo(${rowIndex},${diagIdx},'nomB',this.value)"/>
+          ${d.tipoCaboB ? `<label style="font-size:.62rem;color:var(--text-muted);margin-top:.5rem;display:block">Nomenclatura do cabo — Lado B</label>
+          <input type="text" style="width:100%;margin-top:.2rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem .5rem" placeholder="Ex.: LBN030" value="${d.nomB||''}" oninput="atualizarDiagramaCampo(${rowIndex},${diagIdx},'nomB',this.value)"/>` : ''}
         </div>
       </div>
       <div style="margin-top:.5rem">
-        <label style="font-size:.62rem;color:var(--text-muted)">Splitter (se houver, nessa CEO)</label>
+        <label style="font-size:.62rem;color:var(--text-muted)">Splitter 1 (se houver, nessa CEO)</label>
         <div class="chip-group" style="margin-top:.3rem">
-          ${OPCOES_SPLITTER.map(s=>`<div class="chip${(d.splitter||'Nenhum')===s?' active':''}" onclick="atualizarSplitterDiagrama(${rowIndex},${diagIdx},'${s}')">${s}</div>`).join('')}
+          ${OPCOES_SPLITTER.map(s=>`<div class="chip${(d.splitter1||'Nenhum')===s?' active':''}" onclick="atualizarSplitterDiagrama(${rowIndex},${diagIdx},'1','${s}')">${s}</div>`).join('')}
         </div>
       </div>
-      ${d.splitter === '1x2' ? `
+      ${d.splitter1 === '1x2' ? `
       <div style="margin-top:.5rem">
-        <label style="font-size:.62rem;color:var(--text-muted)">SPLITTER 1/2 TIPO</label>
+        <label style="font-size:.62rem;color:var(--text-muted)">SPLITTER 1 TIPO</label>
         <div class="chip-group" style="margin-top:.3rem">
-          ${OPCOES_SPLITTER_1X2.map(t=>`<div class="chip${d.splitterTipo1x2===t?' active':''}" onclick="atualizarSplitterTipo1x2(${rowIndex},${diagIdx},'${t}')">${t}</div>`).join('')}
+          ${OPCOES_SPLITTER_1X2.map(t=>`<div class="chip${d.splitter1Tipo1x2===t?' active':''}" onclick="atualizarSplitterTipo1x2(${rowIndex},${diagIdx},'1','${t}')">${t}</div>`).join('')}
         </div>
       </div>` : ''}
+      ${d.splitter1 ? `
+      <div style="margin-top:.5rem">
+        <label style="font-size:.62rem;color:var(--text-muted)">Splitter 2 (em cascata com o Splitter 1 — ex.: 1/2 alimentando um 1/8)</label>
+        <div class="chip-group" style="margin-top:.3rem">
+          ${OPCOES_SPLITTER.map(s=>`<div class="chip${(d.splitter2||'Nenhum')===s?' active':''}" onclick="atualizarSplitterDiagrama(${rowIndex},${diagIdx},'2','${s}')">${s}</div>`).join('')}
+        </div>
+      </div>
+      ${d.splitter2 === '1x2' ? `
+      <div style="margin-top:.5rem">
+        <label style="font-size:.62rem;color:var(--text-muted)">SPLITTER 2 TIPO</label>
+        <div class="chip-group" style="margin-top:.3rem">
+          ${OPCOES_SPLITTER_1X2.map(t=>`<div class="chip${d.splitter2Tipo1x2===t?' active':''}" onclick="atualizarSplitterTipo1x2(${rowIndex},${diagIdx},'2','${t}')">${t}</div>`).join('')}
+        </div>
+      </div>` : ''}` : ''}
       <div id="fusao-fibras-${rowIndex}-${diagIdx}" style="margin-top:.5rem">${renderFusaoFibras(rowIndex, diagIdx)}</div>
     </div>`;
 }
@@ -1457,37 +1503,52 @@ window.atualizarTipoCaboDiagrama = function(rowIndex, diagIdx, lado, valor){
   const d = st && st.diagramas[diagIdx];
   if(!d) return;
   const campo = lado === 'A' ? 'tipoCaboA' : 'tipoCaboB';
-  if(valor !== d[campo]){ d.pareamento = []; d.armado = null; } // qtd de fibras desse lado mudou
-  d[campo] = valor;
-  const bloco = document.getElementById(`fusao-diagrama-bloco-${rowIndex}-${diagIdx}`);
-  if(bloco) bloco.outerHTML = renderFusaoDiagramaBloco(rowIndex, diagIdx);
-  requestAnimationFrame(()=>desenharLinhasFusao(rowIndex, diagIdx));
-  salvarRascunho(rowIndex);
-};
-
-window.atualizarSplitterDiagrama = function(rowIndex, diagIdx, valor){
-  const st = FUSAO_STATE[rowIndex];
-  const d = st && st.diagramas[diagIdx];
-  if(!d) return;
-  const novoSplitter = valor === 'Nenhum' ? '' : valor;
-  if(novoSplitter !== d.splitter){
-    // Portas mudaram (ou splitter foi removido) — ligações antigas com o splitter não fazem mais sentido.
-    d.pareamento = d.pareamento.filter(p => p.ponto1.lado !== 'splitter' && p.ponto2.lado !== 'splitter');
-    if(d.armado && d.armado.lado === 'splitter') d.armado = null;
-    if(novoSplitter !== '1x2') d.splitterTipo1x2 = '';
+  const ladoKey = lado === 'A' ? 'a' : 'b';
+  const novoValor = valor === 'Nenhum' ? '' : valor;
+  if(novoValor !== d[campo]){
+    // Qtd de fibras desse lado mudou (ou o lado saiu do diagrama) — ligações que dependiam dele não fazem mais sentido.
+    d.pareamento = d.pareamento.filter(p => p.ponto1.lado !== ladoKey && p.ponto2.lado !== ladoKey);
+    if(d.armado && d.armado.lado === ladoKey) d.armado = null;
   }
-  d.splitter = novoSplitter;
+  d[campo] = novoValor;
   const bloco = document.getElementById(`fusao-diagrama-bloco-${rowIndex}-${diagIdx}`);
   if(bloco) bloco.outerHTML = renderFusaoDiagramaBloco(rowIndex, diagIdx);
   requestAnimationFrame(()=>desenharLinhasFusao(rowIndex, diagIdx));
   salvarRascunho(rowIndex);
 };
 
-window.atualizarSplitterTipo1x2 = function(rowIndex, diagIdx, valor){
+// qual = '1' ou '2' — Splitter 2 só existe em cascata com o Splitter 1 (ver
+// colunasFusao); remover o 1 remove o 2 junto, como o splitter fosse a montante.
+window.atualizarSplitterDiagrama = function(rowIndex, diagIdx, qual, valor){
   const st = FUSAO_STATE[rowIndex];
   const d = st && st.diagramas[diagIdx];
   if(!d) return;
-  d.splitterTipo1x2 = valor;
+  const campo = 'splitter'+qual, campoTipo = 'splitter'+qual+'Tipo1x2', ladoKey = 'splitter'+qual;
+  const novoValor = valor === 'Nenhum' ? '' : valor;
+  if(novoValor !== d[campo]){
+    // Portas mudaram (ou splitter foi removido) — ligações antigas com ele não fazem mais sentido.
+    d.pareamento = d.pareamento.filter(p => p.ponto1.lado !== ladoKey && p.ponto2.lado !== ladoKey);
+    if(d.armado && d.armado.lado === ladoKey) d.armado = null;
+    if(novoValor !== '1x2') d[campoTipo] = '';
+  }
+  d[campo] = novoValor;
+  if(qual === '1' && !novoValor && d.splitter2){
+    d.pareamento = d.pareamento.filter(p => p.ponto1.lado !== 'splitter2' && p.ponto2.lado !== 'splitter2');
+    if(d.armado && d.armado.lado === 'splitter2') d.armado = null;
+    d.splitter2 = '';
+    d.splitter2Tipo1x2 = '';
+  }
+  const bloco = document.getElementById(`fusao-diagrama-bloco-${rowIndex}-${diagIdx}`);
+  if(bloco) bloco.outerHTML = renderFusaoDiagramaBloco(rowIndex, diagIdx);
+  requestAnimationFrame(()=>desenharLinhasFusao(rowIndex, diagIdx));
+  salvarRascunho(rowIndex);
+};
+
+window.atualizarSplitterTipo1x2 = function(rowIndex, diagIdx, qual, valor){
+  const st = FUSAO_STATE[rowIndex];
+  const d = st && st.diagramas[diagIdx];
+  if(!d) return;
+  d['splitter'+qual+'Tipo1x2'] = valor;
   const bloco = document.getElementById(`fusao-diagrama-bloco-${rowIndex}-${diagIdx}`);
   if(bloco) bloco.outerHTML = renderFusaoDiagramaBloco(rowIndex, diagIdx);
   salvarRascunho(rowIndex);
@@ -1500,80 +1561,64 @@ function outroPonto(par, lado, num){
   return (par.ponto1.lado===lado && par.ponto1.num===num) ? par.ponto2 : par.ponto1;
 }
 function rotuloPonto(ponto){
-  if(ponto.lado === 'splitter') return ponto.num === 0 ? 'Splitter IN' : 'Splitter P'+ponto.num;
+  if(ponto.lado === 'splitter1') return ponto.num === 0 ? 'Splitter 1 IN' : 'Splitter 1 P'+ponto.num;
+  if(ponto.lado === 'splitter2') return ponto.num === 0 ? 'Splitter 2 IN' : 'Splitter 2 P'+ponto.num;
   return (ponto.lado==='a' ? 'A' : 'B') + ponto.num;
 }
 
-// Diagrama: Lado A (esquerda, alimentação) — Splitter no meio (quando houver,
-// porta "IN" recebe a fibra que alimenta ele, portas P1..PN saem pro Lado B) —
-// Lado B (direita). Toca num ponto de dois grupos diferentes pra ligar (desenha
-// a linha), toca num ponto já ligado pra desfazer. Nº de fibras de cada coluna
-// vem do tipo de cabo DAQUELE lado — os dois lados podem ser cabos diferentes
-// (ex.: 4F entrando no Lado A, 12F saindo no Lado B), por isso são duas
-// contagens independentes em vez de uma só pro diagrama inteiro.
+// Diagrama: até 4 colunas na ordem Lado A — Splitter 1 — Splitter 2 — Lado B
+// (cada uma opcional; só entram as que o técnico preencheu — ver colunasFusao).
+// Porta 0 de cada splitter é sempre "IN" (recebe a fibra da coluna anterior);
+// 1..N são as saídas pra próxima coluna. Toca num ponto e depois num ponto da
+// coluna VIZINHA pra ligar (desenha a linha); toca num ponto já ligado pra
+// desfazer — tentar ligar colunas não-vizinhas (ex.: Lado A direto no
+// Splitter 2, pulando o 1) é bloqueado, com aviso, porque fisicamente uma
+// fusão nunca pula uma etapa da cadeia.
 function renderFusaoFibras(rowIndex, diagIdx){
   const st = FUSAO_STATE[rowIndex];
   const d = st.diagramas[diagIdx];
-  const nA = QTD_FIBRAS_POR_CABO[d.tipoCaboA];
-  const nB = QTD_FIBRAS_POR_CABO[d.tipoCaboB];
-  if(!nA || !nB){
-    return `<div style="font-size:.68rem;color:var(--text-muted);font-style:italic">Escolha o tipo de cabo dos dois lados (acima) para abrir o diagrama.</div>`;
+  const cols = colunasFusao(d);
+  if(cols.length < 2){
+    return `<div style="font-size:.68rem;color:var(--text-muted);font-style:italic">Escolha pelo menos duas partes (cabo A, splitter 1, splitter 2 ou cabo B) para abrir o diagrama.</div>`;
   }
-  const fibrasA = Array.from({length:nA}, (_,i)=>i+1);
-  const fibrasB = Array.from({length:nB}, (_,i)=>i+1);
-  const nSplitter = QTD_SPLITTER[d.splitter] || 0;
-  // Porta 0 = "IN" (alimentação vinda do Lado A) — 1..N = saídas pro Lado B.
-  const portasSplitter = nSplitter ? Array.from({length:nSplitter+1}, (_,i)=>i) : [];
 
-  const linhaA = num => {
-    const armado = d.armado && d.armado.lado==='a' && d.armado.num===num;
-    const par = acharParDe(d.pareamento, 'a', num);
-    return `<div class="fibra-row${armado?' armado':''}${par?' pareada':''}" onclick="clicarFibra(${rowIndex},${diagIdx},'a',${num})">
-      <span class="fibra-num">${num}</span>
-      <span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>
-      ${par ? `<span class="fibra-par">→${rotuloPonto(outroPonto(par,'a',num))}</span>` : ''}
-      <span class="fibra-anchor" id="fibra-a-${rowIndex}-${diagIdx}-${num}"></span>
-    </div>`;
+  const tituloColuna = lado => {
+    if(lado === 'a') return 'Lado A · ' + d.tipoCaboA;
+    if(lado === 'b') return 'Lado B · ' + d.tipoCaboB;
+    const num = lado === 'splitter1' ? '1' : '2';
+    const valor = lado === 'splitter1' ? d.splitter1 : d.splitter2;
+    const tipo1x2 = lado === 'splitter1' ? d.splitter1Tipo1x2 : d.splitter2Tipo1x2;
+    return 'Splitter ' + num + ' · ' + valor + (tipo1x2 ? ' (' + tipo1x2 + ')' : '');
   };
-  const linhaB = num => {
-    const armado = d.armado && d.armado.lado==='b' && d.armado.num===num;
-    const par = acharParDe(d.pareamento, 'b', num);
-    return `<div class="fibra-row${armado?' armado':''}${par?' pareada':''}" onclick="clicarFibra(${rowIndex},${diagIdx},'b',${num})">
-      <span class="fibra-anchor" id="fibra-b-${rowIndex}-${diagIdx}-${num}"></span>
-      ${par ? `<span class="fibra-par">${rotuloPonto(outroPonto(par,'b',num))}←</span>` : ''}
-      <span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>
-      <span class="fibra-num">${num}</span>
-    </div>`;
+  const portasDe = lado => {
+    if(lado === 'a') return Array.from({length: QTD_FIBRAS_POR_CABO[d.tipoCaboA] || 0}, (_,i)=>i+1);
+    if(lado === 'b') return Array.from({length: QTD_FIBRAS_POR_CABO[d.tipoCaboB] || 0}, (_,i)=>i+1);
+    const n = QTD_SPLITTER[lado === 'splitter1' ? d.splitter1 : d.splitter2] || 0;
+    return n ? Array.from({length: n+1}, (_,i)=>i) : []; // 0 = IN
   };
-  const linhaSplitter = num => {
-    const ehIn = num === 0;
-    const armado = d.armado && d.armado.lado==='splitter' && d.armado.num===num;
-    const par = acharParDe(d.pareamento, 'splitter', num);
-    return `<div class="fibra-row${armado?' armado':''}${par?' pareada':''}${ehIn?' fibra-splitter-in':''}" onclick="clicarFibra(${rowIndex},${diagIdx},'splitter',${num})">
-      <span class="fibra-num" style="width:auto;padding:0 .2rem">${ehIn ? 'IN' : 'P'+num}</span>
-      ${par ? `<span class="fibra-par">${rotuloPonto(outroPonto(par,'splitter',num))}</span>` : ''}
-      <span class="fibra-anchor" id="fibra-splitter-${rowIndex}-${diagIdx}-${num}"></span>
+  const linhaPorto = (lado, num) => {
+    const ehSplitter = lado === 'splitter1' || lado === 'splitter2';
+    const ehIn = ehSplitter && num === 0;
+    const armado = d.armado && d.armado.lado===lado && d.armado.num===num;
+    const par = acharParDe(d.pareamento, lado, num);
+    return `<div class="fibra-row${armado?' armado':''}${par?' pareada':''}${ehIn?' fibra-splitter-in':''}" onclick="clicarFibra(${rowIndex},${diagIdx},'${lado}',${num})">
+      <span class="fibra-num"${ehSplitter?' style="width:auto;padding:0 .2rem"':''}>${ehSplitter ? (ehIn?'IN':'P'+num) : num}</span>
+      ${ehSplitter ? '' : `<span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>`}
+      ${par ? `<span class="fibra-par">${rotuloPonto(outroPonto(par,lado,num))}</span>` : ''}
+      <span class="fibra-anchor" id="fibra-${lado}-${rowIndex}-${diagIdx}-${num}"></span>
     </div>`;
   };
 
   return `
-    <div style="font-size:.64rem;color:var(--text-muted);margin-bottom:.4rem">Toque num ponto de cada lado (ou do splitter) pra ligar. Toque num ponto já ligado pra desfazer.${nSplitter ? ' O splitter fica no meio: ligue a fibra do Lado A que alimenta ele em "IN".' : ''}</div>
+    <div style="font-size:.64rem;color:var(--text-muted);margin-bottom:.4rem">Toque num ponto e depois num ponto da coluna VIZINHA pra ligar. Toque num ponto já ligado pra desfazer.</div>
     <div class="fusao-diagrama" id="fusao-diagrama-${rowIndex}-${diagIdx}">
       <svg class="fusao-svg" id="fusao-svg-${rowIndex}-${diagIdx}"></svg>
-      <div class="fusao-coluna-wrap">
-        <div class="fusao-coluna-titulo">Lado A · ${d.tipoCaboA}</div>
-        <div class="fusao-coluna">${fibrasA.map(linhaA).join('')}</div>
-      </div>
-      ${nSplitter ? `<div class="fusao-coluna-wrap">
-        <div class="fusao-coluna-titulo">Splitter</div>
-        <div class="fusao-coluna fusao-coluna-splitter">${portasSplitter.map(linhaSplitter).join('')}</div>
-      </div>` : ''}
-      <div class="fusao-coluna-wrap">
-        <div class="fusao-coluna-titulo">Lado B · ${d.tipoCaboB}</div>
-        <div class="fusao-coluna">${fibrasB.map(linhaB).join('')}</div>
-      </div>
+      ${cols.map(lado => `<div class="fusao-coluna-wrap">
+        <div class="fusao-coluna-titulo">${tituloColuna(lado)}</div>
+        <div class="fusao-coluna${lado.indexOf('splitter')===0?' fusao-coluna-splitter':''}">${portasDe(lado).map(num=>linhaPorto(lado,num)).join('')}</div>
+      </div>`).join('')}
     </div>
-    <div style="font-size:.64rem;color:var(--text-dim);margin-top:.4rem">${d.pareamento.length} ligação(ões)${nSplitter ? ' · Splitter ' + d.splitter + (d.splitterTipo1x2?' ('+d.splitterTipo1x2+')':'') + ' (IN + ' + nSplitter + ' saídas)' : ''}</div>
+    <div style="font-size:.64rem;color:var(--text-dim);margin-top:.4rem">${d.pareamento.length} ligação(ões)</div>
   `;
 }
 
@@ -1586,7 +1631,12 @@ window.clicarFibra = function(rowIndex, diagIdx, lado, num){
   if(parExistente){
     d.pareamento.splice(d.pareamento.indexOf(parExistente), 1);
     d.armado = null;
-  } else if(d.armado && !(d.armado.lado === lado && d.armado.num === num)){
+  } else if(d.armado && d.armado.lado === lado && d.armado.num === num){
+    d.armado = null;
+  } else if(d.armado && !colunasVizinhas(d, d.armado.lado, lado)){
+    showToast('Só dá pra ligar colunas vizinhas — toque num ponto da coluna ao lado.');
+    d.armado = { lado, num };
+  } else if(d.armado){
     d.pareamento.push({ ponto1: d.armado, ponto2: { lado, num } });
     d.armado = null;
   } else {
@@ -1618,8 +1668,12 @@ function desenharLinhasFusao(rowIndex, diagIdx){
     const r1 = el1.getBoundingClientRect(), r2 = el2.getBoundingClientRect();
     const x1 = r1.left - wrapRect.left + r1.width/2, y1 = r1.top - wrapRect.top + r1.height/2;
     const x2 = r2.left - wrapRect.left + r2.width/2, y2 = r2.top - wrapRect.top + r2.height/2;
-    const numCor = p.ponto1.lado !== 'splitter' ? p.ponto1.num : p.ponto2.num;
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${corFibra(numCor)}" stroke-width="2"/>`;
+    // Cor da fibra vem do lado do cabo (a/b) — se os dois pontos forem splitter
+    // (cascata entre Splitter 1 e Splitter 2, sem cabo em nenhuma ponta), usa o
+    // número do ponto1 mesmo, só pra ter uma cor determinística.
+    const ehCabo = pt => pt.lado === 'a' || pt.lado === 'b';
+    const ptCor = ehCabo(p.ponto1) ? p.ponto1 : (ehCabo(p.ponto2) ? p.ponto2 : p.ponto1);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${corFibra(ptCor.num)}" stroke-width="2"/>`;
   }).join('');
 }
 
@@ -1806,7 +1860,7 @@ window.solicitarValidacao = async function(rowIndex){
   const fusaoSt = isFibra ? FUSAO_STATE[rowIndex] : null;
   const fusionouTodas = fusaoSt ? fusaoSt.fusionouTodas : '';
   const diagramasComIndice = fusaoSt ? fusaoSt.diagramas.map((d,i)=>({d,i})) : [];
-  const diagramasRelevantes = diagramasComIndice.filter(({d}) => d.pareamento.length > 0 || d.tipoCaboA || d.tipoCaboB || d.nomA || d.nomB || d.splitter);
+  const diagramasRelevantes = diagramasComIndice.filter(({d}) => d.pareamento.length > 0 || d.tipoCaboA || d.tipoCaboB || d.nomA || d.nomB || d.splitter1);
   const quantidadeCeo = diagramasRelevantes.length ? String(diagramasRelevantes.length) : '';
   const tipoCaboFusionado = diagramasRelevantes.length ? [...new Set(diagramasRelevantes.flatMap(({d})=>[d.tipoCaboA,d.tipoCaboB]).filter(Boolean))].join(', ') : '';
   // Endereço da CEO vem do widget de GPS (mesmo padrão de Local da Falha/Caixa Nova),
@@ -1814,7 +1868,10 @@ window.solicitarValidacao = async function(rowIndex){
   const diagramasSerializados = diagramasRelevantes.map(({d,i}) => ({
     numeroCeo: d.numeroCeo, nomenclaturaA: d.nomA, nomenclaturaB: d.nomB,
     gpsCeo: pegarGPS(rowIndex, 'fusaoCeo'+i),
-    tipoCaboA: d.tipoCaboA, tipoCaboB: d.tipoCaboB, splitter: d.splitter, splitterTipo1x2: d.splitterTipo1x2, pares: d.pareamento
+    tipoCaboA: d.tipoCaboA, tipoCaboB: d.tipoCaboB,
+    splitter1: d.splitter1, splitter1Tipo1x2: d.splitter1Tipo1x2,
+    splitter2: d.splitter2, splitter2Tipo1x2: d.splitter2Tipo1x2,
+    pares: d.pareamento
   }));
   const fusaoPareamento = diagramasSerializados.length ? JSON.stringify(diagramasSerializados) : '';
 
@@ -1859,12 +1916,17 @@ function copiarRelatorioWhats(rowIndex, campos){
   if(campos.tipoCaboFusionado) t += '*CABO FUSIONADO:* ' + campos.tipoCaboFusionado + '\n';
   if(campos.fusionouTodas) t += '*FUSIONOU TODAS AS FIBRAS:* ' + campos.fusionouTodas + '\n';
   if(campos.diagramas && campos.diagramas.length){
-    const rotulo = ponto => ponto.lado==='splitter' ? (ponto.num===0?'Splitter IN':'Splitter P'+ponto.num) : (ponto.lado==='a'?'A':'B')+ponto.num;
+    const rotulo = ponto => ponto.lado==='splitter1' ? (ponto.num===0?'Splitter 1 IN':'Splitter 1 P'+ponto.num)
+      : ponto.lado==='splitter2' ? (ponto.num===0?'Splitter 2 IN':'Splitter 2 P'+ponto.num)
+      : (ponto.lado==='a'?'A':'B')+ponto.num;
     campos.diagramas.forEach(d=>{
       if(!d.pares || !d.pares.length) return;
-      const infoSplitter = d.splitter ? ' — Splitter ' + d.splitter + (d.splitterTipo1x2?' ('+d.splitterTipo1x2+')':'') : '';
+      const infoSplitter = [
+        d.splitter1 ? 'Splitter 1 ' + d.splitter1 + (d.splitter1Tipo1x2?' ('+d.splitter1Tipo1x2+')':'') : '',
+        d.splitter2 ? 'Splitter 2 ' + d.splitter2 + (d.splitter2Tipo1x2?' ('+d.splitter2Tipo1x2+')':'') : ''
+      ].filter(Boolean).join(' + ');
       const infoCabo = (d.tipoCaboA || d.tipoCaboB) ? ' — Cabo A: ' + (d.tipoCaboA||'?') + ' · Cabo B: ' + (d.tipoCaboB||'?') : '';
-      t += '*FUSÃO CEO Nº' + (d.numeroCeo||'?') + '* (' + (d.nomenclaturaA||'?') + ' → ' + (d.nomenclaturaB||'?') + ')' + infoCabo + infoSplitter + ': ' + d.pares.map(p=>rotulo(p.ponto1)+'→'+rotulo(p.ponto2)).join(', ') + '\n';
+      t += '*FUSÃO CEO Nº' + (d.numeroCeo||'?') + '* (' + (d.nomenclaturaA||'?') + ' → ' + (d.nomenclaturaB||'?') + ')' + infoCabo + (infoSplitter?' — '+infoSplitter:'') + ': ' + d.pares.map(p=>rotulo(p.ponto1)+'→'+rotulo(p.ponto2)).join(', ') + '\n';
       if(d.gpsCeo) t += 'Localização dessa CEO: ' + d.gpsCeo + '\n';
     });
   }
