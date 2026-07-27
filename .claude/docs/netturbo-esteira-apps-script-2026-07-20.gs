@@ -49,7 +49,13 @@ const HEADERS_ESTEIRA = [
   // ── Anexo do despacho (KMZ/print do projeto) + mensagem + local de medição —
   // preenchido pela liderança direto no card "Aguardando Despacho", chega pro
   // técnico junto da atividade despachada (ver index.html / tecnico.html).
-  'Anexo Despacho URL','Anexo Despacho Nome','Mensagem Despacho','Link Medição',
+  // 'Anexo Despacho URL'/'Anexo Despacho Nome' são o formato antigo (um anexo só,
+  // preservado por compatibilidade com o que já foi salvo antes de 2026-07-27) —
+  // anexos novos (múltiplos: KMZ + pedido de material + prints colados, por
+  // exemplo) vão pra 'Anexos Despacho' (JSON, array de {url,nome}), que sempre
+  // migra o valor antigo pra dentro de si na primeira vez que alguém salva de
+  // novo naquela atividade (ver salvarInfoDespacho).
+  'Anexo Despacho URL','Anexo Despacho Nome','Mensagem Despacho','Link Medição','Anexos Despacho',
   // ── Perguntas rápidas de fusão (RFO de ROMPIMENTO/MASSIVA, depois da CEO) —
   // 'Fusão Pareamento' só é preenchido quando 'Cor com Cor' = 'Não' — JSON com um
   // item por CEO trabalhada (numeroCeo, nomenclaturaA/B, pares de fibra ligados),
@@ -233,8 +239,9 @@ function getOrCriarPastaAnexoDespacho() {
   return DriveApp.createFolder(NOME_PASTA);
 }
 
-// ── ANEXO KMZ + MENSAGEM + LINK DE MEDIÇÃO (liderança → técnico, preenchido no
-// card "Aguardando Despacho" de index.html) ─────────────────────────────────
+// ── ANEXOS (KMZ/print/pedido de material, um ou vários) + MENSAGEM + LINK DE
+// MEDIÇÃO (liderança → técnico, preenchido no card "Aguardando Despacho" de
+// index.html) ────────────────────────────────────────────────────────────────
 function salvarInfoDespacho(ss, data) {
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
@@ -242,26 +249,49 @@ function salvarInfoDespacho(ss, data) {
   if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
   const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
 
-  // Anexo é opcional em cada chamada — só sobe um arquivo novo pro Drive quando vem
-  // base64 (permite salvar só mensagem/link sem re-subir o anexo já enviado antes).
-  if (data.anexoBase64) {
-    try {
-      const bruto = String(data.anexoBase64);
+  // Lista de anexos já salvos (formato novo) — migra o valor antigo (um anexo só,
+  // colunas 'Anexo Despacho URL'/'Nome') pra dentro da lista na primeira vez que
+  // alguém salva de novo nessa atividade. Idempotente: só migra se a URL antiga
+  // ainda não estiver na lista, então rodar isso de novo não duplica.
+  let anexos = [];
+  try {
+    const bruto = sheet.getRange(rowIndex, idx('Anexos Despacho')).getValue();
+    if (bruto) anexos = JSON.parse(bruto);
+    if (!Array.isArray(anexos)) anexos = [];
+  } catch (e) { anexos = []; }
+  const urlAntiga = sheet.getRange(rowIndex, idx('Anexo Despacho URL')).getValue();
+  const nomeAntigo = sheet.getRange(rowIndex, idx('Anexo Despacho Nome')).getValue();
+  if (urlAntiga && !anexos.some(a => a.url === urlAntiga)) {
+    anexos.unshift({ url: urlAntiga, nome: nomeAntigo || '' });
+  }
+
+  // Anexos novos são opcionais em cada chamada e podem ser vários de uma vez
+  // (ex.: KMZ + pedido de material, ou vários prints colados) — cada um sobe pro
+  // Drive e entra na lista, sem apagar os que já tinham sido enviados antes.
+  const novosAnexos = Array.isArray(data.anexos) ? data.anexos : [];
+  try {
+    novosAnexos.forEach(anexo => {
+      if (!anexo || !anexo.base64) return;
+      const bruto = String(anexo.base64);
       const partes = bruto.split(',');
       const base64Puro = partes.length > 1 ? partes[1] : partes[0];
       const mimeMatch = bruto.match(/^data:([^;]+);base64,/);
       const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-      const nomeArquivo = data.anexoNome || ('anexo_' + rowIndex);
+      const nomeArquivo = anexo.nome || ('anexo_' + rowIndex);
       const bytes = Utilities.base64Decode(base64Puro);
       const blob = Utilities.newBlob(bytes, mime, nomeArquivo);
       const pasta = getOrCriarPastaAnexoDespacho();
       const arquivo = pasta.createFile(blob);
       arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      sheet.getRange(rowIndex, idx('Anexo Despacho URL')).setValue(arquivo.getUrl());
-      sheet.getRange(rowIndex, idx('Anexo Despacho Nome')).setValue(nomeArquivo);
-    } catch (e) {
-      return resposta('error', { message: 'Falha ao salvar o anexo: ' + e.toString() });
-    }
+      anexos.push({ url: arquivo.getUrl(), nome: nomeArquivo });
+    });
+  } catch (e) {
+    return resposta('error', { message: 'Falha ao salvar o anexo: ' + e.toString() });
+  }
+
+  if (anexos.length) {
+    sheet.getRange(rowIndex, idx('Anexos Despacho'), 1, 1).setNumberFormat('@STRING@');
+    sheet.getRange(rowIndex, idx('Anexos Despacho')).setValue(JSON.stringify(anexos));
   }
 
   if (data.mensagem !== undefined) sheet.getRange(rowIndex, idx('Mensagem Despacho')).setValue(data.mensagem || '');
@@ -1891,7 +1921,7 @@ function adicionarColunasNovas() {
     'LPU NF URL','LPU Timestamp NF','LPU Pago Por','LPU Timestamp Pago',
     'LPU Apoio NF URL','LPU Apoio Timestamp NF','LPU Apoio Pago Por','LPU Apoio Timestamp Pago',
     'LPU Motivo Reprovação NF','LPU Apoio Motivo Reprovação NF',
-    'Anexo Despacho URL','Anexo Despacho Nome','Mensagem Despacho','Link Medição',
+    'Anexo Despacho URL','Anexo Despacho Nome','Mensagem Despacho','Link Medição','Anexos Despacho',
     'Tipo Cabo Fusionado','Fusionou Todas','Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas'
   ];
   novos.forEach(h => {

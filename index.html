@@ -1322,28 +1322,45 @@ window.excluirAtividade = async function(rowIndex){
 
 // Bloco "Projeto / Medição (KMZ)" — reaproveitado nos cards de "Aguardando
 // Despacho" e "Despachadas / Em Campo" (o despacho pode anexar antes ou depois
-// de despachar, não só num momento fixo do fluxo).
+// de despachar, não só num momento fixo do fluxo). Suporta VÁRIOS anexos (ex.:
+// KMZ + pedido de material) e vários prints colados, tudo junto na mesma
+// chamada — não são mais mutuamente exclusivos.
+function anexosDespachoDe(a){
+  let lista = [];
+  try{
+    const bruto = a['Anexos Despacho'];
+    if(bruto){ const parsed = JSON.parse(bruto); if(Array.isArray(parsed)) lista = parsed; }
+  }catch(e){ lista = []; }
+  // Formato antigo (um anexo só, antes de 2026-07-27) — mostra junto até o
+  // backend migrar pra dentro da lista nova (acontece sozinho no próximo salvar).
+  if(a['Anexo Despacho URL'] && !lista.some(x=>x.url===a['Anexo Despacho URL'])){
+    lista = [{ url:a['Anexo Despacho URL'], nome:a['Anexo Despacho Nome']||'' }, ...lista];
+  }
+  return lista;
+}
+
 function blocoAnexoDespacho(a){
-  // Print colado (Ctrl+V) fica só na memória do navegador (ANEXO_PASTE_STATE) até
+  // Print colado (Ctrl+V) fica só na memória do navegador (ANEXOS_PASTE_STATE) até
   // o clique em "Salvar p/ Técnico" — a atualização automática da esteira (a cada
-  // 15s) redesenha o card do zero, e sem reler esse estado aqui o aviso "print
-  // colado" sumia da tela mesmo o dado ainda estando válido, dando a falsa
-  // impressão de que o anexo tinha se perdido.
-  const coladoPendente = ANEXO_PASTE_STATE[a.rowIndex];
-  const preenchido = a['Anexo Despacho Nome'] || a['Mensagem Despacho'] || a['Link Medição'] || coladoPendente;
+  // 15s) redesenha o card do zero, e sem reler esse estado aqui os prints colados
+  // sumiam da tela mesmo o dado ainda estando válido, dando a falsa impressão de
+  // que o anexo tinha se perdido.
+  const pendentes = ANEXOS_PASTE_STATE[a.rowIndex] || [];
+  const existentes = anexosDespachoDe(a);
+  const preenchido = existentes.length || pendentes.length || a['Mensagem Despacho'] || a['Link Medição'];
   return `
     <details style="margin-top:.4rem">
       <summary style="font-size:.65rem;color:var(--text-muted);cursor:pointer">📎 Projeto / Medição (KMZ)${preenchido?' — preenchido':''}</summary>
       <div style="margin-top:.5rem;display:flex;flex-direction:column;gap:.4rem">
-        ${a['Anexo Despacho URL'] ? `<a href="${a['Anexo Despacho URL']}" target="_blank" style="font-size:.68rem;color:var(--accent)">Anexo atual: ${a['Anexo Despacho Nome']||'ver arquivo'}</a>` : ''}
+        ${existentes.length ? `<div style="display:flex;flex-direction:column;gap:.2rem">${existentes.map(x=>`<a href="${x.url}" target="_blank" style="font-size:.68rem;color:var(--accent)">📎 ${x.nome||'ver arquivo'}</a>`).join('')}</div>` : ''}
         <div>
-          <span class="edit-label">Anexar KMZ/KML ou print do projeto</span>
-          <input type="file" class="edit-field" id="anexo-file-${a.rowIndex}" accept=".kmz,.kml,image/*" onchange="limparPasteAnexo(${a.rowIndex})"/>
+          <span class="edit-label">Anexar KMZ/KML, print do projeto ou pedido de material (pode escolher mais de um de uma vez)</span>
+          <input type="file" class="edit-field" id="anexo-file-${a.rowIndex}" accept=".kmz,.kml,image/*,.pdf" multiple/>
         </div>
         <div>
-          <span class="edit-label">Mensagem para o técnico (pode colar um print aqui com Ctrl+V, junto do texto)</span>
-          <textarea class="edit-field" id="anexo-msg-${a.rowIndex}" placeholder="Ex.: chegar pela rua X, o rompimento fica entre os postes Y e Z... (cole um print aqui se quiser)" onpaste="handlePasteAnexo(event,${a.rowIndex})">${a['Mensagem Despacho']||''}</textarea>
-          <div id="anexo-preview-${a.rowIndex}" style="font-size:.66rem;color:var(--accent);margin-top:.3rem">${coladoPendente ? '📎 Print colado ('+coladoPendente.nome+') pronto — clique em "Salvar p/ Técnico" pra enviar.' : ''}</div>
+          <span class="edit-label">Mensagem para o técnico (pode colar quantos prints quiser aqui com Ctrl+V, além do texto — e ainda anexar arquivo acima, ao mesmo tempo)</span>
+          <textarea class="edit-field" id="anexo-msg-${a.rowIndex}" placeholder="Ex.: chegar pela rua X, o rompimento fica entre os postes Y e Z... (cole um ou mais prints aqui se quiser)" onpaste="handlePasteAnexo(event,${a.rowIndex})">${a['Mensagem Despacho']||''}</textarea>
+          <div id="anexo-preview-${a.rowIndex}" style="margin-top:.3rem">${renderAnexoPreview(a.rowIndex)}</div>
         </div>
         <div>
           <span class="edit-label">Onde fazer as medições? (link do Maps)</span>
@@ -1354,74 +1371,82 @@ function blocoAnexoDespacho(a){
     </details>`;
 }
 
-// Print colado (Ctrl+V) na mensagem — vira o anexo da atividade, junto do texto
-// já digitado. Tem prioridade sobre o input de arquivo (evita mandar os dois).
-let ANEXO_PASTE_STATE = {}; // rowIndex -> { dataUrl, nome }
+// Prints colados (Ctrl+V) na mensagem — cada um vira um anexo a mais da
+// atividade, junto do texto já digitado e de qualquer arquivo escolhido no
+// input acima (não são mais exclusivos entre si).
+let ANEXOS_PASTE_STATE = {}; // rowIndex -> [{ dataUrl, nome }]
+
+function renderAnexoPreview(rowIndex){
+  const pendentes = ANEXOS_PASTE_STATE[rowIndex] || [];
+  if(!pendentes.length) return '';
+  return pendentes.map((p,i)=>`<div style="font-size:.66rem;color:var(--accent);display:flex;align-items:center;gap:.5rem">📎 ${p.nome} (print colado, pendente) <span style="cursor:pointer;color:#e57373;text-decoration:underline" onclick="removerAnexoColado(${rowIndex},${i})">remover</span></div>`).join('');
+}
 
 window.handlePasteAnexo = function(event, rowIndex){
   const items = (event.clipboardData || window.clipboardData).items;
   if(!items) return;
+  let achouImagem = false;
   for(const item of items){
     if(item.type && item.type.indexOf('image/') === 0){
       const file = item.getAsFile();
       if(!file) continue;
-      event.preventDefault(); // não deixa a imagem ser "colada" como texto/binário na textarea
+      achouImagem = true;
       const reader = new FileReader();
       reader.onload = () => {
-        ANEXO_PASTE_STATE[rowIndex] = { dataUrl: reader.result, nome: 'print_colado_' + Date.now() + '.png' };
+        if(!ANEXOS_PASTE_STATE[rowIndex]) ANEXOS_PASTE_STATE[rowIndex] = [];
+        ANEXOS_PASTE_STATE[rowIndex].push({ dataUrl: reader.result, nome: 'print_colado_' + Date.now() + '.png' });
         const prev = document.getElementById('anexo-preview-'+rowIndex);
-        if(prev) prev.textContent = '📎 Print colado será enviado como anexo junto com a mensagem.';
-        const fileInput = document.getElementById('anexo-file-'+rowIndex);
-        if(fileInput) fileInput.value = '';
+        if(prev) prev.innerHTML = renderAnexoPreview(rowIndex);
       };
       reader.readAsDataURL(file);
-      break;
     }
   }
+  if(achouImagem) event.preventDefault(); // não deixa a(s) imagem(ns) virar(em) texto/binário na textarea
 };
 
-window.limparPasteAnexo = function(rowIndex){
-  delete ANEXO_PASTE_STATE[rowIndex];
+window.removerAnexoColado = function(rowIndex, idx){
+  const lista = ANEXOS_PASTE_STATE[rowIndex];
+  if(!lista) return;
+  lista.splice(idx, 1);
   const prev = document.getElementById('anexo-preview-'+rowIndex);
-  if(prev) prev.textContent = '';
+  if(prev) prev.innerHTML = renderAnexoPreview(rowIndex);
 };
 
-// Lê o arquivo (print colado tem prioridade; senão o escolhido no input) como
-// data-URL e manda junto com a mensagem/link — anexo é opcional em cada chamada,
-// então salvar só mensagem ou só o link não obriga anexar de novo.
+// Junta os arquivos escolhidos no input (podem ser vários) com os prints
+// colados pendentes (também podem ser vários) e manda tudo numa chamada só —
+// anexo é opcional, então salvar só mensagem ou só o link não obriga anexar nada.
 window.salvarInfoDespacho = async function(rowIndex){
   const fileInput = document.getElementById('anexo-file-'+rowIndex);
   const mensagem = document.getElementById('anexo-msg-'+rowIndex).value.trim();
   const linkMedicao = document.getElementById('anexo-link-'+rowIndex).value.trim();
-  const colado = ANEXO_PASTE_STATE[rowIndex];
-  const arquivo = fileInput && fileInput.files && fileInput.files[0];
+  const pendentes = ANEXOS_PASTE_STATE[rowIndex] || [];
+  const arquivos = fileInput && fileInput.files ? Array.from(fileInput.files) : [];
 
-  const enviar = async (anexoBase64, anexoNome) => {
-    try{
-      const resp = await fetch(APPS_SCRIPT_URL, {
-        method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify({ acao:'SALVAR_INFO_DESPACHO', rowIndex, anexoBase64, anexoNome, mensagem, linkMedicao })
-      });
-      const result = await resp.json();
-      if(result.status !== 'ok'){ showToast((result.message||'Erro ao salvar.')); return; }
-      delete ANEXO_PASTE_STATE[rowIndex];
-      showToast('Informações salvas — o técnico já vai ver na atividade.');
-      carregarEsteira();
-    }catch(err){
-      console.error(err);
-      showToast('Erro ao conectar com o backend.');
-    }
-  };
-
-  if(colado){
-    enviar(colado.dataUrl, colado.nome);
-  }else if(arquivo){
+  const lerComoDataUrl = file => new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => enviar(reader.result, arquivo.name);
-    reader.onerror = () => showToast('Não foi possível ler o arquivo.');
-    reader.readAsDataURL(arquivo);
-  }else{
-    enviar(null, null);
+    reader.onload = () => resolve({ base64: reader.result, nome: file.name });
+    reader.onerror = () => reject(new Error('Não foi possível ler ' + file.name));
+    reader.readAsDataURL(file);
+  });
+
+  try{
+    const dosArquivos = await Promise.all(arquivos.map(lerComoDataUrl));
+    const anexos = [
+      ...pendentes.map(p => ({ base64: p.dataUrl, nome: p.nome })),
+      ...dosArquivos
+    ];
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'SALVAR_INFO_DESPACHO', rowIndex, anexos, mensagem, linkMedicao })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast((result.message||'Erro ao salvar.')); return; }
+    delete ANEXOS_PASTE_STATE[rowIndex];
+    showToast('Informações salvas — o técnico já vai ver na atividade.');
+    carregarEsteira();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
   }
 };
 

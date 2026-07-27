@@ -1052,23 +1052,37 @@ function renderFormOcorrencia(a){
 // Mensagem/KMZ/link de medição que a liderança deixou pro técnico direto no card
 // de despacho (index.html, "Projeto / Medição") — aparece em qualquer status,
 // já que o técnico pode precisar do projeto antes mesmo de iniciar o deslocamento.
+// Lista de anexos da atividade — formato novo ('Anexos Despacho', JSON array)
+// mesclado com o formato antigo (um anexo só, 'Anexo Despacho URL'/'Nome',
+// anterior a 2026-07-27), pra não perder anexo de atividade salva antes da
+// mudança pra múltiplos anexos.
+function anexosDespachoDe(a){
+  let lista = [];
+  try{
+    const bruto = a['Anexos Despacho'];
+    if(bruto){ const parsed = JSON.parse(bruto); if(Array.isArray(parsed)) lista = parsed; }
+  }catch(e){ lista = []; }
+  if(a['Anexo Despacho URL'] && !lista.some(x=>x.url===a['Anexo Despacho URL'])){
+    lista = [{ url:a['Anexo Despacho URL'], nome:a['Anexo Despacho Nome']||'' }, ...lista];
+  }
+  return lista;
+}
+
 function renderBlocoDespacho(a){
   const mensagem = a['Mensagem Despacho'];
-  const anexoUrl = a['Anexo Despacho URL'];
-  const anexoNome = a['Anexo Despacho Nome'] || '';
+  const anexos = anexosDespachoDe(a);
   const linkMedicao = a['Link Medição'];
-  if(!mensagem && !anexoUrl && !linkMedicao) return '';
+  if(!mensagem && !anexos.length && !linkMedicao) return '';
 
   // Print (imagem) mostra miniatura direto no card — mais rápido de entender em
-  // campo do que abrir um link de download. KMZ/KML continua como link mesmo,
-  // já que precisa abrir noutro app (Google Earth etc).
-  let blocoAnexo = '';
-  if(anexoUrl){
-    const ehImagem = /\.(png|jpe?g|gif|webp)$/i.test(anexoNome);
-    const idDrive = anexoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  // campo do que abrir um link de download. KMZ/KML/PDF continua como link mesmo,
+  // já que precisa abrir noutro app (Google Earth, leitor de PDF etc).
+  const blocoAnexo = anexos.map(x=>{
+    const ehImagem = /\.(png|jpe?g|gif|webp)$/i.test(x.nome||'');
+    const idDrive = (x.url||'').match(/\/d\/([a-zA-Z0-9_-]+)/);
     const thumbUrl = (ehImagem && idDrive) ? `https://drive.google.com/thumbnail?id=${idDrive[1]}&sz=w1000` : '';
-    blocoAnexo = `<a href="${anexoUrl}" target="_blank">${thumbUrl ? `<img src="${thumbUrl}" style="max-width:100%;border-radius:6px;display:block;margin-top:.2rem"/>` : ('📎 Baixar projeto ('+(anexoNome||'KMZ')+')')}</a>`;
-  }
+    return `<a href="${x.url}" target="_blank">${thumbUrl ? `<img src="${thumbUrl}" style="max-width:100%;border-radius:6px;display:block;margin-top:.2rem"/>` : ('📎 Baixar anexo ('+(x.nome||'arquivo')+')')}</a>`;
+  }).join('');
 
   return `
     <div class="bloco-despacho">
