@@ -620,6 +620,408 @@ const CONFIG_CAUSAS = {
 // causa não é obrigatória pra enviar (mesma regra já usada pra PREVENTIVA/CPFL).
 const TIPOS_CAUSA_LIVRE_OPCIONAL = ['ACOMPANHAMENTO CPFL','PREVENTIVA','IMPLANTAÇÃO','GTD','EXTENSÃO DE FIBRA','TRANSMISSÃO'];
 
+// ── CLASSIFICAÇÃO POR TIPO DE SOLICITAÇÃO / CATEGORIA (matriz oficial do
+// setor, mesma MATRIZ_SLA embutida em index.html — despacho escolhe Tipo de
+// Solicitação e Categoria 1-4 iniciais; aqui o técnico só ajusta a Categoria,
+// sempre restrito às combinações válidas da matriz). Atividade sem 'Tipo de
+// Solicitação' preenchido é do modelo antigo e continua usando CONFIG_CAUSAS/
+// TIPOS_CAUSA_LIVRE_OPCIONAL acima, sem nenhuma mudança.
+const MATRIZ_SLA = [
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Rompimento Troca de Poste",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Rompimento Carga Alta",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Rompimento Vandalismo",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Rompimento Acidente em Via",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Rompimento Queimadas",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Rompimento Parcial",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Rompimento Descarga Eletrica",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Rompimento Poda Arvore",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Rompimento Subterraneo",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Degradação Rede externa",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Degradação Rede externa (Atenuação)",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Massiva",cat3:"Visita Cliente (Rompimento Interno)",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Rompimento Troca de Poste",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Rompimento Carga Alta",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Rompimento Vandalismo",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Rompimento Acidente em Via",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Rompimento Queimadas",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Rompimento Parcial",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Rompimento Descarga Eletrica",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Rompimento Poda Arvore",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Rompimento Subterraneo",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Degradação Rede externa",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Degradação Rede externa (Atenuação)",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Rompimento",cat3:"Visita Cliente (Rompimento Interno)",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Chamado Improcedente",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Cliente",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Clima/Fator Externo",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Comercial",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Delivery",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Documentação (APR/NR)",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Documentação (ART/DWG)",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Infraestrutura (Rede)",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Last Mile",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Logística",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva NOC",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva OEM",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Terceiro (DER/Cia Elétrica)",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Validação",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Acompanhamento Troca de Poste",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Acompanhamento Conjunta",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Acompamento Fiscalização",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Fiscalização de Rede",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Chamado Improcedente",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Cliente",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Clima/Fator Externo",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Comercial",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Delivery",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Documentação (APR/NR)",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Documentação (ART/DWG)",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Infraestrutura (Rede)",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Last Mile",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Logística",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva NOC",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva OEM",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Terceiro (DER/Cia Elétrica)",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Validação",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF (Rede Propria)",cat3:"Radio 2.4Ghz / 5.8Ghz Queimado",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF (Rede Propria)",cat3:"Troca de Periferico Alimentação",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF (Rede Propria)",cat3:"Rompimento de cabo LAN",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF (Rede Expandida - LM)",cat3:"Radio 2.4Ghz / 5.8Ghz Queimado",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF (Rede Expandida - LM)",cat3:"Troca de Periferico Alimentação",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF (Rede Expandida - LM)",cat3:"Rompimento de cabo LAN",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF / LTE",cat3:"Radio LTE 4G Queimado",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF / LTE",cat3:"Troca de Periferico Alimentação",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF / LTE",cat3:"Rompimento de cabo LAN",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF / FWA",cat3:"Radio LTE 5G FWA Queimado",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF / FWA",cat3:"Troca de Periferico Alimentação",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF / FWA",cat3:"Rompimento de cabo LAN",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF - STAR LEO",cat3:"Troca de Antena Satelital (STARLEO)",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF - STAR LEO",cat3:"Troca de Periferico Alimentação",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF - STAR LEO",cat3:"Rompimento de cabo LAN",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF (Rede Propria)",cat3:"Visita Improdutiva",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF (Rede Expandida - LM)",cat3:"Visita Improdutiva",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF / LTE",cat3:"Visita Improdutiva",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF / FWA",cat3:"Visita Improdutiva",cat4:"",sla:4},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"REDE RF - STAR LEO",cat3:"Visita Improdutiva",cat4:"",sla:4},
+  {tipo:"Transmissão",cat1:"Manutenção",cat2:"Acompanhamento Conjunta",cat3:"",cat4:"",sla:8},
+  {tipo:"Transmissão",cat1:"Manutenção",cat2:"Equipamento Indisponível",cat3:"",cat4:"",sla:4},
+  {tipo:"Transmissão",cat1:"Manutenção",cat2:"GMUD (POP)",cat3:"",cat4:"",sla:6},
+  {tipo:"Transmissão",cat1:"Manutenção",cat2:"GMUD (Externo)",cat3:"",cat4:"",sla:6},
+  {tipo:"Transmissão",cat1:"Manutenção",cat2:"Indisponível (TOTAL)",cat3:"",cat4:"",sla:4},
+  {tipo:"Transmissão",cat1:"Manutenção",cat2:"Interface Indisponível",cat3:"",cat4:"",sla:4},
+  {tipo:"Transmissão",cat1:"Manutenção",cat2:"Radio Indisponível",cat3:"",cat4:"",sla:4},
+  {tipo:"Transmissão",cat1:"Manutenção",cat2:"Sem energia (POP)",cat3:"",cat4:"",sla:4},
+  {tipo:"Transmissão",cat1:"Melhoria de Rede",cat2:"Construção (NOVO)",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Melhoria de Rede",cat2:"Expansão Periféricos Cliente",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Melhoria de Rede",cat2:"Expansão Rede Cliente",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Melhoria de Rede",cat2:"GMUD (POP)",cat3:"",cat4:"",sla:4},
+  {tipo:"Transmissão",cat1:"Melhoria de Rede",cat2:"GMUD (Externo)",cat3:"",cat4:"",sla:4},
+  {tipo:"Transmissão",cat1:"Melhoria de Rede",cat2:"Inserção Equipamento",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Melhoria de Rede",cat2:"Inserção Periférico",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Melhoria de Rede",cat2:"Instalação (Colocation)",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Preventiva (POP)",cat2:"Preventiva Corretiva",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Preventiva (POP)",cat2:"Preventiva Rotina",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Chamado Improcedente",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Cliente",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Clima/Fator Externo",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Comercial",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Delivery",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Documentação (APR/NR)",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Documentação (ART/DWG)",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Infraestrutura (Rede)",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Last Mile",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Logística",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva NOC",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva OEM",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Terceiro (DER/Cia Elétrica)",cat3:"",cat4:"",sla:24},
+  {tipo:"Transmissão",cat1:"Improdutiva",cat2:"Improdutiva Validação",cat3:"",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Visita Cliente",cat3:"Visita Cliente (Rompimento Interno)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Visita Cliente",cat3:"Visita Cliente (Teste Banda)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Visita Cliente",cat3:"Visita Cliente (Config. Equipamentos)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Visita Cliente",cat3:"Visita Cliente (Indisp. Voz)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Visita Cliente",cat3:"Visita Cliente (Indisp. Radio)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Visita Cliente",cat3:"Visita Cliente (Indisp. Firewall)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Visita Cliente",cat3:"Visita Cliente (Queima equipamento)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Visita Cliente",cat3:"Visita Cliente (Troca de Equipamento)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Chamado Improcedente",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Cliente Ausente",cat4:"Manhã",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Cliente Ausente",cat4:"Tarde",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Cliente Degradação de equipamento",cat4:"Equipamento Cliente",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Cliente Degradação de equipamento",cat4:"Equipamento Netturbo",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Cliente Falta de Conhecimento p/ teste",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Cliente Falta de Equipamento p/ teste",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Clima/Fator Externo",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Comercial",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Delivery",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Documentação (APR/NR)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Documentação (ART/DWG)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Infraestrutura (Rede)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Last Mile",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Logística",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva NOC",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva OEM",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Validação",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Firewall",cat4:"Novo Serviço",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Firewall",cat4:"Upgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Firewall",cat4:"Downgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"GPON",cat4:"Novo Serviço",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"GPON",cat4:"Upgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"GPON",cat4:"Downgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Last Mile",cat4:"Novo Serviço",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Last Mile",cat4:"Upgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Last Mile",cat4:"Downgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"PTP 10G",cat4:"Novo Serviço",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"PTP 10G",cat4:"Upgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"PTP 10G",cat4:"Downgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"PTP 1G",cat4:"Novo Serviço",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"PTP 1G",cat4:"Upgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"PTP 1G",cat4:"Downgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Rádio 2.4/5GHZ",cat4:"Novo Serviço",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Rádio 2.4/5GHZ",cat4:"Upgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Rádio 2.4/5GHZ",cat4:"Downgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Rádio Licenciado",cat4:"Novo Serviço",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Rádio Licenciado",cat4:"Upgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Rádio Licenciado",cat4:"Downgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Voz",cat4:"Novo Serviço",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Voz",cat4:"Upgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Voz",cat4:"Downgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"XGSPON",cat4:"Novo Serviço",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"XGSPON",cat4:"Upgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"XGSPON",cat4:"Downgrade",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Cabeamento Estruturado",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Rede Wireless (Interno)",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Ativação Cliente",cat3:"Rede Wireless (Externo)",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Vistoria",cat3:"Elaboração P.P.I",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Vistoria",cat3:"Elaboração Site Survey",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Chamado Improcedente",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Cliente",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Clima/Fator Externo",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Comercial",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Delivery",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Documentação (APR/NR)",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Documentação (ART/DWG)",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Infraestrutura (Rede)",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Last Mile",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Logística",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva NOC",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva OEM",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"Improdutiva Visita Cliente",cat3:"Improdutiva Validação",cat4:"",sla:24},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF (Rede Propria)",cat3:"Radio 2.4Ghz / 5.8Ghz Queimado",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF (Rede Propria)",cat3:"Troca de Periferico Alimentação",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF (Rede Propria)",cat3:"Rompimento de cabo LAN",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF (Rede Expandida - LM)",cat3:"Radio 2.4Ghz / 5.8Ghz Queimado",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF (Rede Expandida - LM)",cat3:"Troca de Periferico Alimentação",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF (Rede Expandida - LM)",cat3:"Rompimento de cabo LAN",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF / LTE",cat3:"Radio LTE 4G Queimado",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF / LTE",cat3:"Troca de Periferico Alimentação",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF / LTE",cat3:"Rompimento de cabo LAN",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF / FWA",cat3:"Radio LTE 5G FWA Queimado",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF / FWA",cat3:"Troca de Periferico Alimentação",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF / FWA",cat3:"Rompimento de cabo LAN",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF - STAR LEO",cat3:"Troca de Antena Satelital (STARLEO)",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF - STAR LEO",cat3:"Troca de Periferico Alimentação",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD-Manutenção - O&M",cat2:"REDE RF - STAR LEO",cat3:"Rompimento de cabo LAN",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"GTD -Ativação - REDE RF",cat3:"Radio 2.4Ghz / 5.8Ghz (Rede Propria)",cat4:"Novo Produto",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"GTD -Ativação - REDE RF",cat3:"Radio 2.4Ghz / 5.8Ghz (Rede Propria)",cat4:"Upgrade",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"GTD -Ativação - REDE RF",cat3:"Radio 2.4Ghz / 5.8Ghz (Rede Propria)",cat4:"Downgrade",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"GTD -Ativação - REDE RF",cat3:"Radio 2.4Ghz / 5.8Ghz (Rede Expandida - LM)",cat4:"Novo Produto",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"GTD -Ativação - REDE RF",cat3:"Radio 2.4Ghz / 5.8Ghz (Rede Expandida - LM)",cat4:"Upgrade",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"GTD -Ativação - REDE RF",cat3:"Radio 2.4Ghz / 5.8Ghz (Rede Expandida - LM)",cat4:"Downgrade",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"GTD -Ativação - REDE RF",cat3:"REDE RF / LTE",cat4:"Novo Produto",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"GTD -Ativação - REDE RF",cat3:"REDE RF / LTE",cat4:"Upgrade",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"GTD -Ativação - REDE RF",cat3:"REDE RF / LTE",cat4:"Downgrade",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF / FWA",cat3:"Novo Produto",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF / FWA",cat3:"Upgrade",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF / FWA",cat3:"Downgrade",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF - STAR LEO",cat3:"Novo Produto",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF - STAR LEO",cat3:"Upgrade",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF - STAR LEO",cat3:"Downgrade",cat4:"",sla:4},
+  {tipo:"Preventiva",cat1:"Preventiva de Rede",cat2:"Preventiva Rede (Externa)",cat3:"",cat4:"",sla:8},
+  {tipo:"Preventiva",cat1:"Preventiva de Rede",cat2:"Preventiva Rede (Pós Massiva)",cat3:"",cat4:"",sla:8},
+  {tipo:"Preventiva",cat1:"Preventiva de Rede",cat2:"Preventiva Rede (Corretiva Cliente)",cat3:"",cat4:"",sla:8},
+  {tipo:"Preventiva",cat1:"Acompanhamento",cat2:"Acompanhamento (Troca de Poste)",cat3:"",cat4:"",sla:8},
+  {tipo:"Preventiva",cat1:"Acompanhamento",cat2:"Acompanhamento (Comp. Eletrica)",cat3:"",cat4:"",sla:8},
+  {tipo:"Preventiva",cat1:"Lançamento (Preventivo)",cat2:"Lançamento Cliente",cat3:"",cat4:"",sla:8},
+  {tipo:"Preventiva",cat1:"Lançamento (Preventivo)",cat2:"Lançamento Melhorias de Rede",cat3:"",cat4:"",sla:8},
+  {tipo:"Preventiva",cat1:"Lançamento (Preventivo)",cat2:"Lançamento Manutenção",cat3:"",cat4:"",sla:8},
+  {tipo:"Preventiva",cat1:"Lançamento (Preventivo)",cat2:"Lançamento Corretivo Pontual",cat3:"",cat4:"",sla:8},
+  {tipo:"Medição",cat1:"Cadastro Geogrid - O&M",cat2:"Cadastro Implantação",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Cadastro Geogrid - O&M",cat2:"Cadastro Manutenção",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Cadastro Geogrid - O&M",cat2:"Cadastro Melhoria Rede",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Cadastro Geogrid - O&M",cat2:"Cadastro Preventiva",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Cadastro Geogrid - O&M",cat2:"Cadastro Pós Vendas",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Cadastro Geogrid - O&M",cat2:"Correção de Cadastro",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Cadastro Geogrid - O&M",cat2:"Exclusão de Cadastro (Cancelamento)",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Retirada Equipamento",cat2:"Retirada Realizada",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Retirada Equipamento",cat2:"Retirada Não Realizada",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Retirada Equipamento",cat2:"Retirada Pendente",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Vistoria",cat2:"PPI",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Vistoria",cat2:"Inspeção de Qualidade",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Vistoria",cat2:"Fiscalização de Campo",cat3:"",cat4:"",sla:24},
+  {tipo:"Implantação",cat1:"Lançamento Externo",cat2:"Lançamento Diurno",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Lançamento Externo",cat2:"Lançamento Noturno",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Lançamento Externo",cat2:"Lançamento Subterrâneo",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Chamado Improcedente",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Cliente",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Clima/Fator Externo",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Comercial",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Delivery",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Documentação (APR/NR)",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Documentação (ART/DWG)",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Infraestrutura (Rede)",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Last Mile",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Logística",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva NOC",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva OEM",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Terceiro (DER/Cia Elétrica)",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Externo",cat2:"Improdutiva Validação",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Lançamento Interno",cat2:"Lançamento Diurno",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Lançamento Interno",cat2:"Lançamento Noturno",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Lançamento Interno",cat2:"Lançamento Subterrâneo",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Lançamento Interno",cat2:"Lançamento com Plataforma",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Lançamento Interno",cat2:"Lançamento Prédio Vertical",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Chamado Improcedente",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Cliente",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Clima/Fator Externo",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Comercial",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Delivery",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Documentação (APR/NR)",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Documentação (ART/DWG)",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Infraestrutura (Rede)",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Last Mile",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Logística",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva NOC",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva OEM",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Terceiro (DER/Cia Elétrica)",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Lançamento Interno",cat2:"Improdutiva Validação",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Extensão de Fibra",cat2:"Extensão Diurno",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Extensão de Fibra",cat2:"Extensão Noturno",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Extensão de Fibra",cat2:"Extensão Subterrâneo",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Extensão de Fibra",cat2:"Extensão com Plataforma",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Extensão de Fibra",cat2:"Extensão Prédio Vertical",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Extensão de Fibra",cat2:"Improdutiva Clima/Fator Externo",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Extensão de Fibra",cat2:"Improdutiva OEM",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Extensão de Fibra",cat2:"Improdutiva Terceiro (DER/Cia Elétrica)",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Extensão de Fibra",cat2:"Improdutiva Infraestrutura (Rede)",cat3:"",cat4:"",sla:48},
+  {tipo:"Implantação",cat1:"Improdutiva Extensão de Fibra",cat2:"Improdutiva Chamado Improcedente",cat3:"",cat4:"",sla:48},
+  {tipo:"Pós Vendas",cat1:"Alteração de Rota Externa",cat2:"",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Instalação de Dupla Abordagem / Redundante",cat2:"",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Migração de Tecnologia",cat2:"",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Mudança de Endereço",cat2:"",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Mudança de Ponto",cat2:"",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Visita Cliente",cat2:"Visita Cliente (Rompimento Interno)",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Visita Cliente",cat2:"Visita Cliente (Teste Banda)",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Visita Cliente",cat2:"Visita Cliente (Config. Equipamentos)",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Visita Cliente",cat2:"Visita Cliente (Troca de Equipamento)",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Chamado Improcedente",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Cliente",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Clima/Fator Externo",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Comercial",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Delivery",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Documentação (APR/NR)",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Documentação (ART/DWG)",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Infraestrutura (Rede)",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Last Mile",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Logística",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva NOC",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva OEM",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Terceiro (DER/Cia Elétrica)",cat3:"",cat4:"",sla:24},
+  {tipo:"Pós Vendas",cat1:"Improdutiva Pós Vendas",cat2:"Improdutiva Validação",cat3:"",cat4:"",sla:24}
+];
+
+// Tipos de Solicitação em que o bloco de CEO + "Perguntas rápidas de fusão"
+// aparece — antes o gatilho era Ocorrência ROMPIMENTO/MASSIVA, agora é o Tipo
+// de Solicitação (fixo, escolhido no despacho) pros modelos novos.
+const TIPOS_COM_FUSAO = ['Manutenção','Preventiva','Transmissão','Implantação'];
+
+let CLASSIFICACAO_STATE = {}; // rowIndex -> {tipo,cat1,cat2,cat3,cat4} (modelo novo)
+
+// Mesma lógica já usada em index.html/dashboard_gestao.html pra ler de volta
+// uma data/hora salva como texto (toLocaleString('pt-BR')).
+function parseDataAmpla(val){
+  if(!val) return null;
+  if(val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  const m = String(val).match(/(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2})?:?(\d{2})?/);
+  if(!m) return null;
+  const d = new Date(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]||0), Number(m[5]||0));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Mostra o Prazo Limite (SLA calculado na criação, ver criarAtividade no backend)
+// no card — vermelho se já estourou, mesmo padrão do index.html.
+function blocoPrazoLimite(a){
+  const prazo = a['Prazo Limite'];
+  if(!prazo) return '';
+  const prazoDate = parseDataAmpla(prazo);
+  const estourado = prazoDate && prazoDate.getTime() < Date.now();
+  return `<div class="atv-meta" style="color:${estourado?'var(--red)':'var(--accent)'}">⏱ Prazo: ${prazo}${estourado?' — ESTOURADO':''}</div>`;
+}
+
+// Popula um dos grupos de chips de Categoria (1-4) a partir das opções calculadas
+// em renderClassificacaoChips — reaproveita a mesma classe visual .causa-grid/
+// .causa-item já usada na Causa Principal do modelo antigo.
+function renderChipGroup(rowIndex, prefixo, opcoes, valorAtivo, nivel){
+  const cont = document.getElementById(prefixo+'-'+rowIndex);
+  if(!cont) return;
+  cont.innerHTML = opcoes.map(o=>`<div class="causa-item${o===valorAtivo?' active':''}" data-causa="${o}" onclick="selecionarCategoria(${rowIndex},'${nivel}','${o.replace(/'/g,"\\'")}')">${o}</div>`).join('');
+}
+
+// Recalcula em cascata Categoria 1→2→3→4 a partir do CLASSIFICACAO_STATE atual
+// (igual atualizarClassificacao em index.html, só que em chips em vez de
+// select) — "cercado": só mostra combinações que existem de fato na matriz, e
+// se o valor guardado não bate com nenhuma opção válida cai pro primeiro item.
+function renderClassificacaoChips(rowIndex){
+  const st = CLASSIFICACAO_STATE[rowIndex];
+  if(!st) return;
+  let rows = MATRIZ_SLA.filter(r=>r.tipo===st.tipo);
+
+  const op1 = [...new Set(rows.map(r=>r.cat1).filter(Boolean))];
+  if(op1.indexOf(st.cat1)===-1) st.cat1 = op1[0] || '';
+  renderChipGroup(rowIndex, 'classCat1', op1, st.cat1, 'cat1');
+
+  rows = st.cat1 ? rows.filter(r=>r.cat1===st.cat1) : rows;
+  const op2 = st.cat1 ? [...new Set(rows.map(r=>r.cat2).filter(Boolean))] : [];
+  if(op2.indexOf(st.cat2)===-1) st.cat2 = op2[0] || '';
+  renderChipGroup(rowIndex, 'classCat2', op2, st.cat2, 'cat2');
+
+  rows = st.cat2 ? rows.filter(r=>r.cat2===st.cat2) : rows;
+  const op3 = st.cat2 ? [...new Set(rows.map(r=>r.cat3).filter(Boolean))] : [];
+  const campoCat3 = document.getElementById('classCampoCat3-'+rowIndex);
+  if(campoCat3) campoCat3.style.display = op3.length ? 'block' : 'none';
+  if(op3.indexOf(st.cat3)===-1) st.cat3 = op3[0] || '';
+  renderChipGroup(rowIndex, 'classCat3', op3, st.cat3, 'cat3');
+
+  rows = st.cat3 ? rows.filter(r=>r.cat3===st.cat3) : rows;
+  const op4 = st.cat3 ? [...new Set(rows.map(r=>r.cat4).filter(Boolean))] : [];
+  const campoCat4 = document.getElementById('classCampoCat4-'+rowIndex);
+  if(campoCat4) campoCat4.style.display = op4.length ? 'block' : 'none';
+  if(op4.indexOf(st.cat4)===-1) st.cat4 = op4[0] || '';
+  renderChipGroup(rowIndex, 'classCat4', op4, st.cat4, 'cat4');
+}
+
+window.selecionarCategoria = function(rowIndex, nivel, valor){
+  const st = CLASSIFICACAO_STATE[rowIndex];
+  if(!st) return;
+  st[nivel] = valor;
+  if(nivel==='cat1'){ st.cat2=''; st.cat3=''; st.cat4=''; }
+  else if(nivel==='cat2'){ st.cat3=''; st.cat4=''; }
+  else if(nivel==='cat3'){ st.cat4=''; }
+  renderClassificacaoChips(rowIndex);
+  salvarRascunho(rowIndex);
+};
+
+// Chamado na inicialização do card (ver renderAtividades) pra atividades do
+// modelo novo — popula o estado a partir do que veio do despacho (ou já
+// ajustado antes pelo técnico) e desenha os chips.
+function inicializarClassificacaoNova(rowIndex, a){
+  CLASSIFICACAO_STATE[rowIndex] = {
+    tipo: a['Tipo de Solicitação'] || '',
+    cat1: a['Categoria 1'] || '', cat2: a['Categoria 2'] || '',
+    cat3: a['Categoria 3'] || '', cat4: a['Categoria 4'] || ''
+  };
+  renderClassificacaoChips(rowIndex);
+}
+
 let ATIVIDADES_CACHE = [];
 
 function renderAtividades(atividades){
@@ -666,6 +1068,7 @@ function renderAtividades(atividades){
       <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="atv-cliente">${a['Cliente']||'—'}</div>
       <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
+      ${blocoPrazoLimite(a)}
       ${infoApoio}
       ${blocoDespacho}
       <span class="atv-status ${statusClass}">${statusLabel}</span>
@@ -676,7 +1079,11 @@ function renderAtividades(atividades){
   // Inicializa a lista de causas e o bloco de CEO de cada formulário aberto (não dá pra rodar script via innerHTML)
   atividades.forEach(a=>{
     if(a['Status'] === 'EM_CAMPO' || a['Status'] === 'NAO_VALIDADA'){
-      renderCausasTecnico(a.rowIndex, a['Causa'] || '');
+      if(a['Tipo de Solicitação']){
+        inicializarClassificacaoNova(a.rowIndex, a);
+      } else {
+        renderCausasTecnico(a.rowIndex, a['Causa'] || '');
+      }
       if(a['CEO']){
         const ceoCodigo = CEO_LABELS_REVERSA[a['CEO']] || a['CEO'];
         document.querySelectorAll(`#ceo-opts-${a.rowIndex} .ceo-opt`).forEach(el=>el.classList.toggle('active', el.dataset.ceo===ceoCodigo));
@@ -997,7 +1404,18 @@ window.salvarECopiarApoio = async function(rowIndex){
   showToast('Salvo e copiado! Cole no seu grupo.');
 };
 
+// Atividade do modelo novo (tem 'Tipo de Solicitação', ver MATRIZ_SLA) usa
+// Categoria em cascata em vez do chip livre de Ocorrência; Medição tem
+// formulário próprio, mais simples. Atividade antiga (sem 'Tipo de
+// Solicitação') continua no formulário de sempre, sem nenhuma mudança.
 function renderFormOcorrencia(a){
+  const tipoSolicitacao = a['Tipo de Solicitação'];
+  if(!tipoSolicitacao) return renderFormOcorrenciaAntigo(a);
+  if(tipoSolicitacao === 'Medição') return renderFormMedicaoSimples(a);
+  return renderFormOcorrenciaNovo(a);
+}
+
+function renderFormOcorrenciaAntigo(a){
   const tipoAtual = a['Ocorrência'] || '';
   const ceoAtual = CEO_LABELS_REVERSA[a['CEO']] || a['CEO'] || '';
   const tipos = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO','IMPLANTAÇÃO','GTD','EXTENSÃO DE FIBRA','TRANSMISSÃO'];
@@ -1043,6 +1461,101 @@ function renderFormOcorrencia(a){
       <div>
         <label>Melhoria de Rede</label>
         <textarea id="melhoria-${a.rowIndex}" placeholder="O que foi feito para melhorar a rede...">${a['Melhoria']||''}</textarea>
+      </div>
+      <button class="btn-acao btn-validar" onclick="solicitarValidacao(${a.rowIndex})">Solicitar Validação NOC</button>
+    </div>
+  `;
+}
+
+function renderFormOcorrenciaNovo(a){
+  const tipoSolicitacao = a['Tipo de Solicitação'];
+  const ceoAtual = CEO_LABELS_REVERSA[a['CEO']] || a['CEO'] || '';
+  const isFibra = TIPOS_COM_FUSAO.includes(tipoSolicitacao);
+  return `
+    <div class="form-ocorrencia" id="form-${a.rowIndex}">
+      <div>
+        <label>Tipo de Solicitação</label>
+        <div class="atv-meta" style="font-weight:600">${tipoSolicitacao}</div>
+      </div>
+      <div>
+        <label>Categoria 1</label>
+        <div class="causa-grid" id="classCat1-${a.rowIndex}"></div>
+      </div>
+      <div>
+        <label>Categoria 2</label>
+        <div class="causa-grid" id="classCat2-${a.rowIndex}"></div>
+      </div>
+      <div id="classCampoCat3-${a.rowIndex}" style="display:none">
+        <label>Categoria 3</label>
+        <div class="causa-grid" id="classCat3-${a.rowIndex}"></div>
+      </div>
+      <div id="classCampoCat4-${a.rowIndex}" style="display:none">
+        <label>Categoria 4</label>
+        <div class="causa-grid" id="classCat4-${a.rowIndex}"></div>
+      </div>
+      <div id="local-falha-${a.rowIndex}">
+        <label>Local da Falha</label>
+        ${gpsWidget(a.rowIndex,'falha', a['GPS Falha']||'')}
+      </div>
+      <div id="ceo-block-${a.rowIndex}" style="display:${isFibra?'block':'none'}">
+        <label>Tipo de CEO Utilizado</label>
+        <div class="ceo-options" id="ceo-opts-${a.rowIndex}">
+          <div class="ceo-opt${ceoAtual==='nova'?' active':''}" data-ceo="nova" onclick="selecionarCEO(${a.rowIndex},'nova')">Caixa Nova → Nova (2 novas)</div>
+          <div class="ceo-opt${ceoAtual==='existente'?' active':''}" data-ceo="existente" onclick="selecionarCEO(${a.rowIndex},'existente')">Caixa Nova → Existente</div>
+          <div class="ceo-opt${ceoAtual==='existente-existente'?' active':''}" data-ceo="existente-existente" onclick="selecionarCEO(${a.rowIndex},'existente-existente')">Caixa Existente → Existente</div>
+        </div>
+      </div>
+      <div id="local-ceo-extra-${a.rowIndex}" style="display:none"></div>
+      <div id="fusao-block-${a.rowIndex}" style="display:none"></div>
+      <div>
+        <label>Houve uso de material?</label>
+        <div class="toggle-row">
+          <button type="button" class="toggle-btn" id="mat-sim-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, true)">Sim</button>
+          <button type="button" class="toggle-btn" id="mat-nao-${a.rowIndex}" onclick="setMaterialTecnico(${a.rowIndex}, false)">Não</button>
+        </div>
+        <div id="listamat-${a.rowIndex}"></div>
+      </div>
+      <div>
+        <label>Solução Realizada</label>
+        <textarea id="solucao-${a.rowIndex}" placeholder="O que foi feito para resolver...">${a['Solução']||''}</textarea>
+      </div>
+      <div>
+        <label>Melhoria de Rede</label>
+        <textarea id="melhoria-${a.rowIndex}" placeholder="O que foi feito para melhorar a rede...">${a['Melhoria']||''}</textarea>
+      </div>
+      <button class="btn-acao btn-validar" onclick="solicitarValidacao(${a.rowIndex})">Solicitar Validação NOC</button>
+    </div>
+  `;
+}
+
+// Medição - O&M (cadastro Geogrid, retirada de equipamento, vistoria) — não tem
+// nada a ver com a tela medicao.html (financeiro). Formulário mais simples:
+// sem GPS de falha, sem CEO/fusão, sem materiais — só a classificação e uma
+// observação livre.
+function renderFormMedicaoSimples(a){
+  const tipoSolicitacao = a['Tipo de Solicitação'];
+  return `
+    <div class="form-ocorrencia" id="form-${a.rowIndex}">
+      <div>
+        <label>Tipo de Solicitação</label>
+        <div class="atv-meta" style="font-weight:600">${tipoSolicitacao}</div>
+      </div>
+      <div>
+        <label>Categoria 1</label>
+        <div class="causa-grid" id="classCat1-${a.rowIndex}"></div>
+      </div>
+      <div>
+        <label>Categoria 2</label>
+        <div class="causa-grid" id="classCat2-${a.rowIndex}"></div>
+      </div>
+      <div id="classCampoCat3-${a.rowIndex}" style="display:none">
+        <label>Categoria 3</label>
+        <div class="causa-grid" id="classCat3-${a.rowIndex}"></div>
+      </div>
+      <div id="classCampoCat4-${a.rowIndex}" style="display:none"></div>
+      <div>
+        <label>Observação</label>
+        <textarea id="solucao-${a.rowIndex}" placeholder="O que foi feito / observado...">${a['Solução']||''}</textarea>
       </div>
       <button class="btn-acao btn-validar" onclick="solicitarValidacao(${a.rowIndex})">Solicitar Validação NOC</button>
     </div>
@@ -1819,23 +2332,46 @@ function pegarCausaAtual(rowIndex){
 }
 
 window.solicitarValidacao = async function(rowIndex){
-  const chipAtivo = document.querySelector(`#chips-${rowIndex} .chip.active`);
-  const tipo = chipAtivo ? chipAtivo.dataset.tipo : '';
-  const causa = pegarCausaAtual(rowIndex);
+  const atividadeAtual = ATIVIDADES_CACHE.find(x=>x.rowIndex===rowIndex) || {};
+  const tipoSolicitacao = atividadeAtual['Tipo de Solicitação'] || '';
+  const usaModeloNovo = !!tipoSolicitacao;
+  const isMedicao = tipoSolicitacao === 'Medição';
+
+  let tipo, causa, categorias = null;
+  if(usaModeloNovo){
+    tipo = tipoSolicitacao;
+    const st = CLASSIFICACAO_STATE[rowIndex] || {};
+    categorias = { categoria1: st.cat1||'', categoria2: st.cat2||'', categoria3: st.cat3||'', categoria4: st.cat4||'' };
+    // Causa (compatibilidade com dashboard_gestao.html) é recalculada no backend
+    // a partir das categorias — ver derivarOcorrenciaECausa no Apps Script.
+    causa = [categorias.categoria2, categorias.categoria3, categorias.categoria4].filter(Boolean).join(' - ');
+  } else {
+    const chipAtivo = document.querySelector(`#chips-${rowIndex} .chip.active`);
+    tipo = chipAtivo ? chipAtivo.dataset.tipo : '';
+    causa = pegarCausaAtual(rowIndex);
+  }
+
   const solucao = document.getElementById('solucao-'+rowIndex).value.trim();
-  const melhoria = document.getElementById('melhoria-'+rowIndex).value.trim();
+  const melhoriaEl = document.getElementById('melhoria-'+rowIndex);
+  const melhoria = melhoriaEl ? melhoriaEl.value.trim() : '';
   const estadoMat = MATERIAIS_STATE[rowIndex];
 
-  if(!tipo){ showToast('Selecione o tipo de ocorrência.'); return; }
-  // Causa é obrigatória, exceto pros tipos de causa livre opcional (mesma regra do RFO Técnico original)
-  if(!TIPOS_CAUSA_LIVRE_OPCIONAL.includes(tipo) && !causa){
-    showToast('Selecione a Causa Principal.'); return;
+  if(usaModeloNovo){
+    if(!categorias.categoria1){ showToast('Selecione a Categoria 1.'); return; }
+  } else {
+    if(!tipo){ showToast('Selecione o tipo de ocorrência.'); return; }
+    // Causa é obrigatória, exceto pros tipos de causa livre opcional (mesma regra do RFO Técnico original)
+    if(!TIPOS_CAUSA_LIVRE_OPCIONAL.includes(tipo) && !causa){
+      showToast('Selecione a Causa Principal.'); return;
+    }
   }
-  if(!estadoMat || estadoMat.usaMat === null || estadoMat.usaMat === undefined){ showToast('Informe se houve uso de material.'); return; }
-  if(!solucao){ showToast('Preencha a Solução Realizada.'); return; }
-  if(!melhoria){ showToast('Preencha a Melhoria de Rede.'); return; }
+  if(!isMedicao && (!estadoMat || estadoMat.usaMat === null || estadoMat.usaMat === undefined)){
+    showToast('Informe se houve uso de material.'); return;
+  }
+  if(!solucao){ showToast(isMedicao ? 'Preencha a Observação.' : 'Preencha a Solução Realizada.'); return; }
+  if(!isMedicao && !melhoria){ showToast('Preencha a Melhoria de Rede.'); return; }
 
-  const isFibra = (tipo === 'ROMPIMENTO' || tipo === 'MASSIVA');
+  const isFibra = usaModeloNovo ? TIPOS_COM_FUSAO.includes(tipoSolicitacao) : (tipo === 'ROMPIMENTO' || tipo === 'MASSIVA');
   let ceo = '';
   if(isFibra){
     ceo = CEO_STATE[rowIndex];
@@ -1860,7 +2396,7 @@ window.solicitarValidacao = async function(rowIndex){
   }
   if(ceo === 'nova' && !/^\d{4}$/.test(numeroCeoB)){ showToast('Informe o Número da CEO B (4 dígitos).'); return; }
 
-  const materiais = montarStringMateriais(rowIndex);
+  const materiais = isMedicao ? '' : montarStringMateriais(rowIndex);
 
   // Perguntas rápidas de fusão — só existem em ROMPIMENTO/MASSIVA com CEO selecionada.
   // Não existe mais "Cor com Cor?" — o diagrama fica sempre disponível, então só
@@ -1889,10 +2425,13 @@ window.solicitarValidacao = async function(rowIndex){
   }));
   const fusaoPareamento = diagramasSerializados.length ? JSON.stringify(diagramasSerializados) : '';
 
+  const payloadBase = { acao:'SALVAR_OCORRENCIA', rowIndex, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, fusaoPareamento, quantidadeCeo };
+  const payload = usaModeloNovo ? { ...payloadBase, ...categorias } : { ...payloadBase, ocorrencia: tipo, causa };
+
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'SALVAR_OCORRENCIA', rowIndex, ocorrencia:tipo, causa, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, fusaoPareamento, quantidadeCeo })
+      body: JSON.stringify(payload)
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao salvar.')); return; }

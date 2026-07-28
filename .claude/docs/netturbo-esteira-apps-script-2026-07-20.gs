@@ -61,7 +61,17 @@ const HEADERS_ESTEIRA = [
   // item por CEO trabalhada (numeroCeo, nomenclaturaA/B, pares de fibra ligados),
   // ver renderFusaoDiagramaBloco em tecnico.html. 'Quantidade CEO Trabalhadas' é
   // sempre preenchido junto (não só quando "Não") — quantas caixas o técnico mexeu.
-  'Tipo Cabo Fusionado','Fusionou Todas','Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas'
+  'Tipo Cabo Fusionado','Fusionou Todas','Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas',
+  // ── Classificação por Tipo de Solicitação / Categoria (matriz oficial do setor,
+  // ver MATRIZ_SLA em index.html/tecnico.html) — escolhida no despacho ('Tipo de
+  // Solicitação' trava, não muda depois), Categoria 1-4 o técnico pode ajustar
+  // dentro das combinações válidas da matriz. 'SLA Horas'/'Prazo Limite' são
+  // calculados uma vez na criação (ver criarAtividade) e nunca recalculados depois,
+  // mesmo que a Categoria mude. 'Ocorrência'/'Causa' (colunas antigas, acima)
+  // continuam sendo preenchidas também — derivadas dessa classificação nova, só
+  // pra não quebrar IRR/MTTR/rankings do dashboard_gestao.html que já dependem
+  // delas; atividade criada antes dessa mudança não tem nada nessas colunas novas.
+  'Tipo de Solicitação','Categoria 1','Categoria 2','Categoria 3','Categoria 4','SLA Horas','Prazo Limite'
 ];
 
 function garantirAba(ss, nome, headers, corFundo, corTexto) {
@@ -165,6 +175,41 @@ function doGet(e) {
   return resposta('ok', { sistema: 'Netturbo Esteira de Despacho' });
 }
 
+// Prazo Limite = momento da criação + SLA (horas) — calculado UMA VEZ aqui e nunca
+// recalculado depois, mesmo que a Categoria seja ajustada pelo técnico (ver
+// salvarOcorrencia). 'horas' vem de MATRIZ_SLA (front-end) já como número.
+function calcularPrazoLimite(horas) {
+  const h = Number(horas) || 0;
+  if (!h) return '';
+  return new Date(Date.now() + h * 3600000).toLocaleString('pt-BR');
+}
+
+// Deriva 'Ocorrência'/'Causa' (colunas antigas) a partir da classificação nova
+// (Tipo de Solicitação/Categoria 1-4), só pra manter IRR/MTTR/rankings do
+// dashboard_gestao.html funcionando sem mudança pra atividades novas — esse
+// dashboard não foi alterado nesta entrega e continua lendo essas duas colunas.
+// Tipos sem equivalente direto no enum antigo (Pós Vendas, Medição, e ramos de
+// Manutenção que não são Massiva/Rompimento) ficam com Ocorrência vazia de
+// propósito — não força um mapeamento errado; a classificação completa continua
+// disponível nas colunas novas de qualquer forma.
+function derivarOcorrenciaECausa(tipoSolicitacao, cat1, cat2, cat3, cat4) {
+  let ocorrencia = '';
+  const t = String(tipoSolicitacao || '');
+  const c1 = String(cat1 || ''), c2 = String(cat2 || '');
+  if (t === 'Manutenção') {
+    if (c2.indexOf('Massiva') !== -1) ocorrencia = 'MASSIVA';
+    else if (c2.indexOf('Rompimento') !== -1) ocorrencia = 'ROMPIMENTO';
+  } else if (t === 'Preventiva') { ocorrencia = 'PREVENTIVA'; }
+  else if (t === 'Transmissão') { ocorrencia = 'TRANSMISSÃO'; }
+  else if (t === 'Implantação') { ocorrencia = (c1.indexOf('Extensão de Fibra') !== -1) ? 'EXTENSÃO DE FIBRA' : 'IMPLANTAÇÃO'; }
+  else if (t === 'GTD') { ocorrencia = 'GTD'; }
+  // Pós Vendas / Medição: sem equivalente, fica vazio mesmo.
+
+  const causaPartes = [cat2, cat3, cat4].filter(function(v){ return v; });
+  const causa = causaPartes.join(' - ');
+  return { ocorrencia: ocorrencia, causa: causa };
+}
+
 // ── CRIAR ATIVIDADE (a partir da máscara já processada no front-end) ──
 function criarAtividade(ss, data) {
   const sheet = garantirAba(ss, ABA_ESTEIRA, HEADERS_ESTEIRA, '#1a1200', '#ffa000');
@@ -173,6 +218,8 @@ function criarAtividade(ss, data) {
   sheet.getRange(row, idxDataNoc, 1, 1).setNumberFormat('@STRING@'); // força texto, evita Sheets converter "17/07" em data
 
   const id = gerarId();
+  const derivado = derivarOcorrenciaECausa(data.tipoSolicitacao, data.categoria1, data.categoria2, data.categoria3, data.categoria4);
+  const prazoLimite = calcularPrazoLimite(data.slaHoras);
   const valores = [
     id,
     new Date().toLocaleString('pt-BR'),
@@ -190,7 +237,7 @@ function criarAtividade(ss, data) {
     'AGUARDANDO_DESPACHO',
     '', '', '',   // Empresa, Técnico, Timestamp Despacho
     '', '',       // Hora Início, Hora Chegada
-    '', '', '', '', // Ocorrência, Causa, Solução, Materiais
+    derivado.ocorrencia, derivado.causa, '', '', // Ocorrência, Causa, Solução, Materiais
     '', '', '',   // Timestamp Validação, Validado Por, Motivo Não Validado
     '', '',       // MTTR, MTTD
     '',           // Melhoria
@@ -200,6 +247,20 @@ function criarAtividade(ss, data) {
     data.agendamento === 'Sim' ? 'Sim' : 'Não'  // Agendamento
   ];
   sheet.getRange(row, 1, 1, valores.length).setValues([valores]);
+
+  // Classificação nova (Tipo de Solicitação/Categoria 1-4/SLA/Prazo) — colunas no
+  // final do array, gravadas por nome (idx) pra não depender de contar posição
+  // fixa até lá (a função só escreveu, acima, as colunas até 'Agendamento').
+  const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
+  sheet.getRange(row, idx('Tipo de Solicitação')).setValue(data.tipoSolicitacao || '');
+  sheet.getRange(row, idx('Categoria 1')).setValue(data.categoria1 || '');
+  sheet.getRange(row, idx('Categoria 2')).setValue(data.categoria2 || '');
+  sheet.getRange(row, idx('Categoria 3')).setValue(data.categoria3 || '');
+  sheet.getRange(row, idx('Categoria 4')).setValue(data.categoria4 || '');
+  sheet.getRange(row, idx('SLA Horas')).setValue(data.slaHoras || '');
+  sheet.getRange(row, idx('Prazo Limite'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(row, idx('Prazo Limite')).setValue(prazoLimite);
+
   return resposta('ok', { id: id });
 }
 
@@ -852,8 +913,25 @@ function salvarOcorrencia(ss, data) {
   if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
   const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
 
-  sheet.getRange(rowIndex, idx('Ocorrência')).setValue(data.ocorrencia || '');
-  sheet.getRange(rowIndex, idx('Causa')).setValue(data.causa || '');
+  // Atividade no modelo novo (Tipo de Solicitação/Categoria, ver MATRIZ_SLA) manda
+  // categoria1-4 — o técnico pode ter ajustado a Categoria em relação ao que o
+  // despacho escolheu, então 'Ocorrência'/'Causa' (compatibilidade com
+  // dashboard_gestao.html) são recalculadas aqui a partir do que foi ajustado.
+  // Atividade antiga (antes dessa mudança, sem Categoria) continua mandando
+  // ocorrencia/causa livre como sempre — nada muda pra ela.
+  if (data.categoria1 !== undefined) {
+    const tipoSolicitacaoAtual = sheet.getRange(rowIndex, idx('Tipo de Solicitação')).getValue();
+    const derivado = derivarOcorrenciaECausa(tipoSolicitacaoAtual, data.categoria1, data.categoria2, data.categoria3, data.categoria4);
+    sheet.getRange(rowIndex, idx('Categoria 1')).setValue(data.categoria1 || '');
+    sheet.getRange(rowIndex, idx('Categoria 2')).setValue(data.categoria2 || '');
+    sheet.getRange(rowIndex, idx('Categoria 3')).setValue(data.categoria3 || '');
+    sheet.getRange(rowIndex, idx('Categoria 4')).setValue(data.categoria4 || '');
+    sheet.getRange(rowIndex, idx('Ocorrência')).setValue(derivado.ocorrencia);
+    sheet.getRange(rowIndex, idx('Causa')).setValue(derivado.causa);
+  } else {
+    sheet.getRange(rowIndex, idx('Ocorrência')).setValue(data.ocorrencia || '');
+    sheet.getRange(rowIndex, idx('Causa')).setValue(data.causa || '');
+  }
   sheet.getRange(rowIndex, idx('Solução')).setValue(data.solucao || '');
   sheet.getRange(rowIndex, idx('Materiais')).setValue(data.materiais || '');
   sheet.getRange(rowIndex, idx('Melhoria')).setValue(data.melhoria || '');
@@ -1946,7 +2024,8 @@ function adicionarColunasNovas() {
     'LPU Apoio NF URL','LPU Apoio Timestamp NF','LPU Apoio Pago Por','LPU Apoio Timestamp Pago',
     'LPU Motivo Reprovação NF','LPU Apoio Motivo Reprovação NF',
     'Anexo Despacho URL','Anexo Despacho Nome','Mensagem Despacho','Link Medição','Anexos Despacho',
-    'Tipo Cabo Fusionado','Fusionou Todas','Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas'
+    'Tipo Cabo Fusionado','Fusionou Todas','Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas',
+    'Tipo de Solicitação','Categoria 1','Categoria 2','Categoria 3','Categoria 4','SLA Horas','Prazo Limite'
   ];
   novos.forEach(h => {
     if (headerRow.indexOf(h) === -1) {
