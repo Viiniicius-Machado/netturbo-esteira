@@ -61,15 +61,20 @@ Fase 2 do fluxo de LPU: emissão de Nota Fiscal e pagamento. Acesso de técnicos
 - Histórico de fechamentos já pagos (`PAGO`), com data da confirmação.
 
 ### `dashboard_gestao.html` — Dashboard de Gestão
-Painel gerencial para acompanhamento de indicadores. Acesso restrito à liderança.
+Painel gerencial das **outras áreas** (Preventiva, Transmissão, Implantação, GTD, Pós Vendas, Medição) — Manutenção (Rompimento/Massiva/Acompanhamento-Fiscalização/REDE RF) tem dashboard próprio, ver `dashboard_manutencao.html` abaixo, e não aparece aqui (filtra fora `Tipo de Solicitação === 'Manutenção'`, pra não duplicar o mesmo indicador nos dois lugares). Acesso restrito à liderança.
 - Filtro por mês e KPIs gerais da operação (pipeline de status).
-- Eficiência (SLA), MTTR, MTTD e TMC médios contra a meta — cada card é clicável e abre uma sub-página com as 3 atividades mais rápidas e as 3 mais críticas daquele indicador. C/SLA e S/SLA (nos cards, na tabela e na exportação) comparam cada atividade com o **SLA Horas dela** (matriz nova, ver `index.html`) quando preenchido; atividade sem essa coluna (criada antes da mudança) continua na meta fixa de 240min. O card de MTTR médio (tempo, não classificação) segue comparando com essa meta fixa pros dois casos.
-- IRR (Índice de Recursos Repetitivos, meta ≤10%): % de ROMPIMENTOs do mês em que o mesmo cliente já tinha tido outro ROMPIMENTO validado nos 30 dias anteriores (base de cálculo é só ROMPIMENTO). Card clicável abre o detalhe por cliente — quantos atendimentos na cadeia, técnico e causa de cada um, e um alerta quando duas visitas seguidas foram no mesmo local (Endereço, com GPS Falha como desempate). No `tecnico.html`, a mesma lógica aparece como IRR pessoal no resumo mensal — a repetição é creditada a quem atendeu ANTES, não a quem herdou o problema depois: se o cliente ligou de novo dentro de 30 dias, é sinal de que aquele reparo não segurou. O técnico da visita seguinte só é responsabilizado se houver uma nova chamada dentro de 30 dias da visita dele.
+- Eficiência (SLA), MTTR, MTTD e TMC médios contra a meta, com abas Todos/Preventiva/Transmissão/Implantação/GTD/Pós Vendas/Medição — cada card é clicável e abre uma sub-página com as 3 atividades mais rápidas e as 3 mais críticas daquele indicador. C/SLA e S/SLA (nos cards, na tabela e na exportação) comparam cada atividade com o **SLA Horas dela** (matriz nova, ver `index.html`) quando preenchido; atividade sem essa coluna (criada antes da mudança) continua na meta fixa de 240min. O card de MTTR médio (tempo, não classificação) segue comparando com essa meta fixa pros dois casos.
 - Ocorrências no mês, Cidades com Mais Atividades, Causas Mais Comuns e Produção por Empresa — listas ranqueadas em barra.
 - Tabela detalhada de todas as atividades.
 - Exportação dos dados para Excel (via `xlsx.js`).
 - Budget do Mês (terceiros): valor registrável pela própria tela a cada mês (histórico, nunca sobrescreve), com saldo de LPU por prestadora (aprovado no mês, pago ou não) logo abaixo — resumo clicável que abre o valor de cada terceiro numa subtela.
 - Efetividade da Mão de Obra: um card por empresa (média dos técnicos dela) mostrando o % de dias disponíveis no mês — nunca mostra 100% cheio se algum técnico tiver período de indisponibilidade registrado naquele mês, mesmo que o impacto na média arredonde pra cima. Clique abre o técnico a técnico com o motivo de cada afastamento.
+
+### `dashboard_manutencao.html` — Dashboard Manutenção
+Painel gerencial dedicado à frente de **Manutenção** (`Tipo de Solicitação === 'Manutenção'`, cobre Rompimento/Massiva/Acompanhamento-Fiscalização/REDE RF/REDE RF Improdutiva), gestor próprio dessa frente — mesmo layout/base de código do `dashboard_gestao.html`, mas só com as demandas dele. Acesso restrito à liderança.
+- Mesmos KPIs do Dashboard de Gestão (pipeline, Budget do Mês, Efetividade da Mão de Obra, Ocorrências no Mês, Cidades, Causas, Produção por Empresa, tabela e exportação Excel), só que considerando apenas atividades de Manutenção.
+- Eficiência (SLA)/MTTR/MTTD/TMC com abas **Todos / Rompimento / Massiva / Acompanhamento e Fiscalização** — a meta de MTTR muda com a aba: 4h (240min) para Rompimento e Massiva, 8h (480min) para Acompanhamento/Fiscalização (SLA da matriz oficial do setor, ver `MATRIZ_SLA` em `index.html`); "Todos" mistura categorias com SLA diferente e mantém a meta de 4h só como referência geral.
+- IRR (Índice de Recursos Repetitivos, meta ≤10%): % de ROMPIMENTOs do mês em que o mesmo cliente já tinha tido outro ROMPIMENTO validado nos 30 dias anteriores (base de cálculo é só ROMPIMENTO). Card clicável abre o detalhe por cliente — quantos atendimentos na cadeia, técnico e causa de cada um, e um alerta quando duas visitas seguidas foram no mesmo local (Endereço, com GPS Falha como desempate). No `tecnico.html`, a mesma lógica aparece como IRR pessoal no resumo mensal — a repetição é creditada a quem atendeu ANTES, não a quem herdou o problema depois: se o cliente ligou de novo dentro de 30 dias, é sinal de que aquele reparo não segurou. O técnico da visita seguinte só é responsabilizado se houver uma nova chamada dentro de 30 dias da visita dele.
 
 ### `manutencao_preventiva.html` — Manutenção Preventiva
 Relatório fotográfico de preventiva em rede externa, com geração de PDF. Acesso do técnico (mesma sessão de login de `tecnico.html`).
@@ -133,7 +138,7 @@ A Medição também pode reprovar o fechamento já com NF anexada (NF errada/ile
 ## Arquitetura
 
 ```
-painel.html / index.html / tecnico.html / dashboard_gestao.html /
+painel.html / index.html / tecnico.html / dashboard_gestao.html / dashboard_manutencao.html /
 PREENCHIMENTO_LPU.html / medicao.html / dashboard_medicao.html /
 fechamento_lpu.html / manutencao_preventiva.html /
 jornada_excedente.html / fiscal_v2.html / geogrid.html
@@ -150,7 +155,7 @@ Todas as páginas consomem o mesmo backend (`APPS_SCRIPT_URL`, definido no `<scr
 
 Todas as telas compartilham o mesmo cabeçalho (`.topbar`): barra verde sólida fixa no topo, com logo e marca/subtítulo — sem elementos funcionais (botões, links, seletores) nela, que ficam numa linha própria (`.page-actions`) logo abaixo, dentro do conteúdo de cada página.
 
-As telas se dividem em dois perfis de layout: **desktop** (`index.html`, `painel.html`, `dashboard_gestao.html`, `dashboard_medicao.html`, `medicao.html`, `geogrid.html`, `manutencao_preventiva.html`, `jornada_excedente.html` — acessadas por computador pela liderança, largura de conteúdo até 1400px) e **mobile** (`tecnico.html`, `PREENCHIMENTO_LPU.html`, `fechamento_lpu.html`, `fiscal_v2.html` — preenchidas pelo técnico no celular em campo, layout estreito de propósito).
+As telas se dividem em dois perfis de layout: **desktop** (`index.html`, `painel.html`, `dashboard_gestao.html`, `dashboard_manutencao.html`, `dashboard_medicao.html`, `medicao.html`, `geogrid.html`, `manutencao_preventiva.html`, `jornada_excedente.html` — acessadas por computador pela liderança, largura de conteúdo até 1400px) e **mobile** (`tecnico.html`, `PREENCHIMENTO_LPU.html`, `fechamento_lpu.html`, `fiscal_v2.html` — preenchidas pelo técnico no celular em campo, layout estreito de propósito).
 
 O arquivo `.claude/docs/netturbo-esteira-apps-script-*.gs` é a cópia de referência do código do Apps Script de produção — alterações nele precisam ser coladas manualmente no editor do Apps Script e reimplantadas (Implantar → Gerenciar implantações → Nova versão) pra valerem no `/exec` que os front-ends chamam.
 
