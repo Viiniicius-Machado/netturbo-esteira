@@ -1041,7 +1041,7 @@ function renderDashboard(){
   // ── Ocorrências e Produção por Empresa — mesma barra-ranking de Cidades/Causas,
   // só que com a lista fixa de categorias (mesmo as com contagem zero), em vez do
   // top 5 filtrado de contarPorCampo.
-  renderRanking('kpiOcorrencias', montarRankingFixo(DADOS_FILTRADOS, 'Ocorrência', TIPOS));
+  renderRanking('kpiOcorrencias', montarRankingFixo(DADOS_FILTRADOS, 'Ocorrência', TIPOS).filter(([,qtd])=>qtd>0));
   renderRanking('kpiEmpresas', montarRankingFixo(DADOS_FILTRADOS, 'Empresa', EMPRESAS));
   renderBudget(mes);
   renderEfetividade(mes);
