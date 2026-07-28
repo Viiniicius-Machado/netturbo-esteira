@@ -147,6 +147,7 @@ function doPost(e) {
     if (acao === 'RECUSAR_GEOGRID')      return recusarGeogrid(ss, data);
     if (acao === 'REENVIAR_GEOGRID')     return reenviarGeogrid(ss, data);
     if (acao === 'EXCLUIR_GEOGRID')      return excluirGeogrid(ss, data);
+    if (acao === 'APROVAR_GEOGRID_LIDER') return aprovarGeogridLider(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -486,19 +487,24 @@ const HEADERS_ACESSOS = ['Empresa','Técnico','PIN','Complemento Hash','Configur
 // Mesma lista de empresas/técnicos usada nos formulários HTML —
 // mantida aqui também pra já criar as linhas de acesso automaticamente.
 const TECH_MAP_BACKEND = {
-  "NETTURBO": ["Leonardo da Cruz Egidio","Weslley Rodrigues Pinto","Reginaldo Venâncio da Silva","Nicolas Lima de Almeida","Warley Aparecido de Paula","Marco Rodrigo dos Santos","Micael Oliveira dos Santos","Tiago Soares da Silva Calado"],
+  "NETTURBO": ["Leonardo da Cruz Egidio","Weslley Rodrigues Pinto","Reginaldo Venâncio da Silva","Nicolas Lima de Almeida","Warley Aparecido de Paula","Marco Rodrigo dos Santos","Micael Oliveira dos Santos","Tiago Soares da Silva Calado","Alex Conceição Dias","Renildo Lourenço Ribeiro","Welyton Salgado Silva","Carlos Daniel Freitas da Silva","Francisco Stênio Marinho Da Silva","Luiz Guilherme Dias Teodoro","Weslley Pereira Soares","Tatiane Pricila Pessoa Gonçalves"],
   "OLIVEIRA": ["Evaneis Silva Oliveira"],
   "PV": ["Petterson Valentim Barreto"],
   "QUALITY": ["Jurandy Luis da Silva Filho","Guilherme dos Santos Reis","Wesley Henrique da Silva Rios"],
   "SOLUTEC": ["Lielder Rogers Miranda","Marcio Aparecido Santiago"],
-  "VAL": ["Guilherme de Jesus Arruda","Djalma Aparecido Inocêncio","Marcos Mendes Merino","Altimayer de Araújo Lima","Robson Rodrigues Santos","Felipe Martins Santos Silva","Jonathan Henrique Honorato","Diego Eduardo de Souza Basso"]
+  "VAL": ["Guilherme de Jesus Arruda","Djalma Aparecido Inocêncio","Marcos Mendes Merino","Altimayer de Araújo Lima","Robson Rodrigues Santos","Felipe Martins Santos Silva","Jonathan Henrique Honorato","Diego Eduardo de Souza Basso"],
+  "SOUZA TELECOM": ["Klheyton Barbosa de Souza","Eduardo Alves Abrantes","Marcos Vinicius Alves Ribeiro de Araujo","Iuri Faria Guidorizzi","Keyvington Cristiano Guimarães"],
+  "FUSION TELECOM": ["Rhikelmy Soares Macedo","Rogerio Soares Macedo"],
+  "EFM TELECOM": ["Edson Fernando de Moraes","Edson Fernando de Moraes Junior"],
+  "DOIS IRMÃOS": ["Ezequias Lima Dos Santos"]
 };
 
 // Empresas em que UM técnico centraliza toda a LPU da equipe. A atividade
 // continua contando pro técnico que atendeu (MTTR/IRR/resumo pessoal); só a
 // etapa de LPU (preencher / NF / financeiro) é roteada para o responsável abaixo.
 const RESPONSAVEL_LPU_POR_EMPRESA = {
-  "VAL": "Marcos Mendes Merino"
+  "VAL": "Marcos Mendes Merino",
+  "SOUZA TELECOM": "Klheyton Barbosa de Souza"
 };
 
 // Empresas que NÃO cobram por LPU (nada de "Pendente de Preenchimento LPU",
@@ -1766,7 +1772,11 @@ const HEADERS_GEOGRID = [
   // ── Recusa pela sala técnica (dado enviado veio confuso/incompleto) — volta pro
   // líder ajustar na Esteira de Despacho, que reenvia (PENDENTE de novo) ou exclui.
   'Motivo Recusa','Recusado Por','Timestamp Recusa',
-  'Técnico'
+  'Técnico',
+  // ── Validação do líder ANTES da sala técnica ver o item (etapa nova, ver
+  // aprovarGeogridLider) — registrado só pra responsabilização, o item já nasce
+  // com Status='AGUARDANDO_VALIDACAO_LIDER' e só vira 'PENDENTE' depois disso.
+  'Validado Por Líder','Timestamp Validação Líder'
 ];
 
 function garantirGeogrid(ss) {
@@ -1809,7 +1819,9 @@ function registrarGeogridSeNecessario(ss, sheetEsteira, rowIndex, data) {
   sheet.getRange(row, idxGeo('Fusão Pareamento')).setValue(data.fusaoPareamento || '');
   sheet.getRange(row, idxGeo('Quantidade CEO Trabalhadas')).setValue(data.quantidadeCeo || '');
   sheet.getRange(row, idxGeo('Timestamp Registro')).setValue(new Date().toLocaleString('pt-BR'));
-  sheet.getRange(row, idxGeo('Status')).setValue('PENDENTE');
+  // Nasce aguardando o líder validar (ver aprovarGeogridLider) — só depois disso
+  // vira 'PENDENTE' e fica visível pra sala técnica.
+  sheet.getRange(row, idxGeo('Status')).setValue('AGUARDANDO_VALIDACAO_LIDER');
   sheet.getRange(row, idxGeo('Técnico')).setValue(tecnico || '');
 }
 
@@ -1823,6 +1835,36 @@ function listarGeogrid(ss) {
     return obj;
   });
   return resposta('ok', { itens: itens });
+}
+
+// Líder valida (com ou sem correção) ANTES da sala técnica ver o item — feito no
+// próprio geogrid.html. Se o líder editou algo (fusaoPareamento/tipoCaboFusionado/
+// quantidadeCeo vieram preenchidos), atualiza esses campos igual reenviarGeogrid;
+// sempre libera o item pra sala técnica (Status='PENDENTE') e registra quem validou.
+function aprovarGeogridLider(ss, data) {
+  const sheet = garantirGeogrid(ss);
+  const rowIndex = parseInt(data.rowIndex);
+  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+  if (!data.aprovadoPor) return resposta('error', { message: 'Informe quem está aprovando.' });
+
+  const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
+  const statusAtual = sheet.getRange(rowIndex, idx('Status')).getValue();
+  if (statusAtual !== 'AGUARDANDO_VALIDACAO_LIDER') {
+    return resposta('error', { message: 'Este item não está aguardando validação do líder.' });
+  }
+
+  if (data.fusaoPareamento !== undefined) {
+    sheet.getRange(rowIndex, idx('Fusão Pareamento'), 1, 1).setNumberFormat('@STRING@');
+    sheet.getRange(rowIndex, idx('Fusão Pareamento')).setValue(data.fusaoPareamento || '');
+  }
+  if (data.tipoCaboFusionado !== undefined) sheet.getRange(rowIndex, idx('Tipo Cabo Fusionado')).setValue(data.tipoCaboFusionado || '');
+  if (data.quantidadeCeo !== undefined) sheet.getRange(rowIndex, idx('Quantidade CEO Trabalhadas')).setValue(data.quantidadeCeo || '');
+
+  sheet.getRange(rowIndex, idx('Status')).setValue('PENDENTE');
+  sheet.getRange(rowIndex, idx('Validado Por Líder')).setValue(data.aprovadoPor);
+  sheet.getRange(rowIndex, idx('Timestamp Validação Líder'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(rowIndex, idx('Timestamp Validação Líder')).setValue(new Date().toLocaleString('pt-BR'));
+  return resposta('ok', {});
 }
 
 // Sala técnica marca que já replicou a fusão no GEOGRID — nome de quem concluiu
@@ -1904,8 +1946,8 @@ function excluirGeogrid(ss, data) {
 
   const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
   const statusAtual = sheet.getRange(rowIndex, idx('Status')).getValue();
-  if (statusAtual !== 'RECUSADO') {
-    return resposta('error', { message: 'Só é possível excluir um item recusado.' });
+  if (statusAtual !== 'RECUSADO' && statusAtual !== 'AGUARDANDO_VALIDACAO_LIDER') {
+    return resposta('error', { message: 'Só é possível excluir um item recusado ou aguardando validação do líder.' });
   }
 
   sheet.deleteRow(rowIndex);

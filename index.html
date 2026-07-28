@@ -6,7 +6,6 @@
   <meta name="theme-color" content="#0a0a0a"/>
   <title>Esteira Despacho - Manutenção · Netturbo</title>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <style>
     :root{
       --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-glow:rgba(168,201,60,.22);--accent-dim:rgba(168,201,60,.08);
@@ -86,6 +85,13 @@
     textarea.edit-field{min-height:50px;resize:vertical}
     .edit-field:focus{outline:none;border-color:#ab47bc}
     .atv-card .acoes{margin-top:.6rem;display:flex;gap:.4rem}
+    /* Cards da esteira viraram <details> — resumo compacto por padrão, expande ao
+       clicar (pedido do líder: dias com 20+ atividades ficavam poluídos). */
+    .atv-card summary{list-style:none;cursor:pointer}
+    .atv-card summary::-webkit-details-marker{display:none}
+    .atv-card summary::after{content:'▸';float:right;color:var(--text-muted);font-size:.7rem}
+    .atv-card[open] summary::after{content:'▾'}
+    .atv-card-body{margin-top:.55rem}
 
     /* Editor de fusão (ajuste de fusões recusadas pelo GEOGRID) — mesmo visual de tecnico.html/geogrid.html */
     .chip-group{display:flex;flex-wrap:wrap;gap:.4rem}
@@ -280,17 +286,6 @@
           <div id="colValidacao"></div>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- LPU — APROVADOR (cobrança de prestadoras terceiras, depois da validação técnica) -->
-  <section class="card">
-    <div class="card-header"><h2>LPU — Aguardando Validação do Aprovador</h2>
-      <div style="flex:1"></div>
-      <span class="col-count" id="countLpuAprovador">0</span>
-    </div>
-    <div class="card-body">
-      <div id="colLpuAprovador"></div>
     </div>
   </section>
 
@@ -1155,104 +1150,122 @@ function renderEsteira(){
 
   const colA = document.getElementById('colAguardando');
   colA.innerHTML = aguardando.length ? aguardando.map(a => `
-    <div class="atv-card status-aguardando">
-      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
-      <div class="cliente">${a['Cliente']||'—'}</div>
-      <div class="meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
-      ${blocoPrazoLimite(a)}
-      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
-      <div class="acoes">
-        <select class="mini" id="sel-empresa-${a.rowIndex}" onchange="atualizarTecnicosDespacho(${a.rowIndex})">
-          <option value="">Empresa...</option>
-          ${Object.keys(TECH_MAP).map(emp=>`<option value="${emp}">${emp}</option>`).join('')}
-        </select>
-        <select class="mini" id="sel-tecnico-${a.rowIndex}"><option value="">Técnico...</option></select>
-      </div>
-      <div id="aviso-disp-${a.rowIndex}" style="font-size:.62rem;color:var(--amber);margin-top:.3rem"></div>
-      <details style="margin-top:.4rem">
-        <summary style="font-size:.65rem;color:var(--text-muted);cursor:pointer">+ Equipe de Apoio (opcional)</summary>
-        <div class="acoes" style="margin-top:.4rem">
-          <select class="mini" id="sel-empresa-apoio-${a.rowIndex}" onchange="atualizarTecnicosApoio(${a.rowIndex})">
-            <option value="">Empresa apoio...</option>
+    <details class="atv-card status-aguardando">
+      <summary>
+        <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
+        <div class="cliente">${a['Cliente']||'—'}</div>
+        ${blocoPrazoLimite(a)}
+        ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
+      </summary>
+      <div class="atv-card-body">
+        <div class="meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
+        <div class="acoes">
+          <select class="mini" id="sel-empresa-${a.rowIndex}" onchange="atualizarTecnicosDespacho(${a.rowIndex})">
+            <option value="">Empresa...</option>
             ${Object.keys(TECH_MAP).map(emp=>`<option value="${emp}">${emp}</option>`).join('')}
           </select>
-          <select class="mini" id="sel-tecnico-apoio-${a.rowIndex}"><option value="">Técnico apoio...</option></select>
+          <select class="mini" id="sel-tecnico-${a.rowIndex}"><option value="">Técnico...</option></select>
         </div>
-      </details>
-      ${blocoAnexoDespacho(a)}
-      <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.4rem" onclick="despachar(${a.rowIndex})">Despachar</button>
-      <button class="btn" style="width:100%;margin-top:.3rem;padding:.35rem;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;font-size:.68rem" onclick="excluirAtividade(${a.rowIndex})">Excluir (foi engano)</button>
-    </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando despacho.</div>';
+        <div id="aviso-disp-${a.rowIndex}" style="font-size:.62rem;color:var(--amber);margin-top:.3rem"></div>
+        <details style="margin-top:.4rem">
+          <summary style="font-size:.65rem;color:var(--text-muted);cursor:pointer">+ Equipe de Apoio (opcional)</summary>
+          <div class="acoes" style="margin-top:.4rem">
+            <select class="mini" id="sel-empresa-apoio-${a.rowIndex}" onchange="atualizarTecnicosApoio(${a.rowIndex})">
+              <option value="">Empresa apoio...</option>
+              ${Object.keys(TECH_MAP).map(emp=>`<option value="${emp}">${emp}</option>`).join('')}
+            </select>
+            <select class="mini" id="sel-tecnico-apoio-${a.rowIndex}"><option value="">Técnico apoio...</option></select>
+          </div>
+        </details>
+        ${blocoAnexoDespacho(a)}
+        <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.4rem" onclick="despachar(${a.rowIndex})">Despachar</button>
+        <button class="btn" style="width:100%;margin-top:.3rem;padding:.35rem;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;font-size:.68rem" onclick="excluirAtividade(${a.rowIndex})">Excluir (foi engano)</button>
+      </div>
+    </details>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando despacho.</div>';
 
   const statusLabelMap = { 'DESPACHADA':'Aguardando início', 'INICIADA':'Em deslocamento', 'EM_CAMPO':'Em campo', 'NAO_VALIDADA':'Devolvido p/ técnico' };
+  // Etapa + horário real do técnico em campo — pro líder acompanhar sem abrir o card
+  // (Hora Início = quando iniciou o deslocamento; Hora Chegada = quando chegou no local).
+  const statusComHorario = a => {
+    if(a['Status']==='INICIADA' && a['Hora Início']) return `Em deslocamento desde ${a['Hora Início']}`;
+    if(a['Status']==='EM_CAMPO' && a['Hora Chegada']) return `Em campo desde ${a['Hora Chegada']}`;
+    return statusLabelMap[a['Status']]||a['Status'];
+  };
   const colD = document.getElementById('colDespachadas');
   colD.innerHTML = emAndamento.length ? emAndamento.map(a => `
-    <div class="atv-card status-despachada">
-      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
-      <div class="cliente">${a['Cliente']||'—'}</div>
-      <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br>${statusLabelMap[a['Status']]||a['Status']}</div>
-      ${blocoPrazoLimite(a)}
-      ${a['Status']==='INICIADA' && a['Previsão Chegada'] ? `<div class="meta" style="color:var(--accent)">Previsão de chegada: ${a['Previsão Chegada']}</div>` : ''}
-      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
-      ${a['Técnico Apoio'] ? `<div class="meta" style="color:var(--accent)">Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}${a['Hora Início Apoio']?' ('+a['Hora Início Apoio']+(a['Hora Chegada Apoio']?' → '+a['Hora Chegada Apoio']:'')+')':''}</div>` : ''}
-      <button class="btn" style="width:100%;margin-top:.5rem;padding:.35rem;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-size:.68rem" onclick="desfazerDespacho(${a.rowIndex})">↩ Desfazer Despacho</button>
-      ${blocoAnexoDespacho(a)}
-      ${!a['Técnico Apoio'] ? `
-      <details style="margin-top:.4rem">
-        <summary style="font-size:.62rem;color:var(--text-muted);cursor:pointer">+ Adicionar Equipe de Apoio</summary>
-        <div class="acoes" style="margin-top:.4rem">
-          <select class="mini" id="sel-empresa-apoio2-${a.rowIndex}" onchange="atualizarTecnicosApoio2(${a.rowIndex})">
-            <option value="">Empresa apoio...</option>
-            ${Object.keys(TECH_MAP).map(emp=>`<option value="${emp}">${emp}</option>`).join('')}
-          </select>
-          <select class="mini" id="sel-tecnico-apoio2-${a.rowIndex}"><option value="">Técnico apoio...</option></select>
-        </div>
-        <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.35rem;font-size:.68rem" onclick="adicionarApoio(${a.rowIndex})">Confirmar Apoio</button>
-      </details>` : ''}
-    </div>`).join('') : '<div class="empty-msg">Nenhuma atividade em andamento.</div>';
+    <details class="atv-card status-despachada">
+      <summary>
+        <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
+        <div class="cliente">${a['Cliente']||'—'}</div>
+        <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br><b>${statusComHorario(a)}</b></div>
+        ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
+      </summary>
+      <div class="atv-card-body">
+        ${blocoPrazoLimite(a)}
+        ${a['Status']==='INICIADA' && a['Previsão Chegada'] ? `<div class="meta" style="color:var(--accent)">Previsão de chegada: ${a['Previsão Chegada']}</div>` : ''}
+        ${a['Técnico Apoio'] ? `<div class="meta" style="color:var(--accent)">Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}${a['Hora Início Apoio']?' ('+a['Hora Início Apoio']+(a['Hora Chegada Apoio']?' → '+a['Hora Chegada Apoio']:'')+')':''}</div>` : ''}
+        <button class="btn" style="width:100%;margin-top:.5rem;padding:.35rem;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-size:.68rem" onclick="desfazerDespacho(${a.rowIndex})">↩ Desfazer Despacho</button>
+        ${blocoAnexoDespacho(a)}
+        ${!a['Técnico Apoio'] ? `
+        <details style="margin-top:.4rem">
+          <summary style="font-size:.62rem;color:var(--text-muted);cursor:pointer">+ Adicionar Equipe de Apoio</summary>
+          <div class="acoes" style="margin-top:.4rem">
+            <select class="mini" id="sel-empresa-apoio2-${a.rowIndex}" onchange="atualizarTecnicosApoio2(${a.rowIndex})">
+              <option value="">Empresa apoio...</option>
+              ${Object.keys(TECH_MAP).map(emp=>`<option value="${emp}">${emp}</option>`).join('')}
+            </select>
+            <select class="mini" id="sel-tecnico-apoio2-${a.rowIndex}"><option value="">Técnico apoio...</option></select>
+          </div>
+          <button class="btn btn-accent" style="width:100%;margin-top:.3rem;padding:.35rem;font-size:.68rem" onclick="adicionarApoio(${a.rowIndex})">Confirmar Apoio</button>
+        </details>` : ''}
+      </div>
+    </details>`).join('') : '<div class="empty-msg">Nenhuma atividade em andamento.</div>';
 
   const colV = document.getElementById('colValidacao');
   colV.innerHTML = aguardandoValidacao.length ? aguardandoValidacao.map(a => `
-    <div class="atv-card" style="border-left:3px solid #ab47bc">
-      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
-      <div class="cliente">${a['Cliente']||'—'}</div>
-      ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
-      <div class="meta">
-        ${a['Empresa']||''} · ${a['Técnico']||''}<br>
-        ${a['CEO'] ? `<b>CEO:</b> ${formatarCEO(a['CEO'])}<br>` : ''}
-        Início: ${a['Hora Início']||'—'} · Chegada: ${a['Hora Chegada']||'—'}
-        ${a['Cidade Falha'] ? `<br><b>Cidade:</b> ${a['Cidade Falha']}` : ''}
-        ${a['GPS Falha'] ? `<br><a href="${a['GPS Falha']}" target="_blank" style="color:var(--accent)">Local da Falha</a>` : ''}
-        ${a['GPS Caixa Nova A'] ? `<br><a href="${a['GPS Caixa Nova A']}" target="_blank" style="color:var(--accent)">${(a['CEO']==='existente'||a['CEO']==='NOVA/EXISTENTE') ? 'Caixa Nova' : 'Caixa Nova A'}</a>` : ''}
-        ${a['GPS Caixa Nova B'] ? `<br><a href="${a['GPS Caixa Nova B']}" target="_blank" style="color:var(--accent)">Caixa Nova B</a>` : ''}
+    <details class="atv-card" style="border-left:3px solid #ab47bc">
+      <summary>
+        <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
+        <div class="cliente">${a['Cliente']||'—'}</div>
+        <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}${a['CEO'] ? ` · CEO: ${formatarCEO(a['CEO'])}` : ''}</div>
+        ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
+      </summary>
+      <div class="atv-card-body">
+        <div class="meta">
+          Início: ${a['Hora Início']||'—'} · Chegada: ${a['Hora Chegada']||'—'}
+          ${a['Cidade Falha'] ? `<br><b>Cidade:</b> ${a['Cidade Falha']}` : ''}
+          ${a['GPS Falha'] ? `<br><a href="${a['GPS Falha']}" target="_blank" style="color:var(--accent)">Local da Falha</a>` : ''}
+          ${a['GPS Caixa Nova A'] ? `<br><a href="${a['GPS Caixa Nova A']}" target="_blank" style="color:var(--accent)">${(a['CEO']==='existente'||a['CEO']==='NOVA/EXISTENTE') ? 'Caixa Nova' : 'Caixa Nova A'}</a>` : ''}
+          ${a['GPS Caixa Nova B'] ? `<br><a href="${a['GPS Caixa Nova B']}" target="_blank" style="color:var(--accent)">Caixa Nova B</a>` : ''}
+        </div>
+        <div style="margin-top:.5rem;display:flex;flex-direction:column;gap:.5rem">
+          <div>
+            <label class="edit-label">Ocorrência</label>
+            <input type="text" class="edit-field" id="edit-ocorrencia-${a.rowIndex}" value="${String(a['Ocorrência']||'').replace(/"/g,'&quot;')}"/>
+          </div>
+          <div>
+            <label class="edit-label">Causa</label>
+            <input type="text" class="edit-field" id="edit-causa-${a.rowIndex}" value="${String(a['Causa']||'').replace(/"/g,'&quot;')}"/>
+          </div>
+          <div>
+            <label class="edit-label">Solução</label>
+            <textarea class="edit-field" id="edit-solucao-${a.rowIndex}">${String(a['Solução']||'')}</textarea>
+          </div>
+          <div>
+            <label class="edit-label">Melhoria</label>
+            <textarea class="edit-field" id="edit-melhoria-${a.rowIndex}">${String(a['Melhoria']||'')}</textarea>
+          </div>
+          <div>
+            <label class="edit-label">Materiais</label>
+            <textarea class="edit-field" id="edit-materiais-${a.rowIndex}">${String(a['Materiais']||'')}</textarea>
+          </div>
+        </div>
+        <div class="acoes" style="margin-top:.5rem">
+          <button class="btn btn-green" style="flex:1;padding:.4rem" onclick="validar(${a.rowIndex}, true)">Validar</button>
+          <button class="btn" style="flex:1;padding:.4rem;background:#7a1010;color:#fff" onclick="validar(${a.rowIndex}, false)">Não Validar</button>
+        </div>
       </div>
-      <div style="margin-top:.5rem;display:flex;flex-direction:column;gap:.5rem">
-        <div>
-          <label class="edit-label">Ocorrência</label>
-          <input type="text" class="edit-field" id="edit-ocorrencia-${a.rowIndex}" value="${String(a['Ocorrência']||'').replace(/"/g,'&quot;')}"/>
-        </div>
-        <div>
-          <label class="edit-label">Causa</label>
-          <input type="text" class="edit-field" id="edit-causa-${a.rowIndex}" value="${String(a['Causa']||'').replace(/"/g,'&quot;')}"/>
-        </div>
-        <div>
-          <label class="edit-label">Solução</label>
-          <textarea class="edit-field" id="edit-solucao-${a.rowIndex}">${String(a['Solução']||'')}</textarea>
-        </div>
-        <div>
-          <label class="edit-label">Melhoria</label>
-          <textarea class="edit-field" id="edit-melhoria-${a.rowIndex}">${String(a['Melhoria']||'')}</textarea>
-        </div>
-        <div>
-          <label class="edit-label">Materiais</label>
-          <textarea class="edit-field" id="edit-materiais-${a.rowIndex}">${String(a['Materiais']||'')}</textarea>
-        </div>
-      </div>
-      <div class="acoes" style="margin-top:.5rem">
-        <button class="btn btn-green" style="flex:1;padding:.4rem" onclick="validar(${a.rowIndex}, true)">Validar</button>
-        <button class="btn" style="flex:1;padding:.4rem;background:#7a1010;color:#fff" onclick="validar(${a.rowIndex}, false)">Não Validar</button>
-      </div>
-    </div>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando validação.</div>';
+    </details>`).join('') : '<div class="empty-msg">Nenhuma atividade aguardando validação.</div>';
 
   // Restaura o que o líder já tinha digitado (se a atividade ainda estiver na lista)
   Object.keys(edicoesEmAndamento).forEach(id=>{
@@ -1281,133 +1294,13 @@ function renderEsteira(){
     }
   });
 
-  renderLpuAprovador();
   renderGeogridRecusado();
 }
 
-// ── LPU — APROVADOR (cobrança de prestadoras terceiras, após validação técnica) ──
-// LISTAR_ESTEIRA já traz as colunas de LPU (titular e apoio) junto com o resto (mesmo
-// ATIVIDADES carregado por carregarEsteira) — não precisa de uma segunda chamada ao
-// backend. Uma mesma atividade pode gerar até 2 cards (titular e apoio em paralelo,
-// cada um com sua própria empresa/cobrança) — por isso o filtro monta uma lista
-// combinada com `tipoLpu` marcado em cada item.
-function renderLpuAprovador(){
-  const pendentes = [];
-  ATIVIDADES.forEach(a=>{
-    if(a['Status LPU'] === 'AGUARDANDO_APROVADOR') pendentes.push(Object.assign({tipoLpu:'titular'}, a));
-    if(a['Status LPU Apoio'] === 'AGUARDANDO_APROVADOR') pendentes.push(Object.assign({tipoLpu:'apoio'}, a));
-  });
-  document.getElementById('countLpuAprovador').textContent = pendentes.length;
-
-  const col = document.getElementById('colLpuAprovador');
-  col.innerHTML = pendentes.length ? pendentes.map(a => {
-    const pfx = a.tipoLpu === 'apoio' ? 'LPU Apoio ' : 'LPU ';
-    const empresaFallback = a.tipoLpu === 'apoio' ? a['Empresa Apoio'] : a['Empresa'];
-    const tecnicoFallback = a.tipoLpu === 'apoio' ? a['Técnico Apoio'] : a['Técnico'];
-    const badgeApoio = a.tipoLpu === 'apoio' ? `<span style="background:#ffa000;color:#1a1a1a;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:3px;margin-left:.4rem">APOIO</span>` : '';
-    const pdfBtn = a[pfx+'Relatório PDF']
-      ? `<a class="btn btn-outline" style="text-decoration:none;text-align:center;flex:1;padding:.4rem" href="${a[pfx+'Relatório PDF']}" target="_blank">Visualizar Relatório PDF</a>`
-      : `<span style="color:var(--text-muted);font-size:.72rem">Relatório PDF não disponível</span>`;
-
-    return `<div class="atv-card" style="border-left:3px solid #ffa000">
-      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${badgeApoio}</div>
-      <div class="cliente">${a['Cliente']||'—'}</div>
-      <div class="meta">
-        ${a[pfx+'Empresa Prestadora']||empresaFallback||''} · ${a[pfx+'Técnicos']||tecnicoFallback||''}<br>
-        <b>Descrição Contábil:</b> ${a[pfx+'Descrição Contábil']||'—'}<br>
-        <b>Total:</b> R$ ${Number(a[pfx+'Total']||0).toFixed(2)}<br>
-        <b>Preenchido em:</b> ${a[pfx+'Timestamp Preenchimento']||'—'}<br>
-        <b>Assinatura Prestador:</b> ${a[pfx+'Assinatura Prestador']||'—'}
-      </div>
-      <div style="margin-top:.5rem">${pdfBtn}</div>
-      <div class="acoes" style="margin-top:.5rem">
-        <button class="btn btn-green" style="flex:1;padding:.4rem" onclick="validarLpuAprovador(${a.rowIndex}, true, '${a.tipoLpu}')">Validar</button>
-        <button class="btn" style="flex:1;padding:.4rem;background:#7a1010;color:#fff" onclick="validarLpuAprovador(${a.rowIndex}, false, '${a.tipoLpu}')">Não Validar</button>
-      </div>
-    </div>`;
-  }).join('') : '<div class="empty-msg">Nenhuma LPU aguardando validação do aprovador.</div>';
-}
-
-window.validarLpuAprovador = async function(rowIndex, aprovado, tipoLpu){
-  const validadoPor = document.getElementById('selLiderAtual').value;
-  if(!validadoPor){ showToast('Selecione "Você é..." antes de validar.'); return; }
-
-  let motivo = '';
-  if(!aprovado){
-    motivo = prompt('Motivo da não validação da LPU (o técnico vai ver isso e precisa corrigir):');
-    if(motivo === null) return;
-    if(!motivo.trim()){ showToast('Informe o motivo da não validação.'); return; }
-  } else {
-    if(!confirm('Confirma a aprovação desta LPU? Ela vai seguir para a Medição.')) return;
-  }
-
-  try{
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'VALIDAR_LPU_APROVADOR', rowIndex, aprovado, motivo, validadoPor, tipoLpu })
-    });
-    const result = await resp.json();
-    if(result.status !== 'ok'){ showToast(result.message||'Erro ao validar a LPU.'); carregarEsteira(); return; }
-    showToast(aprovado ? 'LPU aprovada — seguiu para a Medição!' : 'LPU devolvida para o técnico com o motivo.');
-    // Carimba o PDF em segundo plano (não trava a tela nem desfaz a aprovação se falhar —
-    // a aprovação em si já está salva na linha acima).
-    if(aprovado) carimbarPdfAprovador(rowIndex, tipoLpu, validadoPor);
-    carregarEsteira();
-  }catch(err){
-    console.error(err);
-    showToast('Erro ao conectar com o backend.');
-  }
-};
-
-// Converte um Uint8Array grande em base64 sem estourar a pilha de chamadas
-// (String.fromCharCode.apply com o array inteiro de uma vez trava em PDFs maiores).
-function uint8ParaBase64(bytes){
-  let binario = '';
-  const tamanhoBloco = 0x8000;
-  for(let i = 0; i < bytes.length; i += tamanhoBloco){
-    binario += String.fromCharCode.apply(null, bytes.subarray(i, i + tamanhoBloco));
-  }
-  return btoa(binario);
-}
-
-// Depois que o aprovador valida na esteira, acrescenta uma página de carimbo
-// (nome de quem aprovou + data/hora) no PDF que o técnico já gerou — sem tocar
-// no conteúdo original (itens, fotos, assinatura do prestador). Roda em segundo
-// plano: se falhar por qualquer motivo, a aprovação já foi salva antes disso e
-// não é desfeita — só o carimbo no PDF que fica faltando.
-async function carimbarPdfAprovador(rowIndex, tipoLpu, validadoPor){
-  try{
-    const respPdf = await fetch(APPS_SCRIPT_URL + '?acao=LPU_OBTER_PDF&rowIndex=' + encodeURIComponent(rowIndex) + '&tipoLpu=' + encodeURIComponent(tipoLpu));
-    const resultPdf = await respPdf.json();
-    if(resultPdf.status !== 'ok' || !resultPdf.pdfBase64) return;
-
-    const binario = atob(resultPdf.pdfBase64);
-    const bytes = new Uint8Array(binario.length);
-    for(let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
-
-    const pdfDoc = await PDFLib.PDFDocument.load(bytes);
-    const paginas = pdfDoc.getPages();
-    const { width, height } = paginas[paginas.length - 1].getSize();
-    const pagina = pdfDoc.addPage([width, height]);
-    const fonteTitulo = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-    const fonteTexto = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-
-    pagina.drawRectangle({ x: 0, y: height - 60, width, height: 60, color: PDFLib.rgb(0.659, 0.788, 0.235) });
-    pagina.drawText('APROVAÇÃO — ESTEIRA DE DESPACHO', { x: 40, y: height - 38, size: 16, font: fonteTitulo, color: PDFLib.rgb(0.04, 0.04, 0.04) });
-    pagina.drawText('Aprovado por:', { x: 40, y: height - 110, size: 11, font: fonteTitulo, color: PDFLib.rgb(0.2, 0.2, 0.2) });
-    pagina.drawText(String(validadoPor), { x: 40, y: height - 130, size: 14, font: fonteTexto, color: PDFLib.rgb(0.1, 0.1, 0.1) });
-    pagina.drawText('Data/Hora da aprovação:', { x: 40, y: height - 160, size: 11, font: fonteTitulo, color: PDFLib.rgb(0.2, 0.2, 0.2) });
-    pagina.drawText(new Date().toLocaleString('pt-BR'), { x: 40, y: height - 180, size: 14, font: fonteTexto, color: PDFLib.rgb(0.1, 0.1, 0.1) });
-
-    const novoBase64 = uint8ParaBase64(await pdfDoc.save());
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ acao: 'LPU_ATUALIZAR_PDF', rowIndex, tipoLpu, pdfBase64: novoBase64 })
-    });
-  }catch(err){
-    console.error('Não foi possível carimbar o PDF da LPU:', err);
-  }
-}
+// A fila de aprovação de LPU (Status LPU/Status LPU Apoio === 'AGUARDANDO_APROVADOR')
+// morou aqui até esta versão — moveu pra aprovacao_lpu.html (tela dedicada, com
+// assinatura formal do gestor e filtro por Descrição Contábil), pra não duplicar a
+// mesma fila em dois lugares.
 
 // ── FUSÕES RECUSADAS PELO GEOGRID ────────────────────────────────────────────
 // Sala técnica recusou um item (dado veio confuso/incompleto) — o líder edita

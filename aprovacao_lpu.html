@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Aprovação de LPU · Netturbo Esteira</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <style>
+    :root{
+      --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
+      --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+      --border:#252525;--border-hi:#353535;
+      --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+      --red:#e53935;--amber:#ffa000;--green:#8bc34a;--purple:#ab47bc;
+      --radius:6px;--radius-lg:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+    .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
+    .login-logo{width:120px;height:auto;object-fit:contain;background:#fff;border-radius:12px;padding:.6rem}
+    .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);text-align:center}
+    .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
+    .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
+    .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
+    .login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.92rem;padding:.7rem .9rem;width:100%}
+    .login-field input:focus{outline:none;border-color:var(--accent)}
+    .login-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+    .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
+    .login-error.visible{display:block}
+
+    .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+    .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+    .topbar-spacer{flex:1}
+
+    .page-actions{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;padding:.9rem 1.2rem 0}
+    main{max-width:1400px;margin:0 auto;padding:1.3rem 1.2rem 0}
+
+    .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.1rem}
+    .toolbar select{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem}
+    .btn{padding:.6rem 1.1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.82rem}
+    .btn-accent{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
+    .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+    .btn-green{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
+    .btn-red{background:#7a1010;color:#fff}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
+    .card-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.5rem}
+    .card-body{padding:.9rem 1rem}
+    .col-count{background:var(--surface3);border:1px solid var(--border-hi);border-radius:20px;padding:.15rem .55rem;font-size:.7rem;color:var(--text-dim)}
+    .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+
+    .atv-card{background:var(--surface3);border:1px solid var(--border-hi);border-left:3px solid var(--amber);border-radius:var(--radius-lg);padding:.9rem 1rem;margin-bottom:.8rem}
+    .protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.95rem}
+    .cliente{font-size:.85rem;margin-top:.15rem}
+    .meta{font-size:.72rem;color:var(--text-dim);margin-top:.4rem;line-height:1.6}
+    .acoes{display:flex;gap:.5rem;flex-wrap:wrap}
+    .assinatura-box{margin-top:.6rem;padding:.6rem .7rem;background:var(--surface2);border:1px solid var(--border-hi);border-radius:var(--radius)}
+    .assinatura-ok{font-size:.72rem;color:var(--green);font-weight:600}
+  </style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-box">
+    <img class="login-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+    <div class="login-heading">
+      <h2>Aprovação de LPU</h2>
+      <p>Por Descrição Contábil · Gestores</p>
+    </div>
+    <div class="login-field">
+      <label>Senha</label>
+      <input type="password" id="pwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()"/>
+    </div>
+    <div class="login-error" id="loginErro">Senha incorreta.</div>
+    <button class="login-btn" onclick="tryLogin()">Entrar</button>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Aprovação de LPU</div>
+    <div class="topbar-sub">Por Descrição Contábil</div>
+  </div>
+  <div class="topbar-spacer"></div>
+</header>
+
+<div class="page-actions">
+  <div style="display:flex;flex-direction:column;gap:.15rem">
+    <label for="selAprovador" style="font-size:.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Aprovando como</label>
+    <select id="selAprovador" onchange="salvarAprovador()" style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.4rem .6rem">
+      <option value="">Selecione...</option>
+      <option value="Vinicius Machado">Vinicius Machado</option>
+      <option value="Gabriel Milhomens">Gabriel Milhomens</option>
+      <option value="Emerson Silva">Emerson Silva</option>
+    </select>
+  </div>
+  <a href="medicao.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Medição</a>
+  <a href="painel.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Painel</a>
+</div>
+
+<main id="app" style="display:none">
+
+  <div class="toolbar">
+    <select id="selDescContabil" onchange="renderFila()">
+      <option value="TODAS">Todas as Descrições Contábeis</option>
+    </select>
+    <button class="btn btn-outline" onclick="carregarAprovacao()">↻ Atualizar</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Aguardando Aprovação<div style="flex:1"></div><span class="col-count" id="countFila">0</span></div>
+    <div class="card-body">
+      <div id="colFila"></div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+const LEADERSHIP_PASSWORD = "Manutencao@101";
+
+// Mesmas 9 Descrições Contábeis já usadas em PREENCHIMENTO_LPU.html (código sozinho
+// se repete em 3 delas — a string inteira é a chave, nunca só o código).
+const DESCRICOES_CONTABEIS = [
+  '3.1.1.2.05.0005 - Serviços de Instalação CLIENTE - IMPLANTAÇÃO',
+  '3.1.1.2.05.0007 - Serviços de Instalação REDE - CONSTRUÇÃO DE REDE',
+  '3.1.1.2.05.0103 - Serviços de Melhoria REDE - REPARO PROGRAMADO DE REDE',
+  '3.1.1.2.05.0008 - Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)',
+  '3.1.1.2.05.0006 - Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)',
+  '3.1.1.2.05.0101 - Serviços Preventivos',
+  '3.1.1.2.05.0102 - Serviços de Retirada',
+  '3.1.1.2.05.0008 - Serviços de Melhoria de REDE',
+  '3.1.1.2.05.0008 - Consultoria de Regularização'
+];
+
+function popularDescricoes(){
+  const sel = document.getElementById('selDescContabil');
+  sel.innerHTML = '<option value="TODAS">Todas as Descrições Contábeis</option>' +
+    DESCRICOES_CONTABEIS.map(d => `<option value="${d.replace(/"/g,'&quot;')}">${d}</option>`).join('');
+}
+
+// A senha de acesso é compartilhada entre os gestores — este seletor identifica quem
+// de fato está aprovando cada LPU, pra ficar registrado (mesmo padrão já usado em
+// medicao.html com "Validando como").
+let APROVADOR_ATUAL = '';
+
+function salvarAprovador(){
+  APROVADOR_ATUAL = document.getElementById('selAprovador').value;
+  sessionStorage.setItem('aprovacao_lpu_gestor', APROVADOR_ATUAL);
+}
+window.salvarAprovador = salvarAprovador;
+
+function exigirAprovador(){
+  if(!APROVADOR_ATUAL){
+    showToast('Selecione quem está aprovando (canto superior direito) antes de continuar.');
+    return false;
+  }
+  return true;
+}
+
+let TODAS_ATIVIDADES = [];
+// Assinaturas já feitas NESTA sessão, antes do clique em "Aprovar" — chave
+// "{rowIndex}_{tipoLpu}" -> { gestor, numero }. Não persiste entre recarregamentos
+// (a assinatura de verdade só é gravada no backend quando REGISTRAR_ASSINATURA_LPU
+// é chamado, no clique de "Assinar" — isso aqui é só o estado local da tela).
+let ASSINATURAS_PENDENTES = {};
+
+function tryLogin(){
+  const val = document.getElementById('pwdInput').value;
+  if(val === LEADERSHIP_PASSWORD){
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    popularDescricoes();
+    const aprovadorSalvo = sessionStorage.getItem('aprovacao_lpu_gestor');
+    if(aprovadorSalvo){
+      APROVADOR_ATUAL = aprovadorSalvo;
+      document.getElementById('selAprovador').value = aprovadorSalvo;
+    }
+    carregarAprovacao();
+    if(!window._aprovAutoRefresh){
+      window._aprovAutoRefresh = setInterval(carregarAprovacao, 30000);
+    }
+  }else{
+    const e = document.getElementById('loginErro');
+    e.classList.add('visible');
+    document.getElementById('pwdInput').value = '';
+    setTimeout(()=>e.classList.remove('visible'), 3000);
+  }
+}
+window.tryLogin = tryLogin;
+
+async function carregarAprovacao(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
+    const result = await resp.json();
+    TODAS_ATIVIDADES = result.atividades || [];
+    renderFila();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao carregar a fila.');
+  }
+}
+window.carregarAprovacao = carregarAprovacao;
+
+// ── FILA — AGUARDANDO APROVAÇÃO (mesma lógica que já existia em index.html,
+// movida pra cá pra não duplicar a mesma fila em dois lugares) ──────────────
+// Uma mesma atividade pode gerar até 2 cards (titular e apoio em paralelo, cada
+// um com sua própria empresa/cobrança) — o filtro monta uma lista combinada com
+// `tipoLpu` marcado em cada item.
+function montarPendentes(){
+  const pendentes = [];
+  TODAS_ATIVIDADES.forEach(a=>{
+    if(a['Status LPU'] === 'AGUARDANDO_APROVADOR') pendentes.push(Object.assign({tipoLpu:'titular'}, a));
+    if(a['Status LPU Apoio'] === 'AGUARDANDO_APROVADOR') pendentes.push(Object.assign({tipoLpu:'apoio'}, a));
+  });
+  return pendentes;
+}
+function pfxLpu(a){ return a.tipoLpu === 'apoio' ? 'LPU Apoio ' : 'LPU '; }
+function campoLpu(a, campo){ return a[pfxLpu(a) + campo]; }
+
+function renderFila(){
+  const filtro = document.getElementById('selDescContabil').value || 'TODAS';
+  let pendentes = montarPendentes();
+  if(filtro !== 'TODAS') pendentes = pendentes.filter(a => campoLpu(a,'Descrição Contábil') === filtro);
+  document.getElementById('countFila').textContent = pendentes.length;
+
+  const col = document.getElementById('colFila');
+  col.innerHTML = pendentes.length ? pendentes.map(a => {
+    const chave = `${a.rowIndex}_${a.tipoLpu}`;
+    const empresaFallback = a.tipoLpu === 'apoio' ? a['Empresa Apoio'] : a['Empresa'];
+    const tecnicoFallback = a.tipoLpu === 'apoio' ? a['Técnico Apoio'] : a['Técnico'];
+    const badgeApoio = a.tipoLpu === 'apoio' ? `<span style="background:#ffa000;color:#1a1a1a;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:3px;margin-left:.4rem">APOIO</span>` : '';
+    const pdfBtn = campoLpu(a,'Relatório PDF')
+      ? `<a class="btn btn-outline" style="text-decoration:none;text-align:center;flex:1;padding:.4rem" href="${campoLpu(a,'Relatório PDF')}" target="_blank">Visualizar Relatório PDF</a>`
+      : `<span style="color:var(--text-muted);font-size:.72rem">Relatório PDF não disponível</span>`;
+
+    const assinatura = ASSINATURAS_PENDENTES[chave];
+    const blocoAssinatura = assinatura
+      ? `<div class="assinatura-box"><span class="assinatura-ok">✓ Assinado por ${assinatura.gestor} — Assinatura Nº ${assinatura.numero}</span></div>`
+      : `<div class="assinatura-box">
+          <button class="btn btn-accent" style="width:100%;padding:.5rem" onclick="assinarAprovacao(${a.rowIndex}, '${a.tipoLpu}')">✍ Assinar antes de aprovar</button>
+        </div>`;
+
+    return `<div class="atv-card">
+      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${badgeApoio}</div>
+      <div class="cliente">${a['Cliente']||'—'}</div>
+      <div class="meta">
+        ${campoLpu(a,'Empresa Prestadora')||empresaFallback||''} · ${campoLpu(a,'Técnicos')||tecnicoFallback||''}<br>
+        <b>Descrição Contábil:</b> ${campoLpu(a,'Descrição Contábil')||'—'}<br>
+        <b>Total:</b> R$ ${Number(campoLpu(a,'Total')||0).toFixed(2)}<br>
+        <b>Preenchido em:</b> ${campoLpu(a,'Timestamp Preenchimento')||'—'}<br>
+        <b>Assinatura Prestador:</b> ${campoLpu(a,'Assinatura Prestador')||'—'}
+      </div>
+      <div style="margin-top:.5rem">${pdfBtn}</div>
+      ${blocoAssinatura}
+      <div class="acoes" style="margin-top:.6rem">
+        <button class="btn btn-green" style="flex:1" ${assinatura?'':'disabled'} onclick="aprovarLpu(${a.rowIndex}, '${a.tipoLpu}')">Aprovar</button>
+        <button class="btn btn-red" style="flex:1" onclick="naoValidarLpu(${a.rowIndex}, '${a.tipoLpu}')">Não Validar</button>
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty-msg">Nenhuma LPU aguardando aprovação.</div>';
+}
+window.renderFila = renderFila;
+
+// Assinatura obrigatória ANTES de aprovar — mesmo botão/contador já usado pelo
+// técnico prestador em PREENCHIMENTO_LPU.html (REGISTRAR_ASSINATURA_LPU é genérico
+// por nome, funciona igual pra gestor). Só depois disso o botão "Aprovar" libera.
+window.assinarAprovacao = async function(rowIndex, tipoLpu){
+  if(!exigirAprovador()) return;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'REGISTRAR_ASSINATURA_LPU', tecnico: APROVADOR_ATUAL })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao assinar.'); return; }
+    ASSINATURAS_PENDENTES[`${rowIndex}_${tipoLpu}`] = { gestor: APROVADOR_ATUAL, numero: result.total };
+    renderFila();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+};
+
+window.aprovarLpu = async function(rowIndex, tipoLpu){
+  if(!exigirAprovador()) return;
+  const chave = `${rowIndex}_${tipoLpu}`;
+  const assinatura = ASSINATURAS_PENDENTES[chave];
+  if(!assinatura){ showToast('Assine antes de aprovar.'); return; }
+  if(!confirm('Confirma a aprovação desta LPU? Ela vai seguir para a Medição.')) return;
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'VALIDAR_LPU_APROVADOR', rowIndex, aprovado:true, motivo:'', validadoPor: assinatura.gestor, tipoLpu })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao aprovar a LPU.'); carregarAprovacao(); return; }
+    showToast('LPU aprovada — seguiu para a Medição!');
+    // Carimba o PDF em segundo plano (não trava a tela nem desfaz a aprovação se
+    // falhar — a aprovação em si já está salva na linha acima).
+    carimbarPdfComAssinatura(rowIndex, tipoLpu, assinatura.gestor, assinatura.numero);
+    delete ASSINATURAS_PENDENTES[chave];
+    carregarAprovacao();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+};
+
+window.naoValidarLpu = async function(rowIndex, tipoLpu){
+  if(!exigirAprovador()) return;
+  const motivo = prompt('Motivo da não validação da LPU (o técnico vai ver isso e precisa corrigir):');
+  if(motivo === null) return;
+  if(!motivo.trim()){ showToast('Informe o motivo da não validação.'); return; }
+
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'VALIDAR_LPU_APROVADOR', rowIndex, aprovado:false, motivo, validadoPor: APROVADOR_ATUAL, tipoLpu })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao validar a LPU.'); carregarAprovacao(); return; }
+    showToast('LPU devolvida para o técnico com o motivo.');
+    delete ASSINATURAS_PENDENTES[`${rowIndex}_${tipoLpu}`];
+    carregarAprovacao();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+};
+
+// Converte um Uint8Array grande em base64 sem estourar a pilha de chamadas
+// (String.fromCharCode.apply com o array inteiro de uma vez trava em PDFs maiores).
+function uint8ParaBase64(bytes){
+  let binario = '';
+  const tamanhoBloco = 0x8000;
+  for(let i = 0; i < bytes.length; i += tamanhoBloco){
+    binario += String.fromCharCode.apply(null, bytes.subarray(i, i + tamanhoBloco));
+  }
+  return btoa(binario);
+}
+
+// Depois que o gestor aprova, acrescenta uma página de carimbo (nome de quem
+// aprovou + assinatura formal + data/hora) no PDF que o técnico já gerou — sem
+// tocar no conteúdo original (itens, fotos, assinatura do prestador). Roda em
+// segundo plano: se falhar por qualquer motivo, a aprovação já foi salva antes
+// disso e não é desfeita — só o carimbo no PDF que fica faltando.
+async function carimbarPdfComAssinatura(rowIndex, tipoLpu, gestor, numeroAssinatura){
+  try{
+    const respPdf = await fetch(APPS_SCRIPT_URL + '?acao=LPU_OBTER_PDF&rowIndex=' + encodeURIComponent(rowIndex) + '&tipoLpu=' + encodeURIComponent(tipoLpu));
+    const resultPdf = await respPdf.json();
+    if(resultPdf.status !== 'ok' || !resultPdf.pdfBase64) return;
+
+    const binario = atob(resultPdf.pdfBase64);
+    const bytes = new Uint8Array(binario.length);
+    for(let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+
+    const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+    const paginas = pdfDoc.getPages();
+    const { width, height } = paginas[paginas.length - 1].getSize();
+    const pagina = pdfDoc.addPage([width, height]);
+    const fonteTitulo = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    const fonteTexto = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+    pagina.drawRectangle({ x: 0, y: height - 60, width, height: 60, color: PDFLib.rgb(0.659, 0.788, 0.235) });
+    pagina.drawText('APROVAÇÃO DA LPU', { x: 40, y: height - 38, size: 16, font: fonteTitulo, color: PDFLib.rgb(0.04, 0.04, 0.04) });
+    pagina.drawText('Aprovado por:', { x: 40, y: height - 110, size: 11, font: fonteTitulo, color: PDFLib.rgb(0.2, 0.2, 0.2) });
+    pagina.drawText(String(gestor), { x: 40, y: height - 130, size: 14, font: fonteTexto, color: PDFLib.rgb(0.1, 0.1, 0.1) });
+    pagina.drawText('Data/Hora da aprovação:', { x: 40, y: height - 160, size: 11, font: fonteTitulo, color: PDFLib.rgb(0.2, 0.2, 0.2) });
+    pagina.drawText(new Date().toLocaleString('pt-BR'), { x: 40, y: height - 180, size: 14, font: fonteTexto, color: PDFLib.rgb(0.1, 0.1, 0.1) });
+    pagina.drawText('Assinatura Nº ' + numeroAssinatura + ' deste gestor', { x: 40, y: height - 210, size: 11, font: fonteTitulo, color: PDFLib.rgb(0.2, 0.2, 0.2) });
+
+    const novoBase64 = uint8ParaBase64(await pdfDoc.save());
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ acao: 'LPU_ATUALIZAR_PDF', rowIndex, tipoLpu, pdfBase64: novoBase64 })
+    });
+  }catch(err){
+    console.error('Não foi possível carimbar o PDF da LPU:', err);
+  }
+}
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:999;white-space:nowrap';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.style.display='none'; }, 3200);
+}
+</script>
+</body>
+</html>

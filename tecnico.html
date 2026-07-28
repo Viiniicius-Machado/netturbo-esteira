@@ -1948,7 +1948,7 @@ function renderFusaoDiagramaBloco(rowIndex, diagIdx){
     <div class="fusao-diagrama-bloco" id="fusao-diagrama-bloco-${rowIndex}-${diagIdx}" style="border:1px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .7rem;margin-top:${diagIdx>0?'.6rem':'0'}">
       <div style="display:flex;align-items:center;gap:.5rem">
         <label style="font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);white-space:nowrap">Fusão — CEO Nº</label>
-        <input type="text" inputmode="numeric" style="max-width:70px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem" value="${d.numeroCeo||''}" oninput="this.value=this.value.replace(/\\D/g,'');atualizarDiagramaCampo(${rowIndex},${diagIdx},'numeroCeo',this.value)"/>
+        <input type="text" inputmode="text" style="max-width:70px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem" value="${d.numeroCeo||''}" oninput="this.value=this.value.replace(/[^0-9A-Za-z]/g,'');atualizarDiagramaCampo(${rowIndex},${diagIdx},'numeroCeo',this.value)"/>
         ${podeRemover ? `<button type="button" style="margin-left:auto;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;border-radius:var(--radius);font-size:.65rem;padding:.35rem .6rem;cursor:pointer" onclick="removerDiagramaFusao(${rowIndex},${diagIdx})">Remover</button>` : ''}
       </div>
       <div style="margin-top:.5rem">

@@ -237,8 +237,8 @@ textarea{resize:vertical;min-height:60px}
         <div class="fld"><label>Empresa Prestadora</label><input type="text" id="empresa" placeholder="Nome da empresa"></div>
         <div class="fld"><label>CNPJ</label><input type="text" id="cnpj" placeholder="00.000.000/0000-00"></div>
         <div class="fld"><label>Técnicos</label><input type="text" id="tecnicos" placeholder="Nomes dos técnicos"></div>
-        <div class="fld"><label>Cliente / POP</label><input type="text" id="cliente" placeholder="Nome do cliente"></div>
-        <div class="fld"><label>ID / Etiqueta</label><input type="text" id="etiqueta" placeholder="Identificação"></div>
+        <div class="fld"><label>Cliente / POP / ID</label><input type="text" id="cliente" placeholder="Nome do cliente"></div>
+        <div class="fld"><label>Protocolo</label><input type="text" id="etiqueta" placeholder="Identificação"></div>
         <div class="fld"><label>Cidade</label><input type="text" id="cidade" placeholder="Cidade"></div>
         <div class="fld"><label>Data de Início</label><input type="date" id="data_inicio"></div>
         <div class="fld"><label>Data de Término</label><input type="date" id="data_fim"></div>
@@ -735,7 +735,7 @@ function launchItems() {
             body: [
                 [{content:'Empresa', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:empresa, styles:{fontSize:9}}, {content:'CNPJ', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:cnpj, styles:{fontSize:9}}],
                 [{content:'Técnicos', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:tecnicos, styles:{fontSize:9}}, {content:'Cidade', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:cidade, styles:{fontSize:9}}],
-                [{content:'Cliente / POP', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:cliente, styles:{fontSize:9}}, {content:'ID / Etiqueta', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:etiqueta, styles:{fontSize:9}}],
+                [{content:'Cliente / POP / ID', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:cliente, styles:{fontSize:9}}, {content:'Protocolo', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:etiqueta, styles:{fontSize:9}}],
                 [{content:'Período', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:`${dInicio}  a  ${dFim}`, styles:{fontSize:9}}, {content:'Data Relatório', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:dataRelatorio, styles:{fontSize:9}}],
                 [{content:'Descrição Contábil', styles:{fontStyle:'bold',fillColor:[244,249,236],textColor:[107,117,133],fontSize:7}}, {content:descContabil, colSpan:3, styles:{fontSize:8,fontStyle:'bold',textColor:[140,191,63]}}],
             ],
