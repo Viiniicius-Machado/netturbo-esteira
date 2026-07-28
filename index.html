@@ -787,27 +787,54 @@ function tryLogin(){
 window.tryLogin = tryLogin;
 
 // ── PARSER DA MÁSCARA DO NOC ────────────────────────────────────
-// Regra geral: cada linha reconhecida vira um campo; linhas seguintes
-// sem rótulo continuam anexadas ao último campo identificado (isso
-// cobre os casos em que "porta" ou "obs" ocupam mais de uma linha).
+// Regra geral: cada linha reconhecida vira um campo; linhas seguintes sem
+// rótulo só continuam anexadas ao último campo se ele aceitar múltiplas
+// linhas (motivo/obs/porta) — evita que texto solto (título de seção,
+// pergunta de sim/não etc.) contamine campos curtos como Cidade/CEP.
+// Cada mesário cola a mensagem num formato — aceita tanto o clássico
+// ("Campo: valor") quanto variações sem rótulo usadas por alguns: linha só
+// com link do Maps = GPS; "protocolo - hora" = Protocolo/Período; "cidade -
+// data" = Cidade/Data; linha começando com "- " = observação. Endereço
+// também pode vir em partes soltas (CEP/Logradouro/Número/Bairro/Cidade/
+// Estado), compostas num só campo no final.
+const CAMPOS_MULTILINHA = ['motivo', 'obs', 'porta'];
+
 const LABEL_PATTERNS = [
   { key:'motivo',         re:/^motivo\s*:\s*/i },
+  { key:'atividade',      re:/^atividade\s*:\s*/i },
   { key:'cliente',        re:/^client[e]\s*:\s*/i },
   { key:'endereco',       re:/^endere[çc]o\s*:\s*/i },
+  { key:'logradouro',     re:/^logradouro\s*:\s*/i },
+  { key:'numero',         re:/^n[úu]mero\s*:\s*/i },
+  { key:'bairro',         re:/^bairro\s*:\s*/i },
+  { key:'cep',            re:/^cep\s*:\s*/i },
+  { key:'estado',         re:/^estado\s*:\s*/i },
+  { key:'cidade',         re:/^cidade\s*:\s*/i },
   { key:'gps',            re:/^localiza[çc][ãa]o\s*:\s*/i },
   { key:'dataNoc',        re:/^data\s*:\s*/i },
   { key:'periodo',        re:/^(per[íi]odo|hor[áa]rio)\s*:\s*/i },
   { key:'protocoloAmbos', re:/^protocolo\s*noc\s*\/\s*o(em|&m|&amp;m)\s*:\s*/i },
   { key:'protocoloNoc',   re:/^protocolo\s*noc\s*:\s*/i },
   { key:'protocoloOem',   re:/^protocolo\s*o(em|&m|&amp;m)\s*:\s*/i },
-  { key:'porta',          re:/^porta\s*:\s*/i },
-  { key:'obs',            re:/^obs\s*:\s*/i }
+  { key:'etiqueta',       re:/^etiqueta\s*:\s*/i },
+  { key:'pop',            re:/^pop\s*:\s*/i },
+  { key:'porta',          re:/^porta(\s+gpon)?\s*:\s*/i },
+  { key:'obs',            re:/^obs(erva[çc][ãa]o)?\s*:\s*/i }
 ];
 
+// Formatos sem rótulo (mesário cola a mensagem "quotada" do WhatsApp, com
+// "> " no início de cada linha e os dados em posição fixa em vez de rótulo).
+const PADRAO_URL = /^(https?:\/\/\S+)$/i;
+const PADRAO_PROTOCOLO_HORA = /^(\d{4,})\s*-\s*(\d{1,2}h\d{2})$/i;
+const PADRAO_CIDADE_DATA = /^([A-Za-zÀ-ÖØ-öø-ÿ\s]+?)\s*-\s*(\d{2}\/\d{2}\/\d{4})$/;
+
 function parseMascara(texto){
-  const linhas = texto.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length);
-  const campos = { motivo:'', cliente:'', endereco:'', gps:'', dataNoc:'', periodo:'',
-                    protocoloNoc:'', protocoloOem:'', porta:'', obs:'' };
+  const linhas = texto.split(/\r?\n/)
+    .map(l=>l.trim().replace(/^>\s*/, '').trim()) // tira ">" de mensagem quotada do WhatsApp
+    .filter(l=>l.length);
+  const campos = { motivo:'', atividade:'', cliente:'', endereco:'', logradouro:'', numero:'', bairro:'',
+                    cep:'', estado:'', cidade:'', gps:'', dataNoc:'', periodo:'',
+                    protocoloNoc:'', protocoloOem:'', etiqueta:'', pop:'', porta:'', obs:'' };
   let ultimoKey = null;
 
   linhas.forEach(linha=>{
@@ -826,13 +853,71 @@ function parseMascara(texto){
         break;
       }
     }
-    if(!casou){
-      // ignora a primeira linha de cabeçalho ("Solicitação de deslocamento:") se ainda não achou nada
-      if(ultimoKey){
-        campos[ultimoKey] = (campos[ultimoKey] ? campos[ultimoKey] + '\n' : '') + linha;
-      }
+    if(casou) return;
+
+    // Sem rótulo — tenta os formatos posicionais antes de desistir da linha.
+    let m;
+    if(!campos.gps && PADRAO_URL.test(linha)){
+      campos.gps = linha;
+      ultimoKey = 'gps';
+      return;
+    }
+    if((m = linha.match(PADRAO_PROTOCOLO_HORA))){
+      campos.protocoloNoc = campos.protocoloNoc || m[1];
+      campos.protocoloOem = campos.protocoloOem || m[1];
+      campos.periodo = m[2].toUpperCase();
+      ultimoKey = 'protocoloOem';
+      return;
+    }
+    if((m = linha.match(PADRAO_CIDADE_DATA))){
+      campos.cidade = campos.cidade || m[1].trim();
+      campos.dataNoc = campos.dataNoc || m[2];
+      ultimoKey = 'cidade';
+      return;
+    }
+    if(/^-\s+/.test(linha)){
+      const texto2 = linha.replace(/^-\s+/, '');
+      campos.obs = campos.obs ? campos.obs + '\n' + texto2 : texto2;
+      ultimoKey = 'obs';
+      return;
+    }
+
+    // Continuação de campo multi-linha (Motivo/Obs/Porta) — qualquer outra
+    // linha solta (título de seção, pergunta de sim/não etc.) é ignorada,
+    // pra não contaminar campos curtos como Cidade/CEP/Protocolo.
+    if(ultimoKey && CAMPOS_MULTILINHA.includes(ultimoKey)){
+      campos[ultimoKey] = (campos[ultimoKey] ? campos[ultimoKey] + '\n' : '') + linha;
     }
   });
+
+  // Motivo em branco ou "N/A" com Atividade preenchida: usa a atividade como motivo.
+  if((!campos.motivo || campos.motivo.toUpperCase() === 'N/A') && campos.atividade){
+    campos.motivo = campos.atividade;
+  }
+
+  // Endereço: se não veio uma linha "Endereço:" direta, compõe a partir das
+  // partes soltas (CEP/Logradouro/Número/Bairro/Cidade/Estado) ou, na falta
+  // de tudo isso, usa só a Cidade sozinha.
+  if(!campos.endereco){
+    const partes = [];
+    if(campos.logradouro) partes.push(campos.logradouro + (campos.numero ? ', ' + campos.numero : ''));
+    if(campos.bairro) partes.push(campos.bairro);
+    if(campos.cidade) partes.push(campos.cidade + (campos.estado ? ' - ' + campos.estado : ''));
+    if(campos.cep) partes.push('CEP ' + campos.cep);
+    campos.endereco = partes.join(' - ');
+  }
+
+  // Porta: se veio POP separado, prefixa (mantém o formato antigo intacto
+  // quando só existe Porta, sem POP).
+  if(campos.pop){
+    campos.porta = 'POP: ' + campos.pop + (campos.porta ? ' | Porta: ' + campos.porta : '');
+  }
+
+  // Etiqueta funciona como identificador do chamado quando a mensagem não
+  // trouxe Protocolo NOC/O&M explícito.
+  if(campos.etiqueta && !campos.protocoloOem){
+    campos.protocoloOem = campos.etiqueta;
+  }
 
   return campos;
 }
