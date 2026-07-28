@@ -49,8 +49,8 @@
     .hdr-pill{font-family:'Rajdhani',sans-serif;font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:rgba(168,201,60,.12);color:var(--accent);border:1px solid rgba(168,201,60,.25);border-radius:4px;padding:.1rem .4rem}
     .access-badge{font-size:.56rem;font-weight:700;letter-spacing:.1em;padding:.22rem .5rem;border-radius:20px;text-transform:uppercase;background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)}
 
-    .page-actions{max-width:680px;margin:0 auto;display:flex;align-items:center;gap:.5rem;padding:.9rem 1rem 0}
-    main{max-width:680px;margin:0 auto;padding:1.2rem 1rem 0}
+    .page-actions{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:.5rem;padding:.9rem 1rem 0}
+    main{max-width:1400px;margin:0 auto;padding:1.2rem 1rem 0}
 
     /* CARD */
     .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:.9rem;overflow:hidden}
@@ -66,6 +66,9 @@
     .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(168,201,60,.1)}
     .field textarea{resize:vertical;min-height:100px}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}
+    /* Justificativa e Plano de Ação são dois textareas independentes — em tela
+       larga ficam lado a lado em vez de empilhados, aproveitando o espaço. */
+    @media(min-width:900px){.two-col-wide{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start;margin-bottom:.9rem}.two-col-wide .card{margin-bottom:0}}
     .divider{height:1px;background:var(--border);margin:.72rem 0}
     .req-star{color:var(--red)}
 
@@ -110,7 +113,7 @@
     #toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid #6b8a1f;border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap;pointer-events:none}
     #toast.show{transform:translateX(-50%) translateY(0)}
     #pdf-root{position:fixed;left:0;top:0;z-index:-999;opacity:0;pointer-events:none;width:794px;background:#fff}
-    footer{max-width:680px;margin:1.5rem auto 0;padding:0 1rem;text-align:center;color:var(--text-muted);font-size:.62rem;letter-spacing:.08em}
+    footer{max-width:1400px;margin:1.5rem auto 0;padding:0 1rem;text-align:center;color:var(--text-muted);font-size:.62rem;letter-spacing:.08em}
   </style>
 </head>
 <body>
@@ -178,23 +181,24 @@
     </div>
   </section>
 
-  <!-- JUSTIFICATIVA -->
-  <section class="card">
-    <div class="card-header"><h2>Justificativa da Liderança</h2></div>
-    <div class="card-body">
-      <div style="font-size:.68rem;color:var(--text-muted);font-style:italic;margin-bottom:.4rem">Descreva a necessidade operacional crítica, emergência ou projeto que impediu a compensação das horas dentro do limite estabelecido:</div>
-      <div class="field"><textarea id="justificativa" placeholder="Descreva detalhadamente a justificativa..."></textarea></div>
-    </div>
-  </section>
+  <!-- JUSTIFICATIVA + PLANO DE AÇÃO (lado a lado em tela larga) -->
+  <div class="two-col-wide">
+    <section class="card">
+      <div class="card-header"><h2>Justificativa da Liderança</h2></div>
+      <div class="card-body">
+        <div style="font-size:.68rem;color:var(--text-muted);font-style:italic;margin-bottom:.4rem">Descreva a necessidade operacional crítica, emergência ou projeto que impediu a compensação das horas dentro do limite estabelecido:</div>
+        <div class="field"><textarea id="justificativa" placeholder="Descreva detalhadamente a justificativa..."></textarea></div>
+      </div>
+    </section>
 
-  <!-- PLANO DE AÇÃO -->
-  <section class="card">
-    <div class="card-header"><h2>Plano de Ação</h2></div>
-    <div class="card-body">
-      <div style="font-size:.68rem;color:var(--text-muted);font-style:italic;margin-bottom:.4rem">Como o líder pretende regularizar o banco de horas deste colaborador no próximo período?</div>
-      <div class="field"><textarea id="plano-acao" placeholder="Descreva o plano de ação..."></textarea></div>
-    </div>
-  </section>
+    <section class="card">
+      <div class="card-header"><h2>Plano de Ação</h2></div>
+      <div class="card-body">
+        <div style="font-size:.68rem;color:var(--text-muted);font-style:italic;margin-bottom:.4rem">Como o líder pretende regularizar o banco de horas deste colaborador no próximo período?</div>
+        <div class="field"><textarea id="plano-acao" placeholder="Descreva o plano de ação..."></textarea></div>
+      </div>
+    </section>
+  </div>
 
   <!-- ASSINATURAS -->
   <section class="card">
