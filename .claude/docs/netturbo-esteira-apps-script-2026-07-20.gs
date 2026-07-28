@@ -196,10 +196,11 @@ function metaSlaMinutos(slaHoras) {
 // (Tipo de Solicitação/Categoria 1-4), só pra manter IRR/MTTR/rankings do
 // dashboard_gestao.html funcionando sem mudança pra atividades novas — esse
 // dashboard não foi alterado nesta entrega e continua lendo essas duas colunas.
-// Tipos sem equivalente direto no enum antigo (Pós Vendas, Medição, e ramos de
-// Manutenção que não são Massiva/Rompimento) ficam com Ocorrência vazia de
-// propósito — não força um mapeamento errado; a classificação completa continua
-// disponível nas colunas novas de qualquer forma.
+// Todo Tipo de Solicitação/Categoria sempre resolve pra um rótulo de Ocorrência
+// (nunca fica em branco) — sem isso, atividade sem equivalente direto no enum
+// antigo (ex.: Manutenção → Acompanhamento/Fiscalização, Pós Vendas, Medição)
+// sumia dos gráficos por Ocorrência do dashboard (ver TIPOS em
+// dashboard_gestao.html, que precisa listar esses rótulos novos também).
 function derivarOcorrenciaECausa(tipoSolicitacao, cat1, cat2, cat3, cat4) {
   let ocorrencia = '';
   const t = String(tipoSolicitacao || '');
@@ -207,11 +208,15 @@ function derivarOcorrenciaECausa(tipoSolicitacao, cat1, cat2, cat3, cat4) {
   if (t === 'Manutenção') {
     if (c2.indexOf('Massiva') !== -1) ocorrencia = 'MASSIVA';
     else if (c2.indexOf('Rompimento') !== -1) ocorrencia = 'ROMPIMENTO';
+    else if (c2.indexOf('Acompanhamento') !== -1 || c2.indexOf('Fiscalização') !== -1) ocorrencia = 'ACOMPANHAMENTO / FISCALIZAÇÃO';
+    else if (c2.indexOf('REDE RF') !== -1) ocorrencia = 'REDE RF';
+    else if (c2) ocorrencia = c2.toUpperCase();
   } else if (t === 'Preventiva') { ocorrencia = 'PREVENTIVA'; }
   else if (t === 'Transmissão') { ocorrencia = 'TRANSMISSÃO'; }
   else if (t === 'Implantação') { ocorrencia = (c1.indexOf('Extensão de Fibra') !== -1) ? 'EXTENSÃO DE FIBRA' : 'IMPLANTAÇÃO'; }
   else if (t === 'GTD') { ocorrencia = 'GTD'; }
-  // Pós Vendas / Medição: sem equivalente, fica vazio mesmo.
+  else if (t === 'Pós Vendas') { ocorrencia = 'PÓS VENDAS'; }
+  else if (t === 'Medição') { ocorrencia = 'MEDIÇÃO'; }
 
   const causaPartes = [cat2, cat3, cat4].filter(function(v){ return v; });
   const causa = causaPartes.join(' - ');

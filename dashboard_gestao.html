@@ -404,7 +404,11 @@ function metaSlaMinutos(a){
   return h > 0 ? h * 60 : META_MTTR_MIN;
 }
 
-const TIPOS = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO'];
+// Rótulos derivados de Tipo de Solicitação/Categoria (ver derivarOcorrenciaECausa
+// no Apps Script) — precisam estar aqui também, senão a atividade some do
+// gráfico "Ocorrências no Mês" mesmo com Ocorrência preenchida (montarRankingFixo
+// só mostra as categorias desta lista).
+const TIPOS = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO','TRANSMISSÃO','IMPLANTAÇÃO','EXTENSÃO DE FIBRA','GTD','PÓS VENDAS','MEDIÇÃO','ACOMPANHAMENTO / FISCALIZAÇÃO','REDE RF'];
 const EMPRESAS = ['VAL','PV','OLIVEIRA','SOLUTEC','QUALITY','NETTURBO'];
 
 let TODAS_ATIVIDADES = [];
