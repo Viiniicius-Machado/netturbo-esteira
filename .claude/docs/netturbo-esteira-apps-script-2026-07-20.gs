@@ -184,6 +184,14 @@ function calcularPrazoLimite(horas) {
   return new Date(Date.now() + h * 3600000).toLocaleString('pt-BR');
 }
 
+// Meta de C/SLA pra uma linha: usa o SLA Horas dela (matriz nova) quando
+// preenchido; atividade antiga (sem essa coluna) continua na meta fixa antiga
+// de 240min (4h), já que não tem como saber qual seria o SLA dela.
+function metaSlaMinutos(slaHoras) {
+  const h = Number(slaHoras);
+  return h > 0 ? h * 60 : 240;
+}
+
 // Deriva 'Ocorrência'/'Causa' (colunas antigas) a partir da classificação nova
 // (Tipo de Solicitação/Categoria 1-4), só pra manter IRR/MTTR/rankings do
 // dashboard_gestao.html funcionando sem mudança pra atividades novas — esse
@@ -746,6 +754,7 @@ function resumoMensalTecnico(ss, params) {
   const idxCliente = HEADERS_ESTEIRA.indexOf('Cliente');
   const idxOcorrencia = HEADERS_ESTEIRA.indexOf('Ocorrência');
   const idxTimestampRecebido = HEADERS_ESTEIRA.indexOf('Timestamp Recebido');
+  const idxSlaHoras = HEADERS_ESTEIRA.indexOf('SLA Horas');
 
   const mesAlvo = params.mes || ''; // 'YYYY-MM'
   let totalConcluidas = 0, cSla = 0, sSla = 0;
@@ -795,7 +804,7 @@ function resumoMensalTecnico(ss, params) {
 
     if (mttrMin !== null) {
       somaMTTR += mttrMin; contMTTR++;
-      if (mttrMin <= 240) cSla++; else sSla++;
+      if (mttrMin <= metaSlaMinutos(row[idxSlaHoras])) cSla++; else sSla++;
     }
     if (mttdMin !== null) { somaMTTD += mttdMin; contMTTD++; }
     if (tmcMin !== null) { somaTMC += tmcMin; contTMC++; }

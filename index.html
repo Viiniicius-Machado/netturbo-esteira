@@ -1071,7 +1071,7 @@ function renderEsteira(){
   const colA = document.getElementById('colAguardando');
   colA.innerHTML = aguardando.length ? aguardando.map(a => `
     <div class="atv-card status-aguardando">
-      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
+      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
       <div class="meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
       ${blocoPrazoLimite(a)}
@@ -1103,7 +1103,7 @@ function renderEsteira(){
   const colD = document.getElementById('colDespachadas');
   colD.innerHTML = emAndamento.length ? emAndamento.map(a => `
     <div class="atv-card status-despachada">
-      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
+      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
       <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br>${statusLabelMap[a['Status']]||a['Status']}</div>
       ${blocoPrazoLimite(a)}
@@ -1129,7 +1129,7 @@ function renderEsteira(){
   const colV = document.getElementById('colValidacao');
   colV.innerHTML = aguardandoValidacao.length ? aguardandoValidacao.map(a => `
     <div class="atv-card" style="border-left:3px solid #ab47bc">
-      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
+      <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
       <div class="cliente">${a['Cliente']||'—'}</div>
       ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
       <div class="meta">

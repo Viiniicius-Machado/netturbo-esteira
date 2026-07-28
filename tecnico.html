@@ -1503,6 +1503,7 @@ function renderFormOcorrenciaNovo(a){
           <div class="ceo-opt${ceoAtual==='nova'?' active':''}" data-ceo="nova" onclick="selecionarCEO(${a.rowIndex},'nova')">Caixa Nova → Nova (2 novas)</div>
           <div class="ceo-opt${ceoAtual==='existente'?' active':''}" data-ceo="existente" onclick="selecionarCEO(${a.rowIndex},'existente')">Caixa Nova → Existente</div>
           <div class="ceo-opt${ceoAtual==='existente-existente'?' active':''}" data-ceo="existente-existente" onclick="selecionarCEO(${a.rowIndex},'existente-existente')">Caixa Existente → Existente</div>
+          <div class="ceo-opt${ceoAtual==='nenhuma'?' active':''}" data-ceo="nenhuma" onclick="selecionarCEO(${a.rowIndex},'nenhuma')">Nenhuma (não mexeu em caixa nova/existente)</div>
         </div>
       </div>
       <div id="local-ceo-extra-${a.rowIndex}" style="display:none"></div>
@@ -1885,29 +1886,12 @@ window.toggleFusaoPerguntas = function(rowIndex){
   salvarRascunho(rowIndex);
 };
 
+// "Fusionou todas as fibras?" foi removida (pedido do usuário — não é mais
+// necessária). 'Fusionou Todas' segue existindo só como coluna legada, sem
+// nova pergunta preenchendo ela pra atividades novas.
 function renderFusaoPerguntas(rowIndex){
-  const st = FUSAO_STATE[rowIndex];
-  return `
-    <div>
-      <label style="font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">Fusionou todas as fibras?</label>
-      <div class="toggle-row" style="margin-top:.3rem">
-        <button type="button" class="toggle-btn${st.fusionouTodas==='Sim'?' on-yes':''}" onclick="responderFusao(${rowIndex},'fusionouTodas','Sim')">Sim</button>
-        <button type="button" class="toggle-btn${st.fusionouTodas==='Não'?' on-no':''}" onclick="responderFusao(${rowIndex},'fusionouTodas','Não')">Não</button>
-      </div>
-    </div>
-    <div id="fusao-diagramas-${rowIndex}" style="margin-top:.6rem">${renderFusaoDiagramas(rowIndex)}</div>
-  `;
+  return `<div id="fusao-diagramas-${rowIndex}" style="margin-top:.6rem">${renderFusaoDiagramas(rowIndex)}</div>`;
 }
-
-window.responderFusao = function(rowIndex, campo, valor){
-  const st = FUSAO_STATE[rowIndex];
-  if(!st) return;
-  st[campo] = valor;
-  const painel = document.getElementById('fusao-perguntas-'+rowIndex);
-  if(painel) painel.innerHTML = renderFusaoPerguntas(rowIndex);
-  requestAnimationFrame(()=>st.diagramas.forEach((d,i)=>desenharLinhasFusao(rowIndex,i)));
-  salvarRascunho(rowIndex);
-};
 
 // Lista de diagramas — um por CEO em que o técnico trabalhou a fusão fora do
 // padrão. "+ Adicionar" só mexe no próprio container da lista, preservando o
@@ -2263,8 +2247,8 @@ function pegarGPS(rowIndex, key){
 }
 
 // Código interno (usado na lógica da tela) <-> texto legível (o que vai pra planilha)
-const CEO_LABELS = { 'nova':'NOVA/NOVA', 'existente':'NOVA/EXISTENTE', 'existente-existente':'EXISTENTE' };
-const CEO_LABELS_REVERSA = { 'NOVA/NOVA':'nova', 'NOVA/EXISTENTE':'existente', 'EXISTENTE':'existente-existente' };
+const CEO_LABELS = { 'nova':'NOVA/NOVA', 'existente':'NOVA/EXISTENTE', 'existente-existente':'EXISTENTE', 'nenhuma':'NENHUMA' };
+const CEO_LABELS_REVERSA = { 'NOVA/NOVA':'nova', 'NOVA/EXISTENTE':'existente', 'EXISTENTE':'existente-existente', 'NENHUMA':'nenhuma' };
 
 let CEO_STATE = {};
 let GPS_STATE = {};
@@ -2411,6 +2395,12 @@ window.solicitarValidacao = async function(rowIndex){
   const fusionouTodas = fusaoSt ? fusaoSt.fusionouTodas : '';
   const diagramasComIndice = fusaoSt ? fusaoSt.diagramas.map((d,i)=>({d,i})) : [];
   const diagramasRelevantes = diagramasComIndice.filter(({d}) => d.pareamento.length > 0 || d.tipoCaboA || d.tipoCaboB || d.nomA || d.nomB || d.splitter1);
+  // Fusão — CEO Nº é obrigatório em todo diagrama que o técnico já mexeu (senão
+  // não dá pra saber depois qual CEO física recebeu aquela fusão).
+  if(diagramasRelevantes.some(({d}) => !String(d.numeroCeo||'').trim())){
+    showToast('Informe o número da CEO em todos os diagramas de fusão preenchidos.');
+    return;
+  }
   const quantidadeCeo = diagramasRelevantes.length ? String(diagramasRelevantes.length) : '';
   const tipoCaboFusionado = diagramasRelevantes.length ? [...new Set(diagramasRelevantes.flatMap(({d})=>[d.tipoCaboA,d.tipoCaboB]).filter(Boolean))].join(', ') : '';
   // Endereço da CEO vem do widget de GPS (mesmo padrão de Local da Falha/Caixa Nova),
@@ -2467,22 +2457,9 @@ function copiarRelatorioWhats(rowIndex, campos){
   if(campos.numeroCeoB) t += '*Nº CEO B:* ' + campos.numeroCeoB + '\n';
   if(campos.quantidadeCeo) t += '*QUANTIDADE DE CEO TRABALHADAS:* ' + campos.quantidadeCeo + '\n';
   if(campos.tipoCaboFusionado) t += '*CABO FUSIONADO:* ' + campos.tipoCaboFusionado + '\n';
-  if(campos.fusionouTodas) t += '*FUSIONOU TODAS AS FIBRAS:* ' + campos.fusionouTodas + '\n';
-  if(campos.diagramas && campos.diagramas.length){
-    const rotulo = ponto => ponto.lado==='splitter1' ? (ponto.num===0?'Splitter 1 IN':'Splitter 1 P'+ponto.num)
-      : ponto.lado==='splitter2' ? (ponto.num===0?'Splitter 2 IN':'Splitter 2 P'+ponto.num)
-      : (ponto.lado==='a'?'A':'B')+ponto.num;
-    campos.diagramas.forEach(d=>{
-      if(!d.pares || !d.pares.length) return;
-      const infoSplitter = [
-        d.splitter1 ? 'Splitter 1 ' + d.splitter1 + (d.splitter1Tipo1x2?' ('+d.splitter1Tipo1x2+')':'') : '',
-        d.splitter2 ? 'Splitter 2 ' + d.splitter2 + (d.splitter2Tipo1x2?' ('+d.splitter2Tipo1x2+')':'') : ''
-      ].filter(Boolean).join(' + ');
-      const infoCabo = (d.tipoCaboA || d.tipoCaboB) ? ' — Cabo A: ' + (d.tipoCaboA||'?') + ' · Cabo B: ' + (d.tipoCaboB||'?') : '';
-      t += '*FUSÃO CEO Nº' + (d.numeroCeo||'?') + '* (' + (d.nomenclaturaA||'?') + ' → ' + (d.nomenclaturaB||'?') + ')' + infoCabo + (infoSplitter?' — '+infoSplitter:'') + ': ' + d.pares.map(p=>rotulo(p.ponto1)+'→'+rotulo(p.ponto2)).join(', ') + '\n';
-      if(d.gpsCeo) t += 'Localização dessa CEO: ' + d.gpsCeo + '\n';
-    });
-  }
+  // Detalhe de cada fusão (pares de fibra, splitters, nomenclatura por CEO) fica
+  // só no GEOGRID/relatório interno — no texto pro WhatsApp isso saía como uma
+  // escrita confusa e não é necessário (pedido do usuário).
   t += '\n*MATERIAIS:*\n' + campos.materiais + '\n';
   t += '\n*SOLUÇÃO:*\n' + campos.solucao + '\n';
   t += '\n*MELHORIA NA REDE:*\n' + campos.melhoria;

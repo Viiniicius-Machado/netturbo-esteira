@@ -396,6 +396,14 @@ const META_IRR_PCT = 10;      // IRR (Índice de Recursos Repetitivos) — meta 
 
 let FILTRO_TIPO_ATIVO = 'TODOS'; // 'TODOS' | 'ROMPIMENTO' | 'MASSIVA' — filtra só o card de Eficiência/MTTR/MTTD/TMC
 
+// C/SLA por atividade: usa o SLA Horas dela (matriz nova, ver MATRIZ_SLA em
+// index.html/tecnico.html) quando preenchido; atividade antiga (sem essa
+// coluna) continua na meta fixa de sempre (META_MTTR_MIN, 240min).
+function metaSlaMinutos(a){
+  const h = Number(a['SLA Horas']);
+  return h > 0 ? h * 60 : META_MTTR_MIN;
+}
+
 const TIPOS = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO'];
 const EMPRESAS = ['VAL','PV','OLIVEIRA','SOLUTEC','QUALITY','NETTURBO'];
 
@@ -943,7 +951,7 @@ function renderBlocoEficiencia(){
     const tmc = paraMinutos(a['TMC']);
     if(mttr!==null){
       somaMTTR += mttr; contMTTR++;
-      if(mttr <= META_MTTR_MIN) cSla++; else sSla++;
+      if(mttr <= metaSlaMinutos(a)) cSla++; else sSla++;
     }
     if(mttd!==null){ somaMTTD += mttd; contMTTD++; }
     if(tmc!==null){ somaTMC += tmc; contTMC++; }
@@ -1042,7 +1050,7 @@ function renderDashboard(){
   let cSlaGeral=0, sSlaGeral=0;
   DADOS_FILTRADOS.forEach(a=>{
     const mttr = paraMinutos(a['MTTR']);
-    if(mttr!==null){ if(mttr <= META_MTTR_MIN) cSlaGeral++; else sSlaGeral++; }
+    if(mttr!==null){ if(mttr <= metaSlaMinutos(a)) cSlaGeral++; else sSlaGeral++; }
   });
   document.getElementById('stConcluidas').textContent = DADOS_FILTRADOS.length;
   document.getElementById('stCSla').textContent = cSlaGeral;
@@ -1056,7 +1064,7 @@ function renderDashboard(){
   document.getElementById('emptyMsg').style.display = DADOS_FILTRADOS.length ? 'none' : 'block';
   tbody.innerHTML = DADOS_FILTRADOS.map(a=>{
     const mttr = paraMinutos(a['MTTR']);
-    const slaOk = mttr!==null ? (mttr<=META_MTTR_MIN) : null;
+    const slaOk = mttr!==null ? (mttr<=metaSlaMinutos(a)) : null;
     return `<tr>
       <td>${a['Empresa']||'—'}</td>
       <td>${a['Técnico']||'—'}</td>
@@ -1080,7 +1088,7 @@ function renderDashboard(){
 window.exportarExcel = function(){
   const rows = DADOS_FILTRADOS.map(a=>{
     const mttr = paraMinutos(a['MTTR']);
-    const slaOk = mttr!==null ? (mttr<=META_MTTR_MIN) : null;
+    const slaOk = mttr!==null ? (mttr<=metaSlaMinutos(a)) : null;
     return {
       'Empresa': a['Empresa']||'',
       'Técnico': a['Técnico']||'',
