@@ -79,7 +79,14 @@ const HEADERS_ESTEIRA = [
   // contábil, quantas obras ainda estão paradas aguardando o técnico preencher —
   // antes disso não tinha como saber, porque o campo só nascia junto com a LPU.
   // Vale igual pra titular e apoio da mesma atividade (mesmo serviço, duas empresas).
-  'Conta Contábil'
+  'Conta Contábil',
+  // ── Nomenclatura do cabo da caixa NOVA (ao lado do Número CEO A/B, não confundir
+  // com a nomenclatura por Lado A/B das "Perguntas rápidas de fusão", que é outro
+  // campo) — alfanumérica, obrigatória junto do Número CEO pra caixas novas em
+  // QUALQUER Tipo de Solicitação (inclusive os que não mostram o editor de fusão,
+  // como GTD/Implantação/Pós Vendas/Medição). Dispara um cadastro simples no
+  // GEOGRID (sem diagrama) — ver registrarGeogridCeoSemFusao.
+  'Nomenclatura Cabo CEO A','Nomenclatura Cabo CEO B'
 ];
 
 function garantirAba(ss, nome, headers, corFundo, corTexto) {
@@ -933,6 +940,23 @@ function temPareamentoPreenchido(fusaoPareamentoJson) {
   }
 }
 
+// Evita cadastrar a mesma CEO nova duas vezes no GEOGRID: uma vez pela fusão de
+// verdade (com ligação de fibra desenhada, ver registrarGeogridSeNecessario) e
+// outra pelo cadastro simples (ver registrarGeogridCeoSemFusao) — só cria o
+// cadastro simples se essa CEO NÃO tiver nenhum diagrama com pares preenchidos.
+function numeroCeoJaTemFusaoDesenhada(fusaoPareamentoJson, numeroCeo) {
+  if (!fusaoPareamentoJson || !numeroCeo) return false;
+  try {
+    const diagramas = JSON.parse(fusaoPareamentoJson);
+    if (!Array.isArray(diagramas)) return false;
+    return diagramas.some(function(d) {
+      return String(d.numeroCeo) === String(numeroCeo) && Array.isArray(d.pares) && d.pares.length > 0;
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
 // ── SALVAR OCORRÊNCIA (técnico preenche e solicita validação) ───
 function salvarOcorrencia(ss, data) {
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
@@ -971,6 +995,8 @@ function salvarOcorrencia(ss, data) {
   sheet.getRange(rowIndex, idx('Número CEO A')).setValue(data.numeroCeoA || '');
   sheet.getRange(rowIndex, idx('Número CEO B'), 1, 1).setNumberFormat('@STRING@');
   sheet.getRange(rowIndex, idx('Número CEO B')).setValue(data.numeroCeoB || '');
+  sheet.getRange(rowIndex, idx('Nomenclatura Cabo CEO A')).setValue(data.nomenclaturaCeoA || '');
+  sheet.getRange(rowIndex, idx('Nomenclatura Cabo CEO B')).setValue(data.nomenclaturaCeoB || '');
   sheet.getRange(rowIndex, idx('Cidade Falha')).setValue(data.cidadeFalha || '');
   sheet.getRange(rowIndex, idx('Status')).setValue('AGUARDANDO_VALIDACAO');
   sheet.getRange(rowIndex, idx('Motivo Não Validado')).setValue('');
@@ -993,6 +1019,19 @@ function salvarOcorrencia(ss, data) {
   // replicada manualmente no GEOGRID por alguém da sala técnica.
   if (temPareamentoPreenchido(data.fusaoPareamento)) {
     registrarGeogridSeNecessario(ss, sheet, rowIndex, data);
+  }
+
+  // Caixa NOVA sem fusão fora do padrão (Nomenclatura do cabo preenchida ao lado do
+  // Número CEO A/B, fora do editor de fusão) — vale pra QUALQUER Tipo de Solicitação,
+  // inclusive os que nem mostram o bloco de fusão (GTD/Implantação/Pós Vendas/Medição).
+  // Mesmo assim é uma caixa física nova que precisa ser cadastrada no GEOGRID, só que
+  // sem diagrama — se essa mesma CEO já ganhou uma fusão de verdade acima (com
+  // ligação desenhada), pula pra não duplicar o cadastro da mesma caixa duas vezes.
+  if (data.numeroCeoA && data.nomenclaturaCeoA && !numeroCeoJaTemFusaoDesenhada(data.fusaoPareamento, data.numeroCeoA)) {
+    registrarGeogridCeoSemFusao(ss, sheet, rowIndex, data.numeroCeoA, data.nomenclaturaCeoA, data.gpsCeoA);
+  }
+  if (data.numeroCeoB && data.nomenclaturaCeoB && !numeroCeoJaTemFusaoDesenhada(data.fusaoPareamento, data.numeroCeoB)) {
+    registrarGeogridCeoSemFusao(ss, sheet, rowIndex, data.numeroCeoB, data.nomenclaturaCeoB, data.gpsCeoB);
   }
 
   // TMC (Tempo Médio de Campo) = Hora Chegada → agora (momento em que o técnico pede
@@ -1833,6 +1872,43 @@ function registrarGeogridSeNecessario(ss, sheetEsteira, rowIndex, data) {
   sheet.getRange(row, idxGeo('Técnico')).setValue(tecnico || '');
 }
 
+// Chamado de dentro de salvarOcorrencia quando uma CEO NOVA (Número CEO A/B) tem
+// Nomenclatura do cabo preenchida mas NÃO tem fusão fora do padrão desenhada
+// (ver numeroCeoJaTemFusaoDesenhada) — mesmo assim é uma caixa física nova que
+// precisa ser cadastrada no GEOGRID pela sala técnica, só que sem diagrama de
+// fusão nenhum. Guarda em 'Fusão Pareamento' um array de 1 item com `semFusao:
+// true`, no mesmo formato usado pelas fusões de verdade (numeroCeo/nomenclaturaA/
+// gpsCeo/pares) — geogrid.html detecta essa marca e mostra um card simples em vez
+// do editor visual de fusão.
+function registrarGeogridCeoSemFusao(ss, sheetEsteira, rowIndex, numeroCeo, nomenclatura, gps) {
+  const idx = h => HEADERS_ESTEIRA.indexOf(h) + 1;
+  const idAtividade = sheetEsteira.getRange(rowIndex, idx('ID Atividade')).getValue();
+  const protocolo = sheetEsteira.getRange(rowIndex, idx('Protocolo O&M')).getValue()
+    || sheetEsteira.getRange(rowIndex, idx('Protocolo NOC')).getValue();
+  const cliente = sheetEsteira.getRange(rowIndex, idx('Cliente')).getValue();
+  const endereco = sheetEsteira.getRange(rowIndex, idx('Endereço')).getValue();
+  const tecnico = sheetEsteira.getRange(rowIndex, idx('Técnico')).getValue();
+
+  const sheet = garantirGeogrid(ss);
+  const row = sheet.getLastRow() + 1;
+  const idxGeo = h => HEADERS_GEOGRID.indexOf(h) + 1;
+  sheet.getRange(row, 1, 1, 2).setNumberFormat('@STRING@');
+  sheet.getRange(row, idxGeo('Fusão Pareamento'), 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(row, idxGeo('ID Atividade')).setValue(idAtividade);
+  sheet.getRange(row, idxGeo('Protocolo')).setValue(protocolo);
+  sheet.getRange(row, idxGeo('Cliente')).setValue(cliente);
+  sheet.getRange(row, idxGeo('Endereço')).setValue(endereco);
+  const diagramaSemFusao = [{
+    numeroCeo: String(numeroCeo), nomenclaturaA: String(nomenclatura), nomenclaturaB: '',
+    gpsCeo: gps || '', tipoCaboA: '', tipoCaboB: '', pares: [], semFusao: true
+  }];
+  sheet.getRange(row, idxGeo('Fusão Pareamento')).setValue(JSON.stringify(diagramaSemFusao));
+  sheet.getRange(row, idxGeo('Quantidade CEO Trabalhadas')).setValue('1');
+  sheet.getRange(row, idxGeo('Timestamp Registro')).setValue(new Date().toLocaleString('pt-BR'));
+  sheet.getRange(row, idxGeo('Status')).setValue('AGUARDANDO_VALIDACAO_LIDER');
+  sheet.getRange(row, idxGeo('Técnico')).setValue(tecnico || '');
+}
+
 function listarGeogrid(ss) {
   const sheet = garantirGeogrid(ss);
   if (sheet.getLastRow() < 2) return resposta('ok', { itens: [] });
@@ -2075,7 +2151,7 @@ function adicionarColunasNovas() {
     'Anexo Despacho URL','Anexo Despacho Nome','Mensagem Despacho','Link Medição','Anexos Despacho',
     'Tipo Cabo Fusionado','Fusionou Todas','Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas',
     'Tipo de Solicitação','Categoria 1','Categoria 2','Categoria 3','Categoria 4','SLA Horas','Prazo Limite',
-    'Conta Contábil'
+    'Conta Contábil','Nomenclatura Cabo CEO A','Nomenclatura Cabo CEO B'
   ];
   novos.forEach(h => {
     if (headerRow.indexOf(h) === -1) {

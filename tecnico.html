@@ -1133,6 +1133,8 @@ function salvarRascunho(rowIndex){
     ceo: ceoAtivo ? ceoAtivo.dataset.ceo : (CEO_STATE[rowIndex] || null),
     numeroCeoA: pegarNumeroCeo(rowIndex,'A'),
     numeroCeoB: pegarNumeroCeo(rowIndex,'B'),
+    nomenclaturaCeoA: pegarNomenclaturaCeo(rowIndex,'A'),
+    nomenclaturaCeoB: pegarNomenclaturaCeo(rowIndex,'B'),
     fusao: FUSAO_STATE[rowIndex] || null,
     gps: {}
   };
@@ -1216,6 +1218,8 @@ function restaurarRascunho(rowIndex){
     });
     if(draft.numeroCeoA){ const elA = document.getElementById('numceo-'+rowIndex+'-A'); if(elA) elA.value = draft.numeroCeoA; }
     if(draft.numeroCeoB){ const elB = document.getElementById('numceo-'+rowIndex+'-B'); if(elB) elB.value = draft.numeroCeoB; }
+    if(draft.nomenclaturaCeoA){ const elNomA = document.getElementById('nomceo-'+rowIndex+'-A'); if(elNomA) elNomA.value = draft.nomenclaturaCeoA; }
+    if(draft.nomenclaturaCeoB){ const elNomB = document.getElementById('nomceo-'+rowIndex+'-B'); if(elNomB) elNomB.value = draft.nomenclaturaCeoB; }
     if(draft.fusao){
       // Rascunho pode ter sido salvo numa versão anterior desta tela (tipo de
       // cabo era único pra RFO inteira, formato de pareamento diferente, ou sem
@@ -1710,6 +1714,15 @@ function numeroCeoWidget(rowIndex, key, valorSalvo){
   return `<input type="text" id="numceo-${rowIndex}-${key}" inputmode="numeric" maxlength="4" placeholder="0000" value="${valorSalvo||''}" style="margin-top:.4rem;max-width:140px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.5rem" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,4)"/>`;
 }
 
+// Nomenclatura do cabo da caixa NOVA (ao lado do Número da CEO A/B) — diferente da
+// nomenclatura por Lado A/B das "Perguntas rápidas de fusão" (outro bloco, só
+// aparece pra Manutenção/Preventiva/Transmissão/Implantação). Essa aqui vale pra
+// QUALQUER Tipo de Solicitação que instale caixa nova e alimenta o cadastro no
+// GEOGRID mesmo sem fusão desenhada (ver registrarGeogridCeoSemFusao no backend).
+function nomenclaturaCeoWidget(rowIndex, key, valorSalvo){
+  return `<input type="text" id="nomceo-${rowIndex}-${key}" inputmode="text" placeholder="Ex: CTO-123A" value="${valorSalvo||''}" style="margin-top:.4rem;max-width:180px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.5rem" oninput="this.value=this.value.replace(/[^0-9A-Za-z]/g,'')"/>`;
+}
+
 // Toda caixa NOVA (tipo 'nova' = A e B, 'existente' = só A) tem que ter o número de
 // identificação (4 dígitos, único por CEO na empresa) — sem isso não dá pra saber qual
 // caixa física foi usada depois, só a localização não é suficiente.
@@ -1720,18 +1733,23 @@ function renderLocalCeoExtra(rowIndex, ceo, atividade){
   const valB = (atividade && atividade['GPS Caixa Nova B']) || '';
   const numA = (atividade && atividade['Número CEO A']) || '';
   const numB = (atividade && atividade['Número CEO B']) || '';
+  const nomA = (atividade && atividade['Nomenclatura Cabo CEO A']) || '';
+  const nomB = (atividade && atividade['Nomenclatura Cabo CEO B']) || '';
 
   if(ceo === 'nova'){
     cont.style.display = 'block';
     cont.innerHTML = `
       <div><label>Localização Caixa Nova A</label>${gpsWidget(rowIndex,'ceoA', valA)}
-        <label style="margin-top:.4rem;display:block">Número da CEO A (4 dígitos)</label>${numeroCeoWidget(rowIndex,'A', numA)}</div>
+        <label style="margin-top:.4rem;display:block">Número da CEO A (4 dígitos)</label>${numeroCeoWidget(rowIndex,'A', numA)}
+        <label style="margin-top:.4rem;display:block">Nomenclatura do cabo A</label>${nomenclaturaCeoWidget(rowIndex,'A', nomA)}</div>
       <div style="margin-top:.5rem"><label>Localização Caixa Nova B</label>${gpsWidget(rowIndex,'ceoB', valB)}
-        <label style="margin-top:.4rem;display:block">Número da CEO B (4 dígitos)</label>${numeroCeoWidget(rowIndex,'B', numB)}</div>`;
+        <label style="margin-top:.4rem;display:block">Número da CEO B (4 dígitos)</label>${numeroCeoWidget(rowIndex,'B', numB)}
+        <label style="margin-top:.4rem;display:block">Nomenclatura do cabo B</label>${nomenclaturaCeoWidget(rowIndex,'B', nomB)}</div>`;
   }else if(ceo === 'existente'){
     cont.style.display = 'block';
     cont.innerHTML = `<div><label>Localização da Caixa Nova</label>${gpsWidget(rowIndex,'ceoA', valA)}
-      <label style="margin-top:.4rem;display:block">Número da CEO (4 dígitos)</label>${numeroCeoWidget(rowIndex,'A', numA)}</div>`;
+      <label style="margin-top:.4rem;display:block">Número da CEO (4 dígitos)</label>${numeroCeoWidget(rowIndex,'A', numA)}
+      <label style="margin-top:.4rem;display:block">Nomenclatura do cabo</label>${nomenclaturaCeoWidget(rowIndex,'A', nomA)}</div>`;
   }else{
     cont.style.display = 'none';
     cont.innerHTML = '';
@@ -1740,6 +1758,11 @@ function renderLocalCeoExtra(rowIndex, ceo, atividade){
 
 function pegarNumeroCeo(rowIndex, key){
   const el = document.getElementById('numceo-'+rowIndex+'-'+key);
+  return el ? el.value.trim() : '';
+}
+
+function pegarNomenclaturaCeo(rowIndex, key){
+  const el = document.getElementById('nomceo-'+rowIndex+'-'+key);
   return el ? el.value.trim() : '';
 }
 
@@ -2389,6 +2412,16 @@ window.solicitarValidacao = async function(rowIndex){
   }
   if(ceo === 'nova' && !/^\d{4}$/.test(numeroCeoB)){ showToast('Informe o Número da CEO B (4 dígitos).'); return; }
 
+  // Nomenclatura do cabo da caixa nova (ao lado do Número da CEO) — obrigatória
+  // junto do número, pra QUALQUER Tipo de Solicitação (mesmo sem editor de fusão),
+  // já que é ela que alimenta o cadastro no GEOGRID (ver salvarOcorrencia no backend).
+  const nomenclaturaCeoA = (ceo === 'nova' || ceo === 'existente') ? pegarNomenclaturaCeo(rowIndex,'A') : '';
+  const nomenclaturaCeoB = (ceo === 'nova') ? pegarNomenclaturaCeo(rowIndex,'B') : '';
+  if(ceo === 'nova' || ceo === 'existente'){
+    if(!nomenclaturaCeoA){ showToast('Informe a Nomenclatura do cabo' + (ceo==='nova'?' A':'') + '.'); return; }
+  }
+  if(ceo === 'nova' && !nomenclaturaCeoB){ showToast('Informe a Nomenclatura do cabo B.'); return; }
+
   const materiais = isMedicao ? '' : montarStringMateriais(rowIndex);
 
   // Perguntas rápidas de fusão — só existem em ROMPIMENTO/MASSIVA com CEO selecionada.
@@ -2431,7 +2464,7 @@ window.solicitarValidacao = async function(rowIndex){
   }));
   const fusaoPareamento = diagramasSerializados.length ? JSON.stringify(diagramasSerializados) : '';
 
-  const payloadBase = { acao:'SALVAR_OCORRENCIA', rowIndex, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, fusaoPareamento, quantidadeCeo };
+  const payloadBase = { acao:'SALVAR_OCORRENCIA', rowIndex, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, nomenclaturaCeoA, nomenclaturaCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, fusaoPareamento, quantidadeCeo };
   const payload = usaModeloNovo ? { ...payloadBase, ...categorias } : { ...payloadBase, ocorrencia: tipo, causa };
 
   try{

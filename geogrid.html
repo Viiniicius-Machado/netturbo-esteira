@@ -261,6 +261,31 @@ function diagramasFusao(item){
   }catch(e){ return []; }
 }
 
+// Caixa NOVA cadastrada fora do editor de fusão (Nomenclatura do cabo ao lado do
+// Número da CEO em tecnico.html, sem nenhuma ligação de fibra desenhada — ver
+// registrarGeogridCeoSemFusao no backend). Guardado com `semFusao:true` no mesmo
+// JSON de 'Fusão Pareamento' — some naturalmente de diagramasFusao() acima (pares
+// vazio), então não precisa mexer nesse filtro, só ler separado aqui.
+function diagramaSemFusao(item){
+  if(!item['Fusão Pareamento']) return null;
+  try{
+    const diagramas = JSON.parse(item['Fusão Pareamento']);
+    if(!Array.isArray(diagramas) || !diagramas.length) return null;
+    return diagramas[0].semFusao ? diagramas[0] : null;
+  }catch(e){ return null; }
+}
+
+// Card simples (sem diagrama de fusão) — só protocolo/cliente/técnico já aparecem
+// no card-pai; aqui é só a identificação da caixa nova em si.
+function blocoCeoSemFusao(d){
+  const gps = d.gpsCeo || '';
+  const infoGps = gps ? (gps.startsWith('http') ? ` · <a href="${gps}" target="_blank" rel="noopener">Local no mapa</a>` : ` · Local: ${gps}`) : '';
+  return `<div class="fusao-item-bloco">
+    <div class="fusao-item-titulo">CEO Nº${d.numeroCeo||'?'} · ${d.nomenclaturaA||'?'}${infoGps}</div>
+    <div class="fusao-item-rodape">Caixa nova — cadastro no GEOGRID (sem fusão fora do padrão)</div>
+  </div>`;
+}
+
 // Desenho igual ao que o técnico viu em tecnico.html (mesmas cores, mesmas colunas
 // Lado A / Splitter 1 / Splitter 2 / Lado B) — só que sem clique, é read-only pra sala técnica.
 function renderDiagramaFusaoGeogrid(rowIndex, diagIdx, d){
@@ -728,10 +753,14 @@ function renderValidacaoLider(){
   document.getElementById('countValidacaoLider').textContent = itens.length;
   const el = document.getElementById('listaValidacaoLider');
   el.innerHTML = itens.length ? itens.map(item => {
-    const emEdicao = ITENS_EM_EDICAO_LIDER.has(item.rowIndex);
-    const corpo = emEdicao
-      ? `<div id="lider-edicao-${item.rowIndex}" style="margin-top:.6rem">${renderEdicaoDiagramasLider(item)}</div>`
-      : blocoDiagramasFusao(item);
+    const dSemFusao = diagramaSemFusao(item);
+    const emEdicao = !dSemFusao && ITENS_EM_EDICAO_LIDER.has(item.rowIndex);
+    const corpo = dSemFusao
+      ? blocoCeoSemFusao(dSemFusao)
+      : (emEdicao
+        ? `<div id="lider-edicao-${item.rowIndex}" style="margin-top:.6rem">${renderEdicaoDiagramasLider(item)}</div>`
+        : blocoDiagramasFusao(item));
+    const botaoEditar = dSemFusao ? '' : `<button class="btn btn-outline" style="padding:.45rem .8rem;font-size:.75rem" onclick="toggleEdicaoLider(${item.rowIndex})">${emEdicao?'Cancelar edição':'Editar'}</button>`;
     const blocoRecusa = item['Status'] === 'RECUSADO'
       ? `<div class="meta" style="color:var(--red);margin-top:.4rem">Devolvido pela sala técnica (${item['Recusado Por']||'—'}, ${item['Timestamp Recusa']||'—'}): ${item['Motivo Recusa']||'—'}</div>`
       : '';
@@ -744,7 +773,7 @@ function renderValidacaoLider(){
       ${corpo}
       <div class="acoes">
         <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem" onclick="aprovarValidacaoLider(${item.rowIndex})">Aprovar</button>
-        <button class="btn btn-outline" style="padding:.45rem .8rem;font-size:.75rem" onclick="toggleEdicaoLider(${item.rowIndex})">${emEdicao?'Cancelar edição':'Editar'}</button>
+        ${botaoEditar}
         <button class="btn" style="padding:.45rem .8rem;font-size:.75rem;background:transparent;border:1px solid rgba(229,57,53,.35);color:#e57373" onclick="excluirValidacaoLider(${item.rowIndex})">Excluir</button>
       </div>
     </div>`;
@@ -779,7 +808,7 @@ function renderGeogrid(){
       <div class="protocolo">${item['Protocolo']||'—'}</div>
       <div class="cliente">${item['Cliente']||'—'}</div>
       <div class="meta">${infoTecnico(item)}${item['Endereço']||''}<br>Fusionou todas: ${item['Fusionou Todas']||'—'} · Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}<br>Registrado em ${item['Timestamp Registro']||'—'}</div>
-      ${blocoDiagramasFusao(item)}
+      ${diagramaSemFusao(item) ? blocoCeoSemFusao(diagramaSemFusao(item)) : blocoDiagramasFusao(item)}
       <div id="recusa-form-${item.rowIndex}" style="display:none;margin-top:.6rem">
         <textarea id="recusa-motivo-${item.rowIndex}" placeholder="Por que está recusando? (obrigatório)" style="width:100%;min-height:60px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.5rem .6rem;font-family:inherit"></textarea>
       </div>
@@ -796,7 +825,7 @@ function renderGeogrid(){
       <div class="protocolo">${item['Protocolo']||'—'}</div>
       <div class="cliente">${item['Cliente']||'—'}</div>
       <div class="meta">${infoTecnico(item)}${item['Endereço']||''}<br>Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}</div>
-      ${blocoDiagramasFusao(item)}
+      ${diagramaSemFusao(item) ? blocoCeoSemFusao(diagramaSemFusao(item)) : blocoDiagramasFusao(item)}
       <div class="concluido-info">✓ Concluído por ${item['Concluído Por']||'—'} em ${item['Timestamp Conclusão']||'—'}</div>
     </div>`).join('') : '<div class="empty-msg">Nenhum item concluído ainda.</div>';
 
