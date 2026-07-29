@@ -60,7 +60,7 @@
        em vez de empilhados — o SVG do diagrama já se redimensiona sozinho pra
        largura do wrapper (ver desenharLinhasFusao), então funciona em qualquer
        coluna sem distorcer. */
-    #listaPendentes,#listaRecusados,#listaConcluidos{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:.65rem;align-items:start}
+    #listaValidacaoLider,#listaPendentes,#listaConcluidos{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:.65rem;align-items:start}
 
     .item-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.75rem .9rem;margin-bottom:.65rem}
     .item-card .protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.9rem}
@@ -141,23 +141,22 @@
   </div>
 
   <div class="card">
-    <div class="card-header">Aguardando validação do líder<span class="contagem" id="countValidacaoLider">0</span></div>
+    <div class="card-header" style="cursor:pointer" onclick="toggleSecaoGeogrid('validacaoLider')">Aguardando validação do líder<span class="contagem" id="countValidacaoLider">0</span>
+      <button class="btn btn-outline" id="btnToggleValidacaoLider" style="padding:.2rem .55rem;font-size:.72rem;margin-left:.5rem" onclick="event.stopPropagation();toggleSecaoGeogrid('validacaoLider')">▲</button>
+    </div>
     <div class="card-body" id="listaValidacaoLider"></div>
   </div>
 
   <div class="card">
-    <div class="card-header">Pendentes de atualização no GEOGRID<span class="contagem" id="countPendentes">0</span></div>
+    <div class="card-header" style="cursor:pointer" onclick="toggleSecaoGeogrid('pendentes')">Pendentes de atualização no GEOGRID<span class="contagem" id="countPendentes">0</span>
+      <button class="btn btn-outline" id="btnTogglePendentes" style="padding:.2rem .55rem;font-size:.72rem;margin-left:.5rem" onclick="event.stopPropagation();toggleSecaoGeogrid('pendentes')">▲</button>
+    </div>
     <div class="card-body" id="listaPendentes"></div>
   </div>
 
   <div class="card">
-    <div class="card-header">Aguardando ajuste do líder (recusados)<span class="contagem" id="countRecusados">0</span></div>
-    <div class="card-body" id="listaRecusados"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-header" style="cursor:pointer" onclick="toggleConcluidos()">Concluídos (histórico)<span class="contagem" id="countConcluidos">0</span>
-      <button class="btn btn-outline" id="btnToggleConcluidos" style="padding:.2rem .55rem;font-size:.72rem;margin-left:.5rem" onclick="event.stopPropagation();toggleConcluidos()">▼</button>
+    <div class="card-header" style="cursor:pointer" onclick="toggleSecaoGeogrid('concluidos')">Concluídos (histórico)<span class="contagem" id="countConcluidos">0</span>
+      <button class="btn btn-outline" id="btnToggleConcluidos" style="padding:.2rem .55rem;font-size:.72rem;margin-left:.5rem" onclick="event.stopPropagation();toggleSecaoGeogrid('concluidos')">▼</button>
     </div>
     <div class="card-body" id="listaConcluidos" style="display:none"></div>
   </div>
@@ -655,7 +654,7 @@ window.aprovarValidacaoLider = async function(rowIndex){
   const payload = { acao:'APROVAR_GEOGRID_LIDER', rowIndex, aprovadoPor: nome };
   const st = GEOGRID_LIDER_EDIT_STATE[rowIndex];
   if(st){
-    // Líder abriu "Editar" — envia o estado atual (mesmo formato de reenviarGeogrid).
+    // Líder abriu "Editar" — envia o estado atual junto da aprovação.
     const diagramasRelevantes = st.diagramas.filter(d => d.pareamento.length > 0 || d.tipoCaboA || d.tipoCaboB || d.nomA || d.nomB || d.splitter1);
     if(!diagramasRelevantes.length){ showToast('Desenhe pelo menos uma ligação antes de aprovar (ou cancele a edição).'); return; }
     const diagramasSerializados = diagramasRelevantes.map(d => ({
@@ -706,8 +705,12 @@ window.excluirValidacaoLider = async function(rowIndex){
   }
 };
 
+// Inclui tanto item novo (AGUARDANDO_VALIDACAO_LIDER) quanto item devolvido pela
+// sala técnica (RECUSADO, ver recusarGeogrid no backend) — os dois casos usam a
+// MESMA etapa/tela agora, não fica mais espalhado em index.html. Quando é uma
+// devolução, mostra o motivo da recusa em destaque acima do diagrama.
 function renderValidacaoLider(){
-  const itens = TODOS_ITENS.filter(i => i['Status'] === 'AGUARDANDO_VALIDACAO_LIDER');
+  const itens = TODOS_ITENS.filter(i => i['Status'] === 'AGUARDANDO_VALIDACAO_LIDER' || i['Status'] === 'RECUSADO');
   document.getElementById('countValidacaoLider').textContent = itens.length;
   const el = document.getElementById('listaValidacaoLider');
   el.innerHTML = itens.length ? itens.map(item => {
@@ -715,11 +718,15 @@ function renderValidacaoLider(){
     const corpo = emEdicao
       ? `<div id="lider-edicao-${item.rowIndex}" style="margin-top:.6rem">${renderEdicaoDiagramasLider(item)}</div>`
       : blocoDiagramasFusao(item);
+    const blocoRecusa = item['Status'] === 'RECUSADO'
+      ? `<div class="meta" style="color:var(--red);margin-top:.4rem">Devolvido pela sala técnica (${item['Recusado Por']||'—'}, ${item['Timestamp Recusa']||'—'}): ${item['Motivo Recusa']||'—'}</div>`
+      : '';
     return `
     <div class="item-card">
       <div class="protocolo">${item['Protocolo']||'—'}</div>
       <div class="cliente">${item['Cliente']||'—'}</div>
       <div class="meta">${item['Técnico'] ? 'Técnico: '+item['Técnico']+'<br>' : ''}${item['Endereço']||''}<br>Fusionou todas: ${item['Fusionou Todas']||'—'} · Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}<br>Registrado em ${item['Timestamp Registro']||'—'}</div>
+      ${blocoRecusa}
       ${corpo}
       <div class="acoes">
         <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem" onclick="aprovarValidacaoLider(${item.rowIndex})">Aprovar</button>
@@ -744,12 +751,10 @@ function renderValidacaoLider(){
 function renderGeogrid(){
   renderValidacaoLider();
   const pendentes = TODOS_ITENS.filter(i => i['Status'] === 'PENDENTE');
-  const recusados = TODOS_ITENS.filter(i => i['Status'] === 'RECUSADO');
   const concluidos = TODOS_ITENS.filter(i => i['Status'] === 'CONCLUIDO')
     .sort((a,b) => String(b['Timestamp Conclusão']||'').localeCompare(String(a['Timestamp Conclusão']||'')));
 
   document.getElementById('countPendentes').textContent = pendentes.length;
-  document.getElementById('countRecusados').textContent = recusados.length;
   document.getElementById('countConcluidos').textContent = concluidos.length;
 
   const infoTecnico = item => item['Técnico'] ? `Técnico: ${item['Técnico']}<br>` : '';
@@ -771,17 +776,6 @@ function renderGeogrid(){
       </div>
     </div>`).join('') : '<div class="empty-msg">Nenhuma fusão pendente.</div>';
 
-  const elR = document.getElementById('listaRecusados');
-  elR.innerHTML = recusados.length ? recusados.map(item => `
-    <div class="item-card">
-      <div class="protocolo">${item['Protocolo']||'—'}</div>
-      <div class="cliente">${item['Cliente']||'—'}</div>
-      <div class="meta">${infoTecnico(item)}${item['Endereço']||''}</div>
-      ${blocoDiagramasFusao(item)}
-      <div class="meta" style="color:var(--red);margin-top:.5rem">Motivo da recusa (${item['Recusado Por']||'—'}, ${item['Timestamp Recusa']||'—'}): ${item['Motivo Recusa']||'—'}</div>
-      <div class="meta" style="margin-top:.3rem">Aguardando o líder ajustar na Esteira de Despacho e reenviar.</div>
-    </div>`).join('') : '<div class="empty-msg">Nenhum item aguardando ajuste do líder.</div>';
-
   const elC = document.getElementById('listaConcluidos');
   elC.innerHTML = concluidos.length ? concluidos.map(item => `
     <div class="item-card">
@@ -793,34 +787,31 @@ function renderGeogrid(){
     </div>`).join('') : '<div class="empty-msg">Nenhum item concluído ainda.</div>';
 
   // Precisa medir depois do innerHTML já aplicado no DOM, senão as âncoras das
-  // fibras ainda não existem / estão com posição zerada. Itens de dentro de
-  // #listaConcluidos só medem certo se o card já estiver expandido (ver
-  // toggleConcluidos) — enquanto tá fechado (display:none), o measure dá zero.
+  // fibras ainda não existem / estão com posição zerada. Item de uma seção
+  // minimizada (display:none) mede zero — só desenha certo quando expandida
+  // de novo (ver toggleSecaoGeogrid).
   requestAnimationFrame(() => {
-    [...pendentes, ...recusados, ...concluidos].forEach(item => {
+    [...pendentes, ...concluidos].forEach(item => {
       diagramasFusao(item).forEach((d, i) => desenharLinhasFusaoGeogrid(item.rowIndex, i, d));
     });
   });
 }
 
-// Concluídos (histórico) começa fechado por padrão — tende a crescer bastante.
-// Mesmo padrão de toggle já usado em index.html (Disponibilidade da Equipe).
-window.toggleConcluidos = function(){
-  const corpo = document.getElementById('listaConcluidos');
-  const btn = document.getElementById('btnToggleConcluidos');
-  const aberto = corpo.style.display !== 'none';
-  corpo.style.display = aberto ? 'none' : 'block';
-  btn.textContent = aberto ? '▼' : '▲';
-  if(!aberto){
-    // Reabrindo: os diagramas mediram zero enquanto o container estava
-    // escondido — redesenha agora que o layout já é real.
-    const concluidos = TODOS_ITENS.filter(i => i['Status'] === 'CONCLUIDO');
-    requestAnimationFrame(() => {
-      concluidos.forEach(item => {
-        diagramasFusao(item).forEach((d, i) => desenharLinhasFusaoGeogrid(item.rowIndex, i, d));
-      });
-    });
-  }
+// Minimizar/expandir cada etapa do GEOGRID de uma vez (Aguardando validação do
+// líder / Pendentes / Concluídos) — mesmo padrão em todas, pra não ficar tudo
+// sempre aberto quando a fila cresce. Concluídos começa fechado (tende a
+// acumular muito); as outras duas começam abertas (são filas acionáveis).
+// Reabrir chama renderGeogrid() de novo só pra redesenhar os diagramas SVG, que
+// medem zero enquanto a seção estava escondida.
+window.toggleSecaoGeogrid = function(secao){
+  const mapa = { validacaoLider:['listaValidacaoLider','btnToggleValidacaoLider'], pendentes:['listaPendentes','btnTogglePendentes'], concluidos:['listaConcluidos','btnToggleConcluidos'] };
+  const [idLista, idBtn] = mapa[secao];
+  const corpo = document.getElementById(idLista);
+  const btn = document.getElementById(idBtn);
+  const abrindo = corpo.style.display === 'none';
+  corpo.style.display = abrindo ? '' : 'none';
+  btn.textContent = abrindo ? '▲' : '▼';
+  if(abrindo) renderGeogrid();
 };
 
 window.concluir = async function(rowIndex){

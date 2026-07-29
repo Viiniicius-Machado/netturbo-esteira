@@ -145,7 +145,6 @@ function doPost(e) {
     if (acao === 'SALVAR_INFO_DESPACHO') return salvarInfoDespacho(ss, data);
     if (acao === 'CONCLUIR_GEOGRID')     return concluirGeogrid(ss, data);
     if (acao === 'RECUSAR_GEOGRID')      return recusarGeogrid(ss, data);
-    if (acao === 'REENVIAR_GEOGRID')     return reenviarGeogrid(ss, data);
     if (acao === 'EXCLUIR_GEOGRID')      return excluirGeogrid(ss, data);
     if (acao === 'APROVAR_GEOGRID_LIDER') return aprovarGeogridLider(ss, data);
 
@@ -1838,9 +1837,13 @@ function listarGeogrid(ss) {
 }
 
 // Líder valida (com ou sem correção) ANTES da sala técnica ver o item — feito no
-// próprio geogrid.html. Se o líder editou algo (fusaoPareamento/tipoCaboFusionado/
-// quantidadeCeo vieram preenchidos), atualiza esses campos igual reenviarGeogrid;
-// sempre libera o item pra sala técnica (Status='PENDENTE') e registra quem validou.
+// próprio geogrid.html, na mesma etapa "Aguardando validação do líder". Aceita
+// tanto item novo (AGUARDANDO_VALIDACAO_LIDER) quanto item devolvido pela sala
+// técnica (RECUSADO, ver recusarGeogrid) — os dois casos se resolvem igual: se o
+// líder editou algo (fusaoPareamento/tipoCaboFusionado/quantidadeCeo vieram
+// preenchidos), atualiza esses campos; sempre libera o item pra sala técnica
+// (Status='PENDENTE'), registra quem validou e limpa o motivo de recusa anterior
+// (se houver, pra não ficar um motivo velho pendurado num item já corrigido).
 function aprovarGeogridLider(ss, data) {
   const sheet = garantirGeogrid(ss);
   const rowIndex = parseInt(data.rowIndex);
@@ -1849,7 +1852,7 @@ function aprovarGeogridLider(ss, data) {
 
   const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
   const statusAtual = sheet.getRange(rowIndex, idx('Status')).getValue();
-  if (statusAtual !== 'AGUARDANDO_VALIDACAO_LIDER') {
+  if (statusAtual !== 'AGUARDANDO_VALIDACAO_LIDER' && statusAtual !== 'RECUSADO') {
     return resposta('error', { message: 'Este item não está aguardando validação do líder.' });
   }
 
@@ -1864,6 +1867,9 @@ function aprovarGeogridLider(ss, data) {
   sheet.getRange(rowIndex, idx('Validado Por Líder')).setValue(data.aprovadoPor);
   sheet.getRange(rowIndex, idx('Timestamp Validação Líder'), 1, 1).setNumberFormat('@STRING@');
   sheet.getRange(rowIndex, idx('Timestamp Validação Líder')).setValue(new Date().toLocaleString('pt-BR'));
+  sheet.getRange(rowIndex, idx('Motivo Recusa')).setValue('');
+  sheet.getRange(rowIndex, idx('Recusado Por')).setValue('');
+  sheet.getRange(rowIndex, idx('Timestamp Recusa')).setValue('');
   return resposta('ok', {});
 }
 
@@ -1889,8 +1895,11 @@ function concluirGeogrid(ss, data) {
 }
 
 // Sala técnica recusa um item (dado veio confuso/incompleto) — motivo é obrigatório.
-// Item some da fila de pendentes da sala técnica e passa a aparecer pro líder em
-// index.html, que decide reenviar (ajustado) ou excluir de vez.
+// Item some da fila de pendentes da sala técnica e volta pro líder na MESMA etapa
+// "Aguardando validação do líder" de geogrid.html (Status='AGUARDANDO_VALIDACAO_LIDER'
+// de novo, não um status separado) — o líder vê o motivo, corrige ou não, e aprova
+// de novo pra devolver à sala técnica (ver aprovarGeogridLider). Não fica mais
+// concentrado em index.html.
 function recusarGeogrid(ss, data) {
   const sheet = garantirGeogrid(ss);
   const rowIndex = parseInt(data.rowIndex);
@@ -1904,36 +1913,11 @@ function recusarGeogrid(ss, data) {
     return resposta('error', { message: 'Este item não está mais pendente.' });
   }
 
-  sheet.getRange(rowIndex, idx('Status')).setValue('RECUSADO');
+  sheet.getRange(rowIndex, idx('Status')).setValue('AGUARDANDO_VALIDACAO_LIDER');
   sheet.getRange(rowIndex, idx('Motivo Recusa')).setValue(data.motivo);
   sheet.getRange(rowIndex, idx('Recusado Por')).setValue(data.recusadoPor);
   sheet.getRange(rowIndex, idx('Timestamp Recusa'), 1, 1).setNumberFormat('@STRING@');
   sheet.getRange(rowIndex, idx('Timestamp Recusa')).setValue(new Date().toLocaleString('pt-BR'));
-  return resposta('ok', {});
-}
-
-// Líder ajusta o diagrama/dados na Esteira de Despacho (index.html) e reenvia pro
-// GEOGRID — volta pro status PENDENTE (some da visão do líder, reaparece pra sala
-// técnica) e limpa o motivo de recusa anterior.
-function reenviarGeogrid(ss, data) {
-  const sheet = garantirGeogrid(ss);
-  const rowIndex = parseInt(data.rowIndex);
-  if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
-
-  const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
-  const statusAtual = sheet.getRange(rowIndex, idx('Status')).getValue();
-  if (statusAtual !== 'RECUSADO') {
-    return resposta('error', { message: 'Este item não está aguardando ajuste.' });
-  }
-
-  sheet.getRange(rowIndex, idx('Fusão Pareamento'), 1, 1).setNumberFormat('@STRING@');
-  sheet.getRange(rowIndex, idx('Fusão Pareamento')).setValue(data.fusaoPareamento || '');
-  if (data.tipoCaboFusionado !== undefined) sheet.getRange(rowIndex, idx('Tipo Cabo Fusionado')).setValue(data.tipoCaboFusionado || '');
-  if (data.quantidadeCeo !== undefined) sheet.getRange(rowIndex, idx('Quantidade CEO Trabalhadas')).setValue(data.quantidadeCeo || '');
-  sheet.getRange(rowIndex, idx('Status')).setValue('PENDENTE');
-  sheet.getRange(rowIndex, idx('Motivo Recusa')).setValue('');
-  sheet.getRange(rowIndex, idx('Recusado Por')).setValue('');
-  sheet.getRange(rowIndex, idx('Timestamp Recusa')).setValue('');
   return resposta('ok', {});
 }
 

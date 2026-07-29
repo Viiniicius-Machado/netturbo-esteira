@@ -99,24 +99,6 @@
     .atv-card[open] summary::after{content:'▾'}
     .atv-card-body{margin-top:.55rem}
 
-    /* Editor de fusão (ajuste de fusões recusadas pelo GEOGRID) — mesmo visual de tecnico.html/geogrid.html */
-    .chip-group{display:flex;flex-wrap:wrap;gap:.4rem}
-    .chip{padding:.4rem .75rem;border-radius:20px;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);font-size:.72rem;font-weight:600;cursor:pointer}
-    .chip.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
-    .fusao-diagrama{position:relative;display:flex;justify-content:space-between;gap:1.4rem;overflow-x:auto;padding:.3rem 0}
-    .fusao-svg{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
-    .fusao-coluna{display:flex;flex-direction:column;gap:3px;min-width:100px}
-    .fusao-coluna-wrap{display:flex;flex-direction:column}
-    .fusao-coluna-titulo{font-size:.6rem;color:var(--text-muted);text-align:center;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em}
-    .fibra-row{display:flex;align-items:center;gap:.3rem;padding:.22rem .35rem;border-radius:4px;cursor:pointer;font-size:.66rem;background:var(--surface3);border:1px solid var(--border-hi);white-space:nowrap}
-    .fibra-row.armado{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim)}
-    .fibra-row.pareada{color:var(--text-dim)}
-    .fibra-row.fibra-splitter-in{border-color:var(--accent);background:rgba(168,201,60,.1)}
-    .fibra-num{width:1.3rem;text-align:center;color:var(--text-dim);font-weight:700;flex-shrink:0}
-    .fibra-cor-dot{width:13px;height:13px;border-radius:3px;flex-shrink:0;border:1px solid rgba(255,255,255,.25)}
-    .fibra-anchor{width:6px;height:6px;border-radius:50%;background:var(--text-muted);flex-shrink:0}
-    .fibra-par{font-size:.6rem;color:var(--accent)}
-
     .status-aguardando{border-left:3px solid var(--amber)}
     .status-despachada{border-left:3px solid var(--accent)}
 
@@ -308,18 +290,6 @@
           <div id="colValidacao"></div>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- FUSÕES RECUSADAS PELO GEOGRID (sala técnica recusou por dado confuso/incompleto —
-       líder ajusta o diagrama aqui e reenvia, ou exclui de vez) -->
-  <section class="card">
-    <div class="card-header"><h2>Fusões Recusadas pelo GEOGRID</h2>
-      <div style="flex:1"></div>
-      <span class="col-count" id="countGeogridRecusado">0</span>
-    </div>
-    <div class="card-body">
-      <div id="colGeogridRecusado"></div>
     </div>
   </section>
 
@@ -743,7 +713,6 @@ let TECH_MAP = {}; // preenchido ao vivo pelo backend — ver carregarTecnicos()
 let TODOS_PERIODOS_DISPONIBILIDADE = []; // ver carregarEsteira() — atualiza junto da esteira
 
 let ATIVIDADES = [];
-let GEOGRID_ITENS = []; // ver carregarEsteira() — atualiza junto da esteira
 let AGENDAMENTO_ATUAL = false; // estado do toggle Sim/Não na revisão
 
 window.marcarAgendamento = function(sim){
@@ -1019,16 +988,14 @@ let CARGA_ESTEIRA_SEQ = 0;
 async function carregarEsteira(){
   const minhaSeq = ++CARGA_ESTEIRA_SEQ;
   try{
-    const [respEsteira, respDisp, respGeogrid] = await Promise.all([
+    const [respEsteira, respDisp] = await Promise.all([
       fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA'),
-      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE'),
-      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_GEOGRID')
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE')
     ]);
-    const [resultEsteira, resultDisp, resultGeogrid] = await Promise.all([respEsteira.json(), respDisp.json(), respGeogrid.json()]);
+    const [resultEsteira, resultDisp] = await Promise.all([respEsteira.json(), respDisp.json()]);
     if(minhaSeq !== CARGA_ESTEIRA_SEQ) return; // uma chamada mais nova já respondeu antes desta — descarta
     ATIVIDADES = resultEsteira.atividades || [];
     TODOS_PERIODOS_DISPONIBILIDADE = resultDisp.periodos || [];
-    GEOGRID_ITENS = resultGeogrid.itens || [];
     renderEsteira();
     renderListaDisponibilidade();
   }catch(err){
@@ -1342,403 +1309,14 @@ function renderEsteira(){
       if(el) el.value = edicoesEmAndamento[id];
     }
   });
-
-  renderGeogridRecusado();
 }
 
 // A fila de aprovação de LPU (Status LPU/Status LPU Apoio === 'AGUARDANDO_APROVADOR')
 // morou aqui até esta versão — moveu pra aprovacao_lpu.html (tela dedicada, com
 // assinatura formal do gestor e filtro por Descrição Contábil), pra não duplicar a
-// mesma fila em dois lugares.
-
-// ── FUSÕES RECUSADAS PELO GEOGRID ────────────────────────────────────────────
-// Sala técnica recusou um item (dado veio confuso/incompleto) — o líder edita
-// aqui o mesmo diagrama de fusão que o técnico desenhou em tecnico.html (mesmo
-// modelo: Lado A — Splitter 1 — Splitter 2 — Lado B, todos opcionais, ligação só
-// entre colunas vizinhas) e decide reenviar (volta PENDENTE pro GEOGRID) ou
-// excluir de vez. Editar aqui NÃO reescreve o RFO original do técnico na aba
-// ESTEIRA — só corrige a cópia operacional que a sala técnica vai executar.
-const QTD_FIBRAS_POR_CABO = { '01F':1, '04F':4, '12F':12, '24F':24, '72F':72 };
-const CORES_FIBRA = ['#00A651','#FFF200','#FFFFFF','#0072BC','#ED1C24','#92278F','#603813','#EC008C','#000000','#A6A6A6','#F7941E','#00AEEF'];
-function corFibra(n){ return CORES_FIBRA[(n-1) % 12]; }
-const QTD_SPLITTER = { '1x2':2, '1x4':4, '1x8':8, '1x16':16 };
-const OPCOES_SPLITTER = ['Nenhum','1x2','1x4','1x8','1x16'];
-const OPCOES_CABO = ['Nenhum','01F','04F','12F','24F','72F'];
-const OPCOES_SPLITTER_1X2 = ['5/95','10/90','15/85','20/80','25/75','30/70','40/60','50/50'];
-
-let GEOGRID_EDIT_STATE = {}; // geogridRowIndex -> { diagramas:[...] }
-
-function colunasFusao(d){
-  const cols = [];
-  if(d.tipoCaboA) cols.push('a');
-  if(d.splitter1) cols.push('splitter1');
-  if(d.splitter2) cols.push('splitter2');
-  if(d.tipoCaboB) cols.push('b');
-  return cols;
-}
-function colunasVizinhas(d, ladoX, ladoY){
-  const cols = colunasFusao(d);
-  const ix = cols.indexOf(ladoX), iy = cols.indexOf(ladoY);
-  return ix !== -1 && iy !== -1 && Math.abs(ix-iy) === 1;
-}
-function acharParDe(pareamento, lado, num){
-  return pareamento.find(p => (p.ponto1.lado===lado && p.ponto1.num===num) || (p.ponto2.lado===lado && p.ponto2.num===num));
-}
-function outroPonto(par, lado, num){
-  return (par.ponto1.lado===lado && par.ponto1.num===num) ? par.ponto2 : par.ponto1;
-}
-function rotuloPonto(ponto){
-  if(ponto.lado === 'splitter1') return ponto.num === 0 ? 'Splitter 1 IN' : 'Splitter 1 P'+ponto.num;
-  if(ponto.lado === 'splitter2') return ponto.num === 0 ? 'Splitter 2 IN' : 'Splitter 2 P'+ponto.num;
-  return (ponto.lado==='a' ? 'A' : 'B') + ponto.num;
-}
-function novoDiagramaFusaoEdicao(numeroCeo){
-  return { numeroCeo: String(numeroCeo), nomA:'', nomB:'', gpsCeo:'', tipoCaboA:'', tipoCaboB:'',
-    splitter1:'', splitter1Tipo1x2:'', splitter2:'', splitter2Tipo1x2:'', pareamento:[], armado:null };
-}
-// Itens registrados antes da cascata de splitters (ou no formato ainda mais antigo,
-// de campo único) vêm com nomes de campo diferentes — mesma normalização usada em
-// tecnico.html/geogrid.html, aqui só pro lado da leitura (edição sempre grava no formato atual).
-function normalizarDiagramaFusaoEdicao(d, i){
-  const bruto = d || {};
-  const remapLado = l => l === 'splitter' ? 'splitter1' : l;
-  const pares = (Array.isArray(bruto.pares) ? bruto.pares : []).map(p=>{
-    if(!p || !p.ponto1 || !p.ponto2) return null;
-    return { ponto1:{lado:remapLado(p.ponto1.lado),num:p.ponto1.num}, ponto2:{lado:remapLado(p.ponto2.lado),num:p.ponto2.num} };
-  }).filter(Boolean);
-  return {
-    numeroCeo: bruto.numeroCeo || String(i+1),
-    nomA: bruto.nomenclaturaA || '', nomB: bruto.nomenclaturaB || '', gpsCeo: bruto.gpsCeo || '',
-    tipoCaboA: bruto.tipoCaboA || '', tipoCaboB: bruto.tipoCaboB || '',
-    splitter1: bruto.splitter1 || bruto.splitter || '', splitter1Tipo1x2: bruto.splitter1Tipo1x2 || bruto.splitterTipo1x2 || '',
-    splitter2: bruto.splitter2 || '', splitter2Tipo1x2: bruto.splitter2Tipo1x2 || '',
-    armado: null, pareamento: pares
-  };
-}
-
-function inicializarEdicaoGeogrid(item){
-  if(GEOGRID_EDIT_STATE[item.rowIndex]) return GEOGRID_EDIT_STATE[item.rowIndex];
-  let diagramas = [];
-  try{
-    const parsed = JSON.parse(item['Fusão Pareamento'] || '[]');
-    if(Array.isArray(parsed)) diagramas = parsed.map((d,i)=>normalizarDiagramaFusaoEdicao(d,i));
-  }catch(e){ diagramas = []; }
-  if(!diagramas.length) diagramas = [novoDiagramaFusaoEdicao(1)];
-  GEOGRID_EDIT_STATE[item.rowIndex] = { diagramas };
-  return GEOGRID_EDIT_STATE[item.rowIndex];
-}
-
-function renderGeogridRecusado(){
-  const recusados = GEOGRID_ITENS.filter(i => i['Status'] === 'RECUSADO');
-  document.getElementById('countGeogridRecusado').textContent = recusados.length;
-  const col = document.getElementById('colGeogridRecusado');
-  col.innerHTML = recusados.length ? recusados.map(item => `
-    <div class="atv-card" style="border-left:3px solid #e53935">
-      <div class="protocolo">${item['Protocolo']||'—'}</div>
-      <div class="cliente">${item['Cliente']||'—'}</div>
-      <div class="meta">
-        ${item['Técnico'] ? 'Técnico: '+item['Técnico']+'<br>' : ''}${item['Endereço']||''}<br>
-        <b>Motivo da recusa (${item['Recusado Por']||'—'}, ${item['Timestamp Recusa']||'—'}):</b> ${item['Motivo Recusa']||'—'}
-      </div>
-      <div id="geogrid-edicao-${item.rowIndex}" style="margin-top:.6rem">${renderEdicaoDiagramasGeogrid(item)}</div>
-      <div class="acoes">
-        <button class="btn btn-green" style="flex:1;padding:.4rem" onclick="reenviarGeogrid(${item.rowIndex})">Reenviar pro GEOGRID</button>
-        <button class="btn" style="flex:1;padding:.4rem;background:#7a1010;color:#fff" onclick="excluirGeogrid(${item.rowIndex})">Excluir</button>
-      </div>
-    </div>`).join('') : '<div class="empty-msg">Nenhuma fusão aguardando ajuste.</div>';
-
-  requestAnimationFrame(() => {
-    recusados.forEach(item => {
-      const st = GEOGRID_EDIT_STATE[item.rowIndex];
-      if(st) st.diagramas.forEach((d,i)=>desenharLinhasFusaoEdicao(item.rowIndex, i));
-    });
-  });
-}
-
-function renderEdicaoDiagramasGeogrid(item){
-  const st = inicializarEdicaoGeogrid(item);
-  return `
-    <div id="geogrid-diagramas-lista-${item.rowIndex}">${st.diagramas.map((d,i)=>renderEdicaoDiagramaBloco(item.rowIndex,i)).join('')}</div>
-    <button type="button" class="btn btn-outline" style="margin-top:.5rem;padding:.35rem .7rem;font-size:.7rem" onclick="adicionarDiagramaEdicaoGeogrid(${item.rowIndex})">+ Adicionar CEO</button>
-  `;
-}
-
-window.adicionarDiagramaEdicaoGeogrid = function(rowIndex){
-  const st = GEOGRID_EDIT_STATE[rowIndex];
-  if(!st) return;
-  st.diagramas.push(novoDiagramaFusaoEdicao(st.diagramas.length+1));
-  const lista = document.getElementById('geogrid-diagramas-lista-'+rowIndex);
-  const idx = st.diagramas.length-1;
-  if(lista){
-    lista.insertAdjacentHTML('beforeend', renderEdicaoDiagramaBloco(rowIndex, idx));
-    requestAnimationFrame(()=>desenharLinhasFusaoEdicao(rowIndex, idx));
-  }
-};
-
-window.removerDiagramaEdicaoGeogrid = function(rowIndex, diagIdx){
-  const st = GEOGRID_EDIT_STATE[rowIndex];
-  if(!st || st.diagramas.length <= 1) return;
-  st.diagramas.splice(diagIdx, 1);
-  const lista = document.getElementById('geogrid-diagramas-lista-'+rowIndex);
-  if(lista){
-    lista.innerHTML = st.diagramas.map((d,i)=>renderEdicaoDiagramaBloco(rowIndex,i)).join('');
-    requestAnimationFrame(()=>st.diagramas.forEach((d,i)=>desenharLinhasFusaoEdicao(rowIndex,i)));
-  }
-};
-
-window.atualizarCampoEdicaoGeogrid = function(rowIndex, diagIdx, campo, valor){
-  const st = GEOGRID_EDIT_STATE[rowIndex];
-  if(!st || !st.diagramas[diagIdx]) return;
-  st.diagramas[diagIdx][campo] = valor;
-};
-
-function renderEdicaoDiagramaBloco(rowIndex, diagIdx){
-  const st = GEOGRID_EDIT_STATE[rowIndex];
-  const d = st.diagramas[diagIdx];
-  const podeRemover = st.diagramas.length > 1;
-  return `
-    <div class="fusao-diagrama-bloco" id="geogrid-diagrama-bloco-${rowIndex}-${diagIdx}" style="border:1px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .7rem;margin-top:${diagIdx>0?'.6rem':'0'}">
-      <div style="display:flex;align-items:center;gap:.5rem">
-        <span class="edit-label" style="margin-bottom:0">Fusão — CEO Nº</span>
-        <input type="text" inputmode="numeric" class="edit-field" style="max-width:70px" value="${d.numeroCeo||''}" oninput="this.value=this.value.replace(/\\D/g,'');atualizarCampoEdicaoGeogrid(${rowIndex},${diagIdx},'numeroCeo',this.value)"/>
-        ${podeRemover ? `<button type="button" style="margin-left:auto;background:transparent;border:1px solid rgba(229,57,53,.3);color:#e57373;border-radius:var(--radius);font-size:.65rem;padding:.35rem .6rem;cursor:pointer" onclick="removerDiagramaEdicaoGeogrid(${rowIndex},${diagIdx})">Remover</button>` : ''}
-      </div>
-      <div style="display:flex;gap:.5rem;margin-top:.5rem">
-        <div style="flex:1">
-          <span class="edit-label">Tipo de cabo — Lado A</span>
-          <div class="chip-group">
-            ${OPCOES_CABO.map(c=>`<div class="chip${(d.tipoCaboA||'Nenhum')===c?' active':''}" onclick="atualizarTipoCaboEdicaoGeogrid(${rowIndex},${diagIdx},'A','${c}')">${c}</div>`).join('')}
-          </div>
-          ${d.tipoCaboA ? `<span class="edit-label" style="margin-top:.5rem">Nomenclatura — Lado A</span>
-          <input type="text" class="edit-field" value="${d.nomA||''}" oninput="atualizarCampoEdicaoGeogrid(${rowIndex},${diagIdx},'nomA',this.value)"/>` : ''}
-        </div>
-        <div style="flex:1">
-          <span class="edit-label">Tipo de cabo — Lado B</span>
-          <div class="chip-group">
-            ${OPCOES_CABO.map(c=>`<div class="chip${(d.tipoCaboB||'Nenhum')===c?' active':''}" onclick="atualizarTipoCaboEdicaoGeogrid(${rowIndex},${diagIdx},'B','${c}')">${c}</div>`).join('')}
-          </div>
-          ${d.tipoCaboB ? `<span class="edit-label" style="margin-top:.5rem">Nomenclatura — Lado B</span>
-          <input type="text" class="edit-field" value="${d.nomB||''}" oninput="atualizarCampoEdicaoGeogrid(${rowIndex},${diagIdx},'nomB',this.value)"/>` : ''}
-        </div>
-      </div>
-      <div style="margin-top:.5rem">
-        <span class="edit-label">Splitter 1</span>
-        <div class="chip-group">
-          ${OPCOES_SPLITTER.map(s=>`<div class="chip${(d.splitter1||'Nenhum')===s?' active':''}" onclick="atualizarSplitterEdicaoGeogrid(${rowIndex},${diagIdx},'1','${s}')">${s}</div>`).join('')}
-        </div>
-      </div>
-      ${d.splitter1 === '1x2' ? `
-      <div style="margin-top:.5rem">
-        <span class="edit-label">Splitter 1 tipo</span>
-        <div class="chip-group">
-          ${OPCOES_SPLITTER_1X2.map(t=>`<div class="chip${d.splitter1Tipo1x2===t?' active':''}" onclick="atualizarSplitterTipo1x2EdicaoGeogrid(${rowIndex},${diagIdx},'1','${t}')">${t}</div>`).join('')}
-        </div>
-      </div>` : ''}
-      ${d.splitter1 ? `
-      <div style="margin-top:.5rem">
-        <span class="edit-label">Splitter 2 (cascata com o Splitter 1)</span>
-        <div class="chip-group">
-          ${OPCOES_SPLITTER.map(s=>`<div class="chip${(d.splitter2||'Nenhum')===s?' active':''}" onclick="atualizarSplitterEdicaoGeogrid(${rowIndex},${diagIdx},'2','${s}')">${s}</div>`).join('')}
-        </div>
-      </div>
-      ${d.splitter2 === '1x2' ? `
-      <div style="margin-top:.5rem">
-        <span class="edit-label">Splitter 2 tipo</span>
-        <div class="chip-group">
-          ${OPCOES_SPLITTER_1X2.map(t=>`<div class="chip${d.splitter2Tipo1x2===t?' active':''}" onclick="atualizarSplitterTipo1x2EdicaoGeogrid(${rowIndex},${diagIdx},'2','${t}')">${t}</div>`).join('')}
-        </div>
-      </div>` : ''}` : ''}
-      <div id="geogrid-fibras-${rowIndex}-${diagIdx}" style="margin-top:.5rem">${renderFibrasEdicaoGeogrid(rowIndex, diagIdx)}</div>
-    </div>`;
-}
-
-window.atualizarTipoCaboEdicaoGeogrid = function(rowIndex, diagIdx, lado, valor){
-  const st = GEOGRID_EDIT_STATE[rowIndex];
-  const d = st && st.diagramas[diagIdx];
-  if(!d) return;
-  const campo = lado === 'A' ? 'tipoCaboA' : 'tipoCaboB';
-  const ladoKey = lado === 'A' ? 'a' : 'b';
-  const novoValor = valor === 'Nenhum' ? '' : valor;
-  if(novoValor !== d[campo]){
-    d.pareamento = d.pareamento.filter(p => p.ponto1.lado !== ladoKey && p.ponto2.lado !== ladoKey);
-    if(d.armado && d.armado.lado === ladoKey) d.armado = null;
-  }
-  d[campo] = novoValor;
-  const bloco = document.getElementById(`geogrid-diagrama-bloco-${rowIndex}-${diagIdx}`);
-  if(bloco) bloco.outerHTML = renderEdicaoDiagramaBloco(rowIndex, diagIdx);
-  requestAnimationFrame(()=>desenharLinhasFusaoEdicao(rowIndex, diagIdx));
-};
-
-window.atualizarSplitterEdicaoGeogrid = function(rowIndex, diagIdx, qual, valor){
-  const st = GEOGRID_EDIT_STATE[rowIndex];
-  const d = st && st.diagramas[diagIdx];
-  if(!d) return;
-  const campo = 'splitter'+qual, campoTipo = 'splitter'+qual+'Tipo1x2', ladoKey = 'splitter'+qual;
-  const novoValor = valor === 'Nenhum' ? '' : valor;
-  if(novoValor !== d[campo]){
-    d.pareamento = d.pareamento.filter(p => p.ponto1.lado !== ladoKey && p.ponto2.lado !== ladoKey);
-    if(d.armado && d.armado.lado === ladoKey) d.armado = null;
-    if(novoValor !== '1x2') d[campoTipo] = '';
-  }
-  d[campo] = novoValor;
-  if(qual === '1' && !novoValor && d.splitter2){
-    d.pareamento = d.pareamento.filter(p => p.ponto1.lado !== 'splitter2' && p.ponto2.lado !== 'splitter2');
-    if(d.armado && d.armado.lado === 'splitter2') d.armado = null;
-    d.splitter2 = '';
-    d.splitter2Tipo1x2 = '';
-  }
-  const bloco = document.getElementById(`geogrid-diagrama-bloco-${rowIndex}-${diagIdx}`);
-  if(bloco) bloco.outerHTML = renderEdicaoDiagramaBloco(rowIndex, diagIdx);
-  requestAnimationFrame(()=>desenharLinhasFusaoEdicao(rowIndex, diagIdx));
-};
-
-window.atualizarSplitterTipo1x2EdicaoGeogrid = function(rowIndex, diagIdx, qual, valor){
-  const st = GEOGRID_EDIT_STATE[rowIndex];
-  const d = st && st.diagramas[diagIdx];
-  if(!d) return;
-  d['splitter'+qual+'Tipo1x2'] = valor;
-  const bloco = document.getElementById(`geogrid-diagrama-bloco-${rowIndex}-${diagIdx}`);
-  if(bloco) bloco.outerHTML = renderEdicaoDiagramaBloco(rowIndex, diagIdx);
-};
-
-function renderFibrasEdicaoGeogrid(rowIndex, diagIdx){
-  const st = GEOGRID_EDIT_STATE[rowIndex];
-  const d = st.diagramas[diagIdx];
-  const cols = colunasFusao(d);
-  if(cols.length < 2){
-    return `<div style="font-size:.68rem;color:var(--text-muted);font-style:italic">Escolha pelo menos duas partes (cabo A, splitter 1, splitter 2 ou cabo B) para abrir o diagrama.</div>`;
-  }
-  const tituloColuna = lado => {
-    if(lado === 'a') return 'Lado A · ' + d.tipoCaboA;
-    if(lado === 'b') return 'Lado B · ' + d.tipoCaboB;
-    const num = lado === 'splitter1' ? '1' : '2';
-    const valor = lado === 'splitter1' ? d.splitter1 : d.splitter2;
-    const tipo1x2 = lado === 'splitter1' ? d.splitter1Tipo1x2 : d.splitter2Tipo1x2;
-    return 'Splitter ' + num + ' · ' + valor + (tipo1x2 ? ' (' + tipo1x2 + ')' : '');
-  };
-  const portasDe = lado => {
-    if(lado === 'a') return Array.from({length: QTD_FIBRAS_POR_CABO[d.tipoCaboA] || 0}, (_,i)=>i+1);
-    if(lado === 'b') return Array.from({length: QTD_FIBRAS_POR_CABO[d.tipoCaboB] || 0}, (_,i)=>i+1);
-    const n = QTD_SPLITTER[lado === 'splitter1' ? d.splitter1 : d.splitter2] || 0;
-    return n ? Array.from({length: n+1}, (_,i)=>i) : [];
-  };
-  const linhaPorto = (lado, num) => {
-    const ehSplitter = lado === 'splitter1' || lado === 'splitter2';
-    const ehIn = ehSplitter && num === 0;
-    const armado = d.armado && d.armado.lado===lado && d.armado.num===num;
-    const par = acharParDe(d.pareamento, lado, num);
-    return `<div class="fibra-row${armado?' armado':''}${par?' pareada':''}${ehIn?' fibra-splitter-in':''}" onclick="clicarFibraEdicaoGeogrid(${rowIndex},${diagIdx},'${lado}',${num})">
-      <span class="fibra-num"${ehSplitter?' style="width:auto;padding:0 .2rem"':''}>${ehSplitter ? (ehIn?'IN':'P'+num) : num}</span>
-      ${ehSplitter ? '' : `<span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>`}
-      ${par ? `<span class="fibra-par">${rotuloPonto(outroPonto(par,lado,num))}</span>` : ''}
-      <span class="fibra-anchor" id="geogrid-fibra-${lado}-${rowIndex}-${diagIdx}-${num}"></span>
-    </div>`;
-  };
-  return `
-    <div style="font-size:.64rem;color:var(--text-muted);margin-bottom:.4rem">Toque num ponto e depois num ponto da coluna VIZINHA pra ligar. Toque num ponto já ligado pra desfazer.</div>
-    <div class="fusao-diagrama" id="geogrid-diagrama-${rowIndex}-${diagIdx}">
-      <svg class="fusao-svg" id="geogrid-svg-${rowIndex}-${diagIdx}"></svg>
-      ${cols.map(lado => `<div class="fusao-coluna-wrap">
-        <div class="fusao-coluna-titulo">${tituloColuna(lado)}</div>
-        <div class="fusao-coluna${lado.indexOf('splitter')===0?' fusao-coluna-splitter':''}">${portasDe(lado).map(num=>linhaPorto(lado,num)).join('')}</div>
-      </div>`).join('')}
-    </div>
-    <div style="font-size:.64rem;color:var(--text-dim);margin-top:.4rem">${d.pareamento.length} ligação(ões)</div>
-  `;
-}
-
-window.clicarFibraEdicaoGeogrid = function(rowIndex, diagIdx, lado, num){
-  const st = GEOGRID_EDIT_STATE[rowIndex];
-  const d = st && st.diagramas[diagIdx];
-  if(!d) return;
-  const parExistente = acharParDe(d.pareamento, lado, num);
-  if(parExistente){
-    d.pareamento.splice(d.pareamento.indexOf(parExistente), 1);
-    d.armado = null;
-  } else if(d.armado && d.armado.lado === lado && d.armado.num === num){
-    d.armado = null;
-  } else if(d.armado && !colunasVizinhas(d, d.armado.lado, lado)){
-    showToast('Só dá pra ligar colunas vizinhas.');
-    d.armado = { lado, num };
-  } else if(d.armado){
-    d.pareamento.push({ ponto1: d.armado, ponto2: { lado, num } });
-    d.armado = null;
-  } else {
-    d.armado = { lado, num };
-  }
-  const fibrasEl = document.getElementById(`geogrid-fibras-${rowIndex}-${diagIdx}`);
-  if(fibrasEl) fibrasEl.innerHTML = renderFibrasEdicaoGeogrid(rowIndex, diagIdx);
-  requestAnimationFrame(()=>desenharLinhasFusaoEdicao(rowIndex, diagIdx));
-};
-
-function desenharLinhasFusaoEdicao(rowIndex, diagIdx){
-  const svg = document.getElementById(`geogrid-svg-${rowIndex}-${diagIdx}`);
-  const wrap = document.getElementById(`geogrid-diagrama-${rowIndex}-${diagIdx}`);
-  const st = GEOGRID_EDIT_STATE[rowIndex];
-  const d = st && st.diagramas[diagIdx];
-  if(!svg || !wrap || !d) return;
-  const wrapRect = wrap.getBoundingClientRect();
-  svg.setAttribute('width', wrapRect.width);
-  svg.setAttribute('height', wrapRect.height);
-  svg.innerHTML = d.pareamento.map(p=>{
-    const el1 = document.getElementById(`geogrid-fibra-${p.ponto1.lado}-${rowIndex}-${diagIdx}-${p.ponto1.num}`);
-    const el2 = document.getElementById(`geogrid-fibra-${p.ponto2.lado}-${rowIndex}-${diagIdx}-${p.ponto2.num}`);
-    if(!el1 || !el2) return '';
-    const r1 = el1.getBoundingClientRect(), r2 = el2.getBoundingClientRect();
-    const x1 = r1.left - wrapRect.left + r1.width/2, y1 = r1.top - wrapRect.top + r1.height/2;
-    const x2 = r2.left - wrapRect.left + r2.width/2, y2 = r2.top - wrapRect.top + r2.height/2;
-    const ehCabo = pt => pt.lado === 'a' || pt.lado === 'b';
-    const ptCor = ehCabo(p.ponto1) ? p.ponto1 : (ehCabo(p.ponto2) ? p.ponto2 : p.ponto1);
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${corFibra(ptCor.num)}" stroke-width="2"/>`;
-  }).join('');
-}
-
-window.reenviarGeogrid = async function(rowIndex){
-  const st = GEOGRID_EDIT_STATE[rowIndex];
-  if(!st) return;
-  const diagramasRelevantes = st.diagramas.filter(d => d.pareamento.length > 0 || d.tipoCaboA || d.tipoCaboB || d.nomA || d.nomB || d.splitter1);
-  if(!diagramasRelevantes.length){ showToast('Desenhe pelo menos uma ligação antes de reenviar.'); return; }
-  const diagramasSerializados = diagramasRelevantes.map(d => ({
-    numeroCeo: d.numeroCeo, nomenclaturaA: d.nomA, nomenclaturaB: d.nomB, gpsCeo: d.gpsCeo,
-    tipoCaboA: d.tipoCaboA, tipoCaboB: d.tipoCaboB,
-    splitter1: d.splitter1, splitter1Tipo1x2: d.splitter1Tipo1x2,
-    splitter2: d.splitter2, splitter2Tipo1x2: d.splitter2Tipo1x2,
-    pares: d.pareamento
-  }));
-  const tipoCaboFusionado = [...new Set(diagramasRelevantes.flatMap(d=>[d.tipoCaboA,d.tipoCaboB]).filter(Boolean))].join(', ');
-  try{
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'REENVIAR_GEOGRID', rowIndex, fusaoPareamento: JSON.stringify(diagramasSerializados), tipoCaboFusionado, quantidadeCeo: String(diagramasRelevantes.length) })
-    });
-    const result = await resp.json();
-    if(result.status !== 'ok'){ showToast(result.message||'Erro ao reenviar.'); return; }
-    delete GEOGRID_EDIT_STATE[rowIndex];
-    showToast('Reenviado pro GEOGRID!');
-    carregarEsteira();
-  }catch(err){
-    console.error(err);
-    showToast('Erro ao conectar com o backend.');
-  }
-};
-
-window.excluirGeogrid = async function(rowIndex){
-  if(!confirm('Excluir esta fusão de vez da fila do GEOGRID? Não dá pra desfazer.')) return;
-  try{
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'EXCLUIR_GEOGRID', rowIndex })
-    });
-    const result = await resp.json();
-    if(result.status !== 'ok'){ showToast(result.message||'Erro ao excluir.'); return; }
-    delete GEOGRID_EDIT_STATE[rowIndex];
-    showToast('Excluído.');
-    carregarEsteira();
-  }catch(err){
-    console.error(err);
-    showToast('Erro ao conectar com o backend.');
-  }
-};
+// mesma fila em dois lugares. A fila de fusões recusadas pelo GEOGRID também
+// saiu daqui — concentrada em geogrid.html (volta pra "Aguardando validação do
+// líder", ver aprovarGeogridLider no backend).
 
 window.validar = async function(rowIndex, aprovado){
   const validadoPor = document.getElementById('selLiderAtual').value;
