@@ -76,6 +76,12 @@
     .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.9rem;margin-top:.5rem}
     .col-title{font-family:'Rajdhani',sans-serif;font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
     .col-count{background:var(--surface3);border-radius:20px;padding:.05rem .5rem;font-size:.68rem}
+    /* Filtro por Tipo de Solicitação da Esteira de Atividades — mesmo padrão de
+       abas já usado nos dashboards (dashboard_gestao.html/dashboard_manutencao.html). */
+    .tipo-tabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.8rem}
+    .tipo-tab{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+    .tipo-tab.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
+    .btn-col-toggle{padding:.1rem .45rem;font-size:.62rem;margin-left:auto}
     .atv-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.7rem .8rem;margin-bottom:.6rem}
     .atv-card .protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.85rem}
     .atv-card .cliente{font-size:.78rem;margin-top:.15rem}
@@ -272,17 +278,33 @@
       <button class="btn btn-outline" style="padding:.4rem .8rem;font-size:.72rem" onclick="carregarEsteira()">↻ Atualizar</button>
     </div>
     <div class="card-body">
+      <div class="tipo-tabs" id="tiposEsteiraTabs">
+        <button type="button" class="tipo-tab active" data-tipo="TODOS" onclick="selecionarFiltroEsteira('TODOS')">Todos</button>
+        <button type="button" class="tipo-tab" data-tipo="Manutenção" onclick="selecionarFiltroEsteira('Manutenção')">Manutenção</button>
+        <button type="button" class="tipo-tab" data-tipo="Preventiva" onclick="selecionarFiltroEsteira('Preventiva')">Preventiva</button>
+        <button type="button" class="tipo-tab" data-tipo="Transmissão" onclick="selecionarFiltroEsteira('Transmissão')">Transmissão</button>
+        <button type="button" class="tipo-tab" data-tipo="Implantação" onclick="selecionarFiltroEsteira('Implantação')">Implantação</button>
+        <button type="button" class="tipo-tab" data-tipo="GTD" onclick="selecionarFiltroEsteira('GTD')">GTD</button>
+        <button type="button" class="tipo-tab" data-tipo="Pós Vendas" onclick="selecionarFiltroEsteira('Pós Vendas')">Pós Vendas</button>
+        <button type="button" class="tipo-tab" data-tipo="Medição" onclick="selecionarFiltroEsteira('Medição')">Medição</button>
+      </div>
       <div class="board" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
         <div>
-          <div class="col-title">Aguardando Despacho <span class="col-count" id="countAguardando">0</span></div>
+          <div class="col-title">Aguardando Despacho <span class="col-count" id="countAguardando">0</span>
+            <button class="btn btn-outline btn-col-toggle" id="btnColAguardando" onclick="toggleColunaEsteira('aguardando')">▼</button>
+          </div>
           <div id="colAguardando"></div>
         </div>
         <div>
-          <div class="col-title">Despachadas / Em Campo <span class="col-count" id="countDespachadas">0</span></div>
+          <div class="col-title">Despachadas / Em Campo <span class="col-count" id="countDespachadas">0</span>
+            <button class="btn btn-outline btn-col-toggle" id="btnColDespachadas" onclick="toggleColunaEsteira('despachadas')">▼</button>
+          </div>
           <div id="colDespachadas"></div>
         </div>
         <div>
-          <div class="col-title">Aguardando Validação NOC <span class="col-count" id="countValidacao">0</span></div>
+          <div class="col-title">Aguardando Validação NOC <span class="col-count" id="countValidacao">0</span>
+            <button class="btn btn-outline btn-col-toggle" id="btnColValidacao" onclick="toggleColunaEsteira('validacao')">▼</button>
+          </div>
           <div id="colValidacao"></div>
         </div>
       </div>
@@ -1124,10 +1146,37 @@ window.excluirPeriodoDisponibilidade = async function(rowIndex){
   }
 };
 
+// Filtro por Tipo de Solicitação da Esteira de Atividades — em dias com muitas
+// atividades misturadas (Manutenção/Transmissão/Implantação/etc.), o líder pode
+// isolar só um tipo por vez. 'TODOS' não filtra nada (mostra tudo, inclusive
+// atividade antiga sem Tipo de Solicitação preenchido).
+let FILTRO_TIPO_ESTEIRA = 'TODOS';
+window.selecionarFiltroEsteira = function(tipo){
+  FILTRO_TIPO_ESTEIRA = tipo;
+  document.querySelectorAll('#tiposEsteiraTabs .tipo-tab').forEach(b=>b.classList.toggle('active', b.dataset.tipo===tipo));
+  renderEsteira();
+};
+
+// Minimizar/expandir TODO o conteúdo de uma coluna de uma vez (diferente do
+// collapse individual de cada card) — útil pra focar numa coluna só quando as
+// outras já foram tratadas. Estado fica só no botão/div (não é redesenhado por
+// renderEsteira, que só troca o innerHTML de dentro), então sobrevive à
+// atualização automática da esteira sem precisar recapturar nada.
+const COL_ESTEIRA_MAP = { aguardando:['colAguardando','btnColAguardando'], despachadas:['colDespachadas','btnColDespachadas'], validacao:['colValidacao','btnColValidacao'] };
+window.toggleColunaEsteira = function(coluna){
+  const [idCol, idBtn] = COL_ESTEIRA_MAP[coluna];
+  const col = document.getElementById(idCol);
+  const btn = document.getElementById(idBtn);
+  const abrindo = col.style.display === 'none';
+  col.style.display = abrindo ? '' : 'none';
+  btn.textContent = abrindo ? '▼' : '▲';
+};
+
 function renderEsteira(){
-  const aguardando = ATIVIDADES.filter(a => a['Status'] === 'AGUARDANDO_DESPACHO');
-  const emAndamento = ATIVIDADES.filter(a => ['DESPACHADA','INICIADA','EM_CAMPO','NAO_VALIDADA'].includes(a['Status']));
-  const aguardandoValidacao = ATIVIDADES.filter(a => a['Status'] === 'AGUARDANDO_VALIDACAO');
+  const porTipoEsteira = a => FILTRO_TIPO_ESTEIRA === 'TODOS' || a['Tipo de Solicitação'] === FILTRO_TIPO_ESTEIRA;
+  const aguardando = ATIVIDADES.filter(a => a['Status'] === 'AGUARDANDO_DESPACHO' && porTipoEsteira(a));
+  const emAndamento = ATIVIDADES.filter(a => ['DESPACHADA','INICIADA','EM_CAMPO','NAO_VALIDADA'].includes(a['Status']) && porTipoEsteira(a));
+  const aguardandoValidacao = ATIVIDADES.filter(a => a['Status'] === 'AGUARDANDO_VALIDACAO' && porTipoEsteira(a));
 
   // Captura QUALQUER coisa que o líder já tenha selecionado/digitado nas 3 colunas
   // (selects de empresa/técnico, campos de edição, e se algum "+ Equipe de Apoio"
