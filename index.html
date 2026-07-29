@@ -154,6 +154,17 @@
         <option value="Weslley Rodrigues">Weslley Rodrigues</option>
         <option value="Leonardo Egídio">Leonardo Egídio</option>
         <option value="Reginaldo Venâncio">Reginaldo Venâncio</option>
+        <option value="Gabriel Milhomens">Gabriel Milhomens</option>
+        <option value="Emerson Silva">Emerson Silva</option>
+        <option value="Elcio Junior">Elcio Junior</option>
+        <option value="Nathan Santos">Nathan Santos</option>
+        <option value="Paulo Cesar">Paulo Cesar</option>
+        <option value="Odirley Rodrigues">Odirley Rodrigues</option>
+        <option value="Pamela Paulina">Pamela Paulina</option>
+        <option value="Giselle">Giselle</option>
+        <option value="Mariane">Mariane</option>
+        <option value="Gabriel Resende">Gabriel Resende</option>
+        <option value="Rubens Lima">Rubens Lima</option>
       </select>
     </div>
     <div class="card-body">
@@ -185,6 +196,9 @@
           </div>
           <div class="field" id="campoCategoria4" style="display:none"><label>Categoria 4</label>
             <select id="selCategoria4" onchange="atualizarClassificacao()"><option value="">Selecione...</option></select>
+          </div>
+          <div class="field"><label>Conta Contábil</label>
+            <select id="selContaContabil"><option value="">Selecione...</option></select>
           </div>
         </div>
         <div id="slaResolvido" style="font-size:.7rem;color:var(--accent);margin-top:.5rem"></div>
@@ -616,6 +630,27 @@ function popularTiposSolicitacao(){
   if(el) el.innerHTML = '<option value="">Selecione...</option>' + tipos.map(t=>`<option value="${t}">${t}</option>`).join('');
 }
 
+// Mesmas 9 Descrições Contábeis de PREENCHIMENTO_LPU.html/aprovacao_lpu.html — aqui
+// escolhida no DESPACHO (não pelo técnico), pra já saber de antemão qual conta cada
+// obra vai usar antes mesmo dela virar LPU (ver aprovacao_lpu.html, fila "Aguardando
+// Preenchimento do Técnico"). Vale igual pra titular e apoio da mesma atividade.
+const DESCRICOES_CONTABEIS = [
+  '3.1.1.2.05.0005 - Serviços de Instalação CLIENTE - IMPLANTAÇÃO',
+  '3.1.1.2.05.0007 - Serviços de Instalação REDE - CONSTRUÇÃO DE REDE',
+  '3.1.1.2.05.0103 - Serviços de Melhoria REDE - REPARO PROGRAMADO DE REDE',
+  '3.1.1.2.05.0008 - Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)',
+  '3.1.1.2.05.0006 - Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)',
+  '3.1.1.2.05.0101 - Serviços Preventivos',
+  '3.1.1.2.05.0102 - Serviços de Retirada',
+  '3.1.1.2.05.0008 - Serviços de Melhoria de REDE',
+  '3.1.1.2.05.0008 - Consultoria de Regularização'
+];
+
+function popularContaContabil(){
+  const el = document.getElementById('selContaContabil');
+  if(el) el.innerHTML = '<option value="">Selecione...</option>' + DESCRICOES_CONTABEIS.map(d => `<option value="${d.replace(/"/g,'&quot;')}">${d}</option>`).join('');
+}
+
 function popularSelectMantendo(id, opcoes, valorAtual){
   const el = document.getElementById(id);
   if(!el) return;
@@ -759,6 +794,7 @@ function tryLogin(){
   if(val === LEADERSHIP_PASSWORD){
     document.getElementById('login-overlay').style.display = 'none';
     popularTiposSolicitacao();
+    popularContaContabil();
     carregarTecnicos().then(carregarEsteira);
     if(!window._esteiraAutoRefresh){
       window._esteiraAutoRefresh = setInterval(carregarEsteira, 15000);
@@ -933,6 +969,7 @@ function limparMascara(){
   document.getElementById('maskInput').value = '';
   document.getElementById('reviewBox').style.display = 'none';
   document.getElementById('selTipoSolicitacao').value = '';
+  document.getElementById('selContaContabil').value = '';
   atualizarClassificacao();
 }
 window.processarMascara = processarMascara;
@@ -941,6 +978,8 @@ window.limparMascara = limparMascara;
 async function confirmarAtividade(){
   const tipoSolicitacao = document.getElementById('selTipoSolicitacao').value;
   if(!tipoSolicitacao){ showToast('Selecione o Tipo de Solicitação antes de confirmar.'); return; }
+  const contaContabil = document.getElementById('selContaContabil').value;
+  if(!contaContabil){ showToast('Selecione a Conta Contábil antes de confirmar.'); return; }
   const payload = {
     acao: 'CRIAR_ATIVIDADE',
     motivo:        document.getElementById('f_motivo').value.trim(),
@@ -959,7 +998,8 @@ async function confirmarAtividade(){
     categoria2: document.getElementById('selCategoria2').value,
     categoria3: document.getElementById('selCategoria3').value,
     categoria4: document.getElementById('selCategoria4').value,
-    slaHoras: resolverSlaAtual()
+    slaHoras: resolverSlaAtual(),
+    contaContabil: contaContabil
   };
   try{
     const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(payload) });

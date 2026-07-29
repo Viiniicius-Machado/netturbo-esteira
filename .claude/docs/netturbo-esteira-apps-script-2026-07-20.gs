@@ -71,7 +71,15 @@ const HEADERS_ESTEIRA = [
   // continuam sendo preenchidas também — derivadas dessa classificação nova, só
   // pra não quebrar IRR/MTTR/rankings do dashboard_gestao.html que já dependem
   // delas; atividade criada antes dessa mudança não tem nada nessas colunas novas.
-  'Tipo de Solicitação','Categoria 1','Categoria 2','Categoria 3','Categoria 4','SLA Horas','Prazo Limite'
+  'Tipo de Solicitação','Categoria 1','Categoria 2','Categoria 3','Categoria 4','SLA Horas','Prazo Limite',
+  // ── Conta Contábil escolhida no DESPACHO (index.html), junto com a Classificação
+  // acima — não confundir com 'LPU Descrição Contábil'/'LPU Apoio Descrição Contábil'
+  // (escolhida pelo técnico em PREENCHIMENTO_LPU.html só quando ele preenche a LPU).
+  // Existir desde o despacho permite a aprovacao_lpu.html mostrar, por conta
+  // contábil, quantas obras ainda estão paradas aguardando o técnico preencher —
+  // antes disso não tinha como saber, porque o campo só nascia junto com a LPU.
+  // Vale igual pra titular e apoio da mesma atividade (mesmo serviço, duas empresas).
+  'Conta Contábil'
 ];
 
 function garantirAba(ss, nome, headers, corFundo, corTexto) {
@@ -273,6 +281,7 @@ function criarAtividade(ss, data) {
   sheet.getRange(row, idx('SLA Horas')).setValue(data.slaHoras || '');
   sheet.getRange(row, idx('Prazo Limite'), 1, 1).setNumberFormat('@STRING@');
   sheet.getRange(row, idx('Prazo Limite')).setValue(prazoLimite);
+  sheet.getRange(row, idx('Conta Contábil')).setValue(data.contaContabil || '');
 
   return resposta('ok', { id: id });
 }
@@ -2065,7 +2074,8 @@ function adicionarColunasNovas() {
     'LPU Motivo Reprovação NF','LPU Apoio Motivo Reprovação NF',
     'Anexo Despacho URL','Anexo Despacho Nome','Mensagem Despacho','Link Medição','Anexos Despacho',
     'Tipo Cabo Fusionado','Fusionou Todas','Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas',
-    'Tipo de Solicitação','Categoria 1','Categoria 2','Categoria 3','Categoria 4','SLA Horas','Prazo Limite'
+    'Tipo de Solicitação','Categoria 1','Categoria 2','Categoria 3','Categoria 4','SLA Horas','Prazo Limite',
+    'Conta Contábil'
   ];
   novos.forEach(h => {
     if (headerRow.indexOf(h) === -1) {
