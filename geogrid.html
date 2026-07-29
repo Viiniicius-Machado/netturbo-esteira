@@ -286,11 +286,18 @@ function renderDiagramaFusaoGeogrid(rowIndex, diagIdx, d){
     const ehSplitter = lado === 'splitter1' || lado === 'splitter2';
     const ehIn = ehSplitter && num === 0;
     const par = acharParDe(pareamento, lado, num);
+    // Mesma lógica de âncora de tecnico.html: Lado B e a entrada IN do splitter
+    // recebem de quem vem antes (âncora à esquerda); Lado A e saídas de splitter
+    // mandam pra frente (âncora à direita) — evita a linha cruzar por cima do
+    // texto da própria porta.
+    const anchorNaEsquerda = lado === 'b' || ehIn;
+    const anchor = `<span class="fibra-anchor" id="fibra-geo-${lado}-${rowIndex}-${diagIdx}-${num}"></span>`;
     return `<div class="fibra-row${par?' pareada':''}${ehIn?' fibra-splitter-in':''}">
+      ${anchorNaEsquerda ? anchor : ''}
       <span class="fibra-num"${ehSplitter?' style="width:auto;padding:0 .2rem"':''}>${ehSplitter ? (ehIn?'IN':'P'+num) : num}</span>
       ${ehSplitter ? '' : `<span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>`}
       ${par ? `<span class="fibra-par">${rotuloPontoGeogrid(outroPonto(par,lado,num))}</span>` : ''}
-      <span class="fibra-anchor" id="fibra-geo-${lado}-${rowIndex}-${diagIdx}-${num}"></span>
+      ${anchorNaEsquerda ? '' : anchor}
     </div>`;
   };
 
@@ -571,11 +578,18 @@ function renderFibrasEdicaoLider(rowIndex, diagIdx){
     const ehIn = ehSplitter && num === 0;
     const armado = d.armado && d.armado.lado===lado && d.armado.num===num;
     const par = acharParDe(d.pareamento, lado, num);
+    // Mesma lógica de âncora de tecnico.html: Lado B e a entrada IN do splitter
+    // recebem de quem vem antes (âncora à esquerda); Lado A e saídas de splitter
+    // mandam pra frente (âncora à direita) — evita a linha cruzar por cima do
+    // texto da própria porta.
+    const anchorNaEsquerda = lado === 'b' || ehIn;
+    const anchor = `<span class="fibra-anchor" id="lider-fibra-${lado}-${rowIndex}-${diagIdx}-${num}"></span>`;
     return `<div class="fibra-row${armado?' armado':''}${par?' pareada':''}${ehIn?' fibra-splitter-in':''}" onclick="clicarFibraEdicaoLider(${rowIndex},${diagIdx},'${lado}',${num})">
+      ${anchorNaEsquerda ? anchor : ''}
       <span class="fibra-num"${ehSplitter?' style="width:auto;padding:0 .2rem"':''}>${ehSplitter ? (ehIn?'IN':'P'+num) : num}</span>
       ${ehSplitter ? '' : `<span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>`}
       ${par ? `<span class="fibra-par">${rotuloPontoGeogrid(outroPonto(par,lado,num))}</span>` : ''}
-      <span class="fibra-anchor" id="lider-fibra-${lado}-${rowIndex}-${diagIdx}-${num}"></span>
+      ${anchorNaEsquerda ? '' : anchor}
     </div>`;
   };
   return `

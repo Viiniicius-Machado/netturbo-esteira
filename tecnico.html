@@ -1961,16 +1961,16 @@ function renderFusaoDiagramaBloco(rowIndex, diagIdx){
           <div class="chip-group" style="margin-top:.3rem">
             ${OPCOES_CABO.map(c=>`<div class="chip${(d.tipoCaboA||'Nenhum')===c?' active':''}" onclick="atualizarTipoCaboDiagrama(${rowIndex},${diagIdx},'A','${c}')">${c}</div>`).join('')}
           </div>
-          ${d.tipoCaboA ? `<label style="font-size:.62rem;color:var(--text-muted);margin-top:.5rem;display:block">Nomenclatura do cabo — Lado A</label>
-          <input type="text" style="width:100%;margin-top:.2rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem .5rem" placeholder="Ex.: LBN029" value="${d.nomA||''}" oninput="atualizarDiagramaCampo(${rowIndex},${diagIdx},'nomA',this.value)"/>` : ''}
+          ${d.tipoCaboA ? `<label style="font-size:.62rem;color:var(--text-muted);margin-top:.5rem;display:block">Nomenclatura do cabo — Lado A <span style="color:var(--red)">*</span></label>
+          <input type="text" style="width:100%;margin-top:.2rem;background:var(--surface3);border:1px solid ${String(d.nomA||'').trim()?'var(--border-hi)':'var(--red)'};border-radius:var(--radius);color:var(--text);padding:.4rem .5rem" placeholder="Ex.: LBN029" value="${d.nomA||''}" oninput="atualizarDiagramaCampo(${rowIndex},${diagIdx},'nomA',this.value)"/>` : ''}
         </div>
         <div style="flex:1">
           <label style="font-size:.62rem;color:var(--text-muted)">Tipo de cabo — Lado B</label>
           <div class="chip-group" style="margin-top:.3rem">
             ${OPCOES_CABO.map(c=>`<div class="chip${(d.tipoCaboB||'Nenhum')===c?' active':''}" onclick="atualizarTipoCaboDiagrama(${rowIndex},${diagIdx},'B','${c}')">${c}</div>`).join('')}
           </div>
-          ${d.tipoCaboB ? `<label style="font-size:.62rem;color:var(--text-muted);margin-top:.5rem;display:block">Nomenclatura do cabo — Lado B</label>
-          <input type="text" style="width:100%;margin-top:.2rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem .5rem" placeholder="Ex.: LBN030" value="${d.nomB||''}" oninput="atualizarDiagramaCampo(${rowIndex},${diagIdx},'nomB',this.value)"/>` : ''}
+          ${d.tipoCaboB ? `<label style="font-size:.62rem;color:var(--text-muted);margin-top:.5rem;display:block">Nomenclatura do cabo — Lado B <span style="color:var(--red)">*</span></label>
+          <input type="text" style="width:100%;margin-top:.2rem;background:var(--surface3);border:1px solid ${String(d.nomB||'').trim()?'var(--border-hi)':'var(--red)'};border-radius:var(--radius);color:var(--text);padding:.4rem .5rem" placeholder="Ex.: LBN030" value="${d.nomB||''}" oninput="atualizarDiagramaCampo(${rowIndex},${diagIdx},'nomB',this.value)"/>` : ''}
         </div>
       </div>
       <div style="margin-top:.5rem">
@@ -2112,11 +2112,20 @@ function renderFusaoFibras(rowIndex, diagIdx){
     const ehIn = ehSplitter && num === 0;
     const armado = d.armado && d.armado.lado===lado && d.armado.num===num;
     const par = acharParDe(d.pareamento, lado, num);
+    // A âncora fica do lado da porta que efetivamente encosta na coluna vizinha
+    // ligada: Lado B e a entrada IN de um splitter sempre recebem de quem vem
+    // ANTES (âncora à esquerda da linha); Lado A e as saídas de splitter sempre
+    // mandam pra quem vem DEPOIS (âncora à direita). Sem isso a linha tinha que
+    // atravessar por cima do próprio texto/número da porta pra chegar na ponta,
+    // cruzando com as linhas de outras portas do caminho.
+    const anchorNaEsquerda = lado === 'b' || ehIn;
+    const anchor = `<span class="fibra-anchor" id="fibra-${lado}-${rowIndex}-${diagIdx}-${num}"></span>`;
     return `<div class="fibra-row${armado?' armado':''}${par?' pareada':''}${ehIn?' fibra-splitter-in':''}" onclick="clicarFibra(${rowIndex},${diagIdx},'${lado}',${num})">
+      ${anchorNaEsquerda ? anchor : ''}
       <span class="fibra-num"${ehSplitter?' style="width:auto;padding:0 .2rem"':''}>${ehSplitter ? (ehIn?'IN':'P'+num) : num}</span>
       ${ehSplitter ? '' : `<span class="fibra-cor-dot" style="background:${corFibra(num)}"></span>`}
       ${par ? `<span class="fibra-par">${rotuloPonto(outroPonto(par,lado,num))}</span>` : ''}
-      <span class="fibra-anchor" id="fibra-${lado}-${rowIndex}-${diagIdx}-${num}"></span>
+      ${anchorNaEsquerda ? '' : anchor}
     </div>`;
   };
 
@@ -2399,6 +2408,13 @@ window.solicitarValidacao = async function(rowIndex){
   // não dá pra saber depois qual CEO física recebeu aquela fusão).
   if(diagramasRelevantes.some(({d}) => !String(d.numeroCeo||'').trim())){
     showToast('Informe o número da CEO em todos os diagramas de fusão preenchidos.');
+    return;
+  }
+  // Nomenclatura do cabo é obrigatória assim que o lado correspondente da
+  // facilidade de rede (Lado A/Lado B) é preenchido com um tipo de cabo — sem
+  // isso não dá pra identificar depois qual cabo físico foi fusionado.
+  if(diagramasRelevantes.some(({d}) => (d.tipoCaboA && !String(d.nomA||'').trim()) || (d.tipoCaboB && !String(d.nomB||'').trim()))){
+    showToast('Informe a nomenclatura do cabo em todo lado (A/B) com tipo de cabo selecionado.');
     return;
   }
   const quantidadeCeo = diagramasRelevantes.length ? String(diagramasRelevantes.length) : '';
