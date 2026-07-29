@@ -256,6 +256,7 @@ textarea{resize:vertical;min-height:60px}
             <option value="3.1.1.2.05.0008 - Serviços de Melhoria de REDE">3.1.1.2.05.0008 - Melhoria de REDE</option>
             <option value="3.1.1.2.05.0008 - Consultoria de Regularização">3.1.1.2.05.0008 - Consultoria de Regularização</option>
           </select>
+          <div class="assinatura-auto" id="obsContaContabilTravada" style="display:none;margin-top:6px">Definida no despacho — não pode ser alterada aqui.</div>
         </div>
       </div>
     </div>
@@ -960,6 +961,16 @@ async function prefillDaAtividade(rowIndex){
         // "Técnicos" representa quem executou o serviço, não quem está preenchendo.
         if(atividade.delegadaLpu && atividade['Técnico']) document.getElementById('tecnicos').value = atividade['Técnico'];
         else if(atividade.delegadaLpuApoio && atividade['Técnico Apoio']) document.getElementById('tecnicos').value = atividade['Técnico Apoio'];
+        // Conta Contábil definida no despacho (index.html) — trava a escolha do técnico
+        // pra não divergir do que já foi orçado. Atividade antiga (sem essa coluna
+        // preenchida) mantém o comportamento de sempre: campo em aberto.
+        if(atividade['Conta Contábil']){
+            const selContabil = document.getElementById('desc_contabil');
+            selContabil.value = atividade['Conta Contábil'];
+            selContabil.disabled = true;
+            document.getElementById('obsContaContabilTravada').style.display = 'block';
+            atualizarListaServicos();
+        }
     }catch(err){ console.error(err); }
 }
 
