@@ -72,8 +72,9 @@
 .na-info{font-size:.7rem;color:#888;background:rgba(168,201,60,.08);border:1px solid rgba(168,201,60,.2);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
 .na-info.visible{display:block}
 .na-link{font-size:.72rem;color:#a8c93c;cursor:pointer;text-align:center;text-decoration:underline}
-#na-chip{display:flex;align-items:center;gap:.5rem;font-size:.72rem;color:#0a0a0a;font-weight:600}
-#na-chip button{background:rgba(0,0,0,.12);border:1px solid rgba(0,0,0,.2);border-radius:20px;color:#0a0a0a;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:.3rem .7rem;cursor:pointer}
+#na-chip{display:flex;align-items:center;gap:.5rem;font-size:.72rem;color:#0a0a0a;font-weight:600;font-family:'Inter',sans-serif}
+#na-chip button{-webkit-appearance:none;appearance:none;box-sizing:border-box;font-family:inherit;line-height:1;background:rgba(0,0,0,.12);border:1px solid rgba(0,0,0,.22);border-radius:20px;color:#0a0a0a;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:.35rem .75rem;cursor:pointer;transition:background .15s ease}
+#na-chip button:hover{background:rgba(0,0,0,.2)}
 `;
 
   function injetarEstilo() {
@@ -231,6 +232,7 @@
   function proteger(opts) {
     const tela = opts.tela;
     const aoEntrar = opts.aoEntrar || function () {};
+    injetarEstilo(); // sempre, mesmo com sessão já válida — senão o chip "Olá/Sair" nasce sem CSS
     const sessao = lerSessao();
     if (sessao) {
       if (temAcessoTela(sessao, tela)) {
