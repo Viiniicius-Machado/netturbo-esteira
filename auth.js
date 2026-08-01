@@ -41,11 +41,19 @@
     localStorage.setItem(SESSAO_KEY, JSON.stringify(s));
   }
 
+  // Comparação sem distinguir maiúscula/minúscula nem espaço nas pontas — a coluna
+  // "Telas" é preenchida à mão na planilha pelo gestor, com o mesmo nome que aparece
+  // nos cards do painel.html (ex.: "Controle GEOGRID", "Dashboard Manutenção"), não
+  // um código técnico. Não corrige erro de digitação (ex.: "GEODRID"), só variação
+  // de caixa/espaço.
+  function normalizar(s) { return String(s || '').trim().toLowerCase(); }
+
   function temAcessoTela(sessao, tela) {
     if (!sessao) return false;
     if (tela === 'painel') return true; // hub sempre acessível a quem já logou — os cards de dentro é que filtram
-    const telas = sessao.telas || [];
-    return telas.indexOf('*') !== -1 || telas.indexOf(tela) !== -1;
+    const alvo = normalizar(tela);
+    const telas = (sessao.telas || []).map(normalizar);
+    return telas.indexOf('*') !== -1 || telas.indexOf(alvo) !== -1;
   }
 
   const CSS = `

@@ -122,40 +122,43 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 const ICONE_CARD = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="13" width="3" height="6"/><rect x="13" y="9" width="3" height="10"/><rect x="18" y="5" width="3" height="14"/></svg>`;
 
-// `tela` só existe nos cards que passaram a exigir o login por PIN
-// (NetturboAuth) — cards sem `tela` (login próprio de técnico, ou ainda sem
-// login nenhum) sempre aparecem, o painel não decide acesso pra eles.
+// `gated:true` marca os cards que passaram a exigir o login por PIN
+// (NetturboAuth) — a permissão é checada pelo próprio `titulo` do card, que é
+// exatamente o texto que o gestor digita na coluna "Telas" da planilha
+// ACESSOS_LIDERANCA (evita ter um código técnico separado que possa divergir
+// do nome visível). Cards sem `gated` (login próprio de técnico, ou ainda sem
+// login nenhum) sempre aparecem — o painel não decide acesso pra eles.
 const SECOES = [
   {
     id:'operacao', label:'Operação',
     cards:[
-      { href:'index.html', tela:'index', titulo:'Esteira de Despacho', desc:'Cadastro e acompanhamento das atividades — quadro Aguardando / Despachada, para o time de despacho.' },
+      { href:'index.html', gated:true, titulo:'Esteira de Despacho', desc:'Cadastro e acompanhamento das atividades — quadro Aguardando / Despachada, para o time de despacho.' },
       { href:'tecnico.html', titulo:'Minhas Atividades', desc:'App do técnico em campo — início, chegada, registro de ocorrência e relatório de atendimento.' },
       { href:'manutencao_preventiva.html', titulo:'Manutenção Preventiva', desc:'Relatório fotográfico de preventiva em rede externa, com geração de PDF. Acesso do técnico (mesmo login de Minhas Atividades).' },
-      { href:'geogrid.html', tela:'geogrid', titulo:'Controle GEOGRID', desc:'Fila de fusões fora do padrão (Cor com Cor = Não) pra sala técnica replicar no GEOGRID, com nome de quem concluiu. Acesso restrito.' }
+      { href:'geogrid.html', gated:true, titulo:'Controle GEOGRID', desc:'Fila de fusões fora do padrão (Cor com Cor = Não) pra sala técnica replicar no GEOGRID, com nome de quem concluiu. Acesso restrito.' }
     ]
   },
   {
     id:'financeiro', label:'Financeiro / LPU',
     cards:[
       { href:'PREENCHIMENTO_LPU.html', titulo:'Preenchimento LPU', desc:'Cobrança de serviços prestados (LPU), vinculada aos chamados validados. Acesso de técnicos de prestadoras terceiras (mesmo login de Minhas Atividades) — NETTURBO não acessa.' },
-      { href:'aprovacao_lpu.html', tela:'aprovacao_lpu', titulo:'Aprovação de LPU', desc:'Fila de LPUs aguardando aprovação, organizada por Descrição Contábil — gestor assina (mesmo padrão do técnico) antes de aprovar. Acesso restrito à liderança.' },
+      { href:'aprovacao_lpu.html', gated:true, titulo:'Aprovação de LPU', desc:'Fila de LPUs aguardando aprovação, organizada por Descrição Contábil — gestor assina (mesmo padrão do técnico) antes de aprovar. Acesso restrito à liderança.' },
       { href:'fechamento_lpu.html', titulo:'Fechamento LPU', desc:'Anexo da Nota Fiscal cobrindo o valor acumulado do mês e acompanhamento do pagamento. Acesso de técnicos de prestadoras terceiras (mesmo login de Minhas Atividades).' },
-      { href:'medicao.html', tela:'medicao', titulo:'Medição', desc:'Fila de aprovação final das LPUs, confirmação de pagamento e descritivo das atividades aprovadas (exporta Excel). Acesso restrito à liderança.' }
+      { href:'medicao.html', gated:true, titulo:'Medição', desc:'Fila de aprovação final das LPUs, confirmação de pagamento e descritivo das atividades aprovadas (exporta Excel). Acesso restrito à liderança.' }
     ]
   },
   {
     id:'lideranca', label:'Liderança',
     cards:[
-      { href:'dashboard_manutencao.html', tela:'dashboard_manutencao', titulo:'Dashboard Manutenção', desc:'Indicadores só da frente de Manutenção — MTTR por categoria (Rompimento/Massiva 4h, Acompanhamento/Fiscalização 8h), IRR, mapa de calor, causas e produção. Acesso restrito à liderança.' },
-      { href:'dashboard_implantacao.html', tela:'dashboard_implantacao', titulo:'Dashboard Implantação', desc:'Indicadores só da frente de Implantação — SLA, MTTR/MTTD, budget por Conta Contábil, mapa de calor, causas e produção. Acesso restrito à liderança.' },
-      { href:'dashboard_transmissao.html', tela:'dashboard_transmissao', titulo:'Dashboard Transmissão', desc:'Indicadores só da frente de Transmissão — SLA, MTTR/MTTD, budget por Conta Contábil, mapa de calor, causas e produção. Acesso restrito à liderança.' },
-      { href:'dashboard_gtd.html', tela:'dashboard_gtd', titulo:'Dashboard GTD', desc:'Indicadores só da frente de GTD — SLA, MTTR/MTTD, budget por Conta Contábil, mapa de calor, causas e produção. Acesso restrito à liderança.' },
-      { href:'dashboard_preventiva.html', tela:'dashboard_preventiva', titulo:'Dashboard Preventiva', desc:'Indicadores só da frente de Preventiva — SLA, MTTR/MTTD, budget por Conta Contábil, mapa de calor, causas e produção. Acesso restrito à liderança.' },
-      { href:'dashboard_medicao.html', tela:'dashboard_medicao', titulo:'Dashboard Medição', desc:'Visão financeira da LPU — mão de obra terceiras, valor por descrição contábil e gasto por semana. Acesso restrito à liderança.' },
+      { href:'dashboard_manutencao.html', gated:true, titulo:'Dashboard Manutenção', desc:'Indicadores só da frente de Manutenção — MTTR por categoria (Rompimento/Massiva 4h, Acompanhamento/Fiscalização 8h), IRR, mapa de calor, causas e produção. Acesso restrito à liderança.' },
+      { href:'dashboard_implantacao.html', gated:true, titulo:'Dashboard Implantação', desc:'Indicadores só da frente de Implantação — SLA, MTTR/MTTD, budget por Conta Contábil, mapa de calor, causas e produção. Acesso restrito à liderança.' },
+      { href:'dashboard_transmissao.html', gated:true, titulo:'Dashboard Transmissão', desc:'Indicadores só da frente de Transmissão — SLA, MTTR/MTTD, budget por Conta Contábil, mapa de calor, causas e produção. Acesso restrito à liderança.' },
+      { href:'dashboard_gtd.html', gated:true, titulo:'Dashboard GTD', desc:'Indicadores só da frente de GTD — SLA, MTTR/MTTD, budget por Conta Contábil, mapa de calor, causas e produção. Acesso restrito à liderança.' },
+      { href:'dashboard_preventiva.html', gated:true, titulo:'Dashboard Preventiva', desc:'Indicadores só da frente de Preventiva — SLA, MTTR/MTTD, budget por Conta Contábil, mapa de calor, causas e produção. Acesso restrito à liderança.' },
+      { href:'dashboard_medicao.html', gated:true, titulo:'Dashboard Medição', desc:'Visão financeira da LPU — mão de obra terceiras, valor por descrição contábil e gasto por semana. Acesso restrito à liderança.' },
       { href:'fiscal_v2.html', titulo:'Fiscalização', desc:'Checklist de fiscalização em campo, com fotos e assinatura — geração de PDF. Acesso da liderança.' },
       { href:'jornada_excedente.html', titulo:'Jornada Excedente', desc:'Registro de horas excedentes de jornada, com assinaturas — geração de PDF. Acesso da liderança.' },
-      { href:'treinamento.html', tela:'treinamento', titulo:'Treinamento / Alinhamento', desc:'Lista de presença digital com assinatura por participante e registro fotográfico — gera PDF. Acesso restrito à liderança.' }
+      { href:'treinamento.html', gated:true, titulo:'Treinamento / Alinhamento', desc:'Lista de presença digital com assinatura por participante e registro fotográfico — gera PDF. Acesso restrito à liderança.' }
     ]
   }
 ];
@@ -163,7 +166,7 @@ const SECOES = [
 function renderSecoes(){
   const cont = document.getElementById('secoes');
   cont.innerHTML = SECOES.map(sec => {
-    const cardsLiberados = sec.cards.filter(c => !c.tela || NetturboAuth.temAcesso(c.tela));
+    const cardsLiberados = sec.cards.filter(c => !c.gated || NetturboAuth.temAcesso(c.titulo));
     if(!cardsLiberados.length) return '';
     return `
     <div class="section" id="sec-${sec.id}">
