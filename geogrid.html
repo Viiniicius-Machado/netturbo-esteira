@@ -44,18 +44,21 @@
     .card-body{padding:.9rem 1rem}
     .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
 
-    /* Em tela larga, os itens (protocolo + diagrama de fusão) ficam lado a lado
-       em vez de empilhados — o SVG do diagrama já se redimensiona sozinho pra
-       largura do wrapper (ver desenharLinhasFusao), então funciona em qualquer
-       coluna sem distorcer. */
-    #listaValidacaoLider,#listaPendentes,#listaConcluidos{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:.65rem;align-items:start}
-
-    .item-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.75rem .9rem;margin-bottom:.65rem}
-    .item-card .protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.9rem}
-    .item-card .cliente{font-size:.8rem;margin-top:.1rem}
-    .item-card .meta{font-size:.7rem;color:var(--text-muted);margin-top:.4rem;line-height:1.6}
-    .item-card .concluido-info{font-size:.72rem;color:var(--green);margin-top:.5rem}
-    .item-card .acoes{margin-top:.6rem;display:flex;gap:.5rem;align-items:center}
+    /* Uma coluna só, cards recolhíveis (igual index.html/Esteira de Despacho) —
+       resumo compacto por padrão, expande ao clicar pra mostrar o diagrama de
+       fusão completo. Evita a fila lado a lado que ficava poluída com o
+       diagrama de fusão sempre aberto. */
+    .atv-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.75rem .9rem;margin-bottom:.65rem}
+    .atv-card .protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.9rem}
+    .atv-card .cliente{font-size:.8rem;margin-top:.1rem}
+    .atv-card .meta{font-size:.7rem;color:var(--text-muted);margin-top:.4rem;line-height:1.6}
+    .atv-card .concluido-info{font-size:.72rem;color:var(--green);margin-top:.5rem}
+    .atv-card .acoes{margin-top:.6rem;display:flex;gap:.5rem;align-items:center}
+    .atv-card summary{list-style:none;cursor:pointer}
+    .atv-card summary::-webkit-details-marker{display:none}
+    .atv-card summary::after{content:'▸';float:right;color:var(--text-muted);font-size:.7rem}
+    .atv-card[open] summary::after{content:'▾'}
+    .atv-card-body{margin-top:.55rem}
 
     .fusao-item-bloco{background:var(--surface2);border:1px solid var(--border-hi);border-radius:8px;padding:.65rem .7rem;margin-top:.5rem}
     .fusao-item-titulo{font-size:.72rem;color:var(--accent);margin-bottom:.5rem;font-weight:600}
@@ -108,7 +111,7 @@
     <button class="btn btn-outline" onclick="carregarGeogrid()">↻ Atualizar</button>
   </div>
 
-  <div class="card">
+  <div class="card" id="cardValidacaoLider">
     <div class="card-header" style="cursor:pointer" onclick="toggleSecaoGeogrid('validacaoLider')">Aguardando validação do líder<span class="contagem" id="countValidacaoLider">0</span>
       <button class="btn btn-outline" id="btnToggleValidacaoLider" style="padding:.2rem .55rem;font-size:.72rem;margin-left:.5rem" onclick="event.stopPropagation();toggleSecaoGeogrid('validacaoLider')">▲</button>
     </div>
@@ -137,6 +140,30 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 
 let TODOS_ITENS = [];
+
+// Quais cards (por rowIndex) o usuário deixou expandidos — sobrevive a um
+// re-render (ex.: clicar "Editar" chama renderValidacaoLider() de novo) pra não
+// fechar o card na cara da pessoa no meio da interação.
+const ITENS_ABERTOS_GEOGRID = new Set();
+window.onToggleItemGeogrid = function(el, rowIndex){
+  if(el.open){ ITENS_ABERTOS_GEOGRID.add(rowIndex); redesenharItemGeogrid(rowIndex); }
+  else{ ITENS_ABERTOS_GEOGRID.delete(rowIndex); }
+};
+// O SVG do diagrama mede as âncoras das fibras no DOM — enquanto o <details> está
+// fechado, tudo mede zero (mesmo problema que já existia pra seção inteira
+// minimizada, ver toggleSecaoGeogrid). Só redesenha quando o card abre de verdade.
+function redesenharItemGeogrid(rowIndex){
+  const item = TODOS_ITENS.find(i => i.rowIndex === rowIndex);
+  if(!item) return;
+  requestAnimationFrame(() => {
+    if(ITENS_EM_EDICAO_LIDER.has(rowIndex)){
+      const st = GEOGRID_LIDER_EDIT_STATE[rowIndex];
+      if(st) st.diagramas.forEach((d,i)=>desenharLinhasFusaoEdicaoLider(rowIndex, i));
+    }else{
+      diagramasFusao(item).forEach((d, i) => desenharLinhasFusaoGeogrid(rowIndex, i, d));
+    }
+  });
+}
 
 // Mesma paleta/contagem de fibras por tipo de cabo usada em tecnico.html — precisa
 // bater exatamente pra o desenho aqui sair igual ao que o técnico preencheu.
@@ -638,6 +665,7 @@ window.toggleEdicaoLider = function(rowIndex){
   }else{
     ITENS_EM_EDICAO_LIDER.add(rowIndex);
   }
+  ITENS_ABERTOS_GEOGRID.add(rowIndex); // renderValidacaoLider recria o <details> — sem isso o card fechava sozinho
   renderValidacaoLider();
 };
 
@@ -702,7 +730,22 @@ window.excluirValidacaoLider = async function(rowIndex){
 // sala técnica (RECUSADO, ver recusarGeogrid no backend) — os dois casos usam a
 // MESMA etapa/tela agora, não fica mais espalhado em index.html. Quando é uma
 // devolução, mostra o motivo da recusa em destaque acima do diagrama.
+// OEM (sala técnica) só entra a partir de "Pendentes de atualização no GEOGRID"
+// — a validação do líder é exclusiva de Encarregado/Gestor/Gerente. Cargo vem do
+// login (ACESSOS_LIDERANCA), não da lista de telas — mesma pessoa OEM continua
+// enxergando as outras seções normalmente.
+function ehOem(){
+  const usuario = NetturboAuth.usuario();
+  return !!usuario && String(usuario.cargo||'').trim().toLowerCase() === 'oem';
+}
+
 function renderValidacaoLider(){
+  const cardLider = document.getElementById('cardValidacaoLider');
+  if(ehOem()){
+    cardLider.style.display = 'none';
+    return;
+  }
+  cardLider.style.display = '';
   const itens = TODOS_ITENS.filter(i => i['Status'] === 'AGUARDANDO_VALIDACAO_LIDER' || i['Status'] === 'RECUSADO');
   document.getElementById('countValidacaoLider').textContent = itens.length;
   const el = document.getElementById('listaValidacaoLider');
@@ -718,23 +761,30 @@ function renderValidacaoLider(){
     const blocoRecusa = item['Status'] === 'RECUSADO'
       ? `<div class="meta" style="color:var(--red);margin-top:.4rem">Devolvido pela sala técnica (${item['Recusado Por']||'—'}, ${item['Timestamp Recusa']||'—'}): ${item['Motivo Recusa']||'—'}</div>`
       : '';
+    const aberto = ITENS_ABERTOS_GEOGRID.has(item.rowIndex);
     return `
-    <div class="item-card">
-      <div class="protocolo">${item['Protocolo']||'—'}</div>
-      <div class="cliente">${item['Cliente']||'—'}</div>
-      <div class="meta">${item['Técnico'] ? 'Técnico: '+item['Técnico']+'<br>' : ''}${item['Endereço']||''}<br>Fusionou todas: ${item['Fusionou Todas']||'—'} · Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}<br>Registrado em ${item['Timestamp Registro']||'—'}</div>
-      ${blocoRecusa}
-      ${corpo}
-      <div class="acoes">
-        <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem" onclick="aprovarValidacaoLider(${item.rowIndex})">Aprovar</button>
-        ${botaoEditar}
-        <button class="btn" style="padding:.45rem .8rem;font-size:.75rem;background:transparent;border:1px solid rgba(229,57,53,.35);color:#e57373" onclick="excluirValidacaoLider(${item.rowIndex})">Excluir</button>
+    <details class="atv-card" ${aberto?'open':''} ontoggle="onToggleItemGeogrid(this,${item.rowIndex})">
+      <summary>
+        <div class="protocolo">${item['Protocolo']||'—'}${item['Status']==='RECUSADO' ? ' · DEVOLVIDO PELA SALA TÉCNICA' : ''}</div>
+        <div class="cliente">${item['Cliente']||'—'}</div>
+        <div class="meta">${item['Técnico'] ? 'Técnico: '+item['Técnico']+' · ' : ''}Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}</div>
+      </summary>
+      <div class="atv-card-body">
+        <div class="meta">${item['Endereço']||''}<br>Fusionou todas: ${item['Fusionou Todas']||'—'}<br>Registrado em ${item['Timestamp Registro']||'—'}</div>
+        ${blocoRecusa}
+        ${corpo}
+        <div class="acoes">
+          <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem" onclick="aprovarValidacaoLider(${item.rowIndex})">Aprovar</button>
+          ${botaoEditar}
+          <button class="btn" style="padding:.45rem .8rem;font-size:.75rem;background:transparent;border:1px solid rgba(229,57,53,.35);color:#e57373" onclick="excluirValidacaoLider(${item.rowIndex})">Excluir</button>
+        </div>
       </div>
-    </div>`;
+    </details>`;
   }).join('') : '<div class="empty-msg">Nenhuma fusão aguardando validação do líder.</div>';
 
   requestAnimationFrame(() => {
     itens.forEach(item => {
+      if(!ITENS_ABERTOS_GEOGRID.has(item.rowIndex)) return; // fechado mede zero, não adianta desenhar
       if(ITENS_EM_EDICAO_LIDER.has(item.rowIndex)){
         const st = GEOGRID_LIDER_EDIT_STATE[item.rowIndex];
         if(st) st.diagramas.forEach((d,i)=>desenharLinhasFusaoEdicaoLider(item.rowIndex, i));
@@ -758,37 +808,47 @@ function renderGeogrid(){
 
   const elP = document.getElementById('listaPendentes');
   elP.innerHTML = pendentes.length ? pendentes.map(item => `
-    <div class="item-card">
-      <div class="protocolo">${item['Protocolo']||'—'}</div>
-      <div class="cliente">${item['Cliente']||'—'}</div>
-      <div class="meta">${infoTecnico(item)}${item['Endereço']||''}<br>Fusionou todas: ${item['Fusionou Todas']||'—'} · Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}<br>Registrado em ${item['Timestamp Registro']||'—'}</div>
-      ${diagramaSemFusao(item) ? blocoCeoSemFusao(diagramaSemFusao(item)) : blocoDiagramasFusao(item)}
-      <div id="recusa-form-${item.rowIndex}" style="display:none;margin-top:.6rem">
-        <textarea id="recusa-motivo-${item.rowIndex}" placeholder="Por que está recusando? (obrigatório)" style="width:100%;min-height:60px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.5rem .6rem;font-family:inherit"></textarea>
+    <details class="atv-card" ${ITENS_ABERTOS_GEOGRID.has(item.rowIndex)?'open':''} ontoggle="onToggleItemGeogrid(this,${item.rowIndex})">
+      <summary>
+        <div class="protocolo">${item['Protocolo']||'—'}</div>
+        <div class="cliente">${item['Cliente']||'—'}</div>
+        <div class="meta">${infoTecnico(item)}Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}</div>
+      </summary>
+      <div class="atv-card-body">
+        <div class="meta">${item['Endereço']||''}<br>Fusionou todas: ${item['Fusionou Todas']||'—'}<br>Registrado em ${item['Timestamp Registro']||'—'}</div>
+        ${diagramaSemFusao(item) ? blocoCeoSemFusao(diagramaSemFusao(item)) : blocoDiagramasFusao(item)}
+        <div id="recusa-form-${item.rowIndex}" style="display:none;margin-top:.6rem">
+          <textarea id="recusa-motivo-${item.rowIndex}" placeholder="Por que está recusando? (obrigatório)" style="width:100%;min-height:60px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.5rem .6rem;font-family:inherit"></textarea>
+        </div>
+        <div class="acoes">
+          <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem" onclick="concluir(${item.rowIndex})">Marcar como concluído no GEOGRID</button>
+          <button class="btn btn-outline" style="padding:.45rem .8rem;font-size:.75rem;border-color:rgba(229,57,53,.35);color:#e57373" onclick="toggleRecusarForm(${item.rowIndex})">Recusar</button>
+          <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem;display:none" id="recusa-confirmar-${item.rowIndex}" onclick="recusar(${item.rowIndex})">Confirmar recusa</button>
+        </div>
       </div>
-      <div class="acoes">
-        <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem" onclick="concluir(${item.rowIndex})">Marcar como concluído no GEOGRID</button>
-        <button class="btn btn-outline" style="padding:.45rem .8rem;font-size:.75rem;border-color:rgba(229,57,53,.35);color:#e57373" onclick="toggleRecusarForm(${item.rowIndex})">Recusar</button>
-        <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem;display:none" id="recusa-confirmar-${item.rowIndex}" onclick="recusar(${item.rowIndex})">Confirmar recusa</button>
-      </div>
-    </div>`).join('') : '<div class="empty-msg">Nenhuma fusão pendente.</div>';
+    </details>`).join('') : '<div class="empty-msg">Nenhuma fusão pendente.</div>';
 
   const elC = document.getElementById('listaConcluidos');
   elC.innerHTML = concluidos.length ? concluidos.map(item => `
-    <div class="item-card">
-      <div class="protocolo">${item['Protocolo']||'—'}</div>
-      <div class="cliente">${item['Cliente']||'—'}</div>
-      <div class="meta">${infoTecnico(item)}${item['Endereço']||''}<br>Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}</div>
-      ${diagramaSemFusao(item) ? blocoCeoSemFusao(diagramaSemFusao(item)) : blocoDiagramasFusao(item)}
-      <div class="concluido-info">✓ Concluído por ${item['Concluído Por']||'—'} em ${item['Timestamp Conclusão']||'—'}</div>
-    </div>`).join('') : '<div class="empty-msg">Nenhum item concluído ainda.</div>';
+    <details class="atv-card" ${ITENS_ABERTOS_GEOGRID.has(item.rowIndex)?'open':''} ontoggle="onToggleItemGeogrid(this,${item.rowIndex})">
+      <summary>
+        <div class="protocolo">${item['Protocolo']||'—'}</div>
+        <div class="cliente">${item['Cliente']||'—'}</div>
+        <div class="concluido-info">✓ Concluído por ${item['Concluído Por']||'—'} em ${item['Timestamp Conclusão']||'—'}</div>
+      </summary>
+      <div class="atv-card-body">
+        <div class="meta">${infoTecnico(item)}${item['Endereço']||''}<br>Qtd. CEO trabalhadas: ${item['Quantidade CEO Trabalhadas']||'—'}</div>
+        ${diagramaSemFusao(item) ? blocoCeoSemFusao(diagramaSemFusao(item)) : blocoDiagramasFusao(item)}
+      </div>
+    </details>`).join('') : '<div class="empty-msg">Nenhum item concluído ainda.</div>';
 
   // Precisa medir depois do innerHTML já aplicado no DOM, senão as âncoras das
-  // fibras ainda não existem / estão com posição zerada. Item de uma seção
-  // minimizada (display:none) mede zero — só desenha certo quando expandida
-  // de novo (ver toggleSecaoGeogrid).
+  // fibras ainda não existem / estão com posição zerada. Item minimizado (seção
+  // inteira em display:none, ver toggleSecaoGeogrid, ou o próprio card fechado
+  // — ver ITENS_ABERTOS_GEOGRID) mede zero — só desenha certo quando expandido.
   requestAnimationFrame(() => {
     [...pendentes, ...concluidos].forEach(item => {
+      if(!ITENS_ABERTOS_GEOGRID.has(item.rowIndex)) return;
       diagramasFusao(item).forEach((d, i) => desenharLinhasFusaoGeogrid(item.rowIndex, i, d));
     });
   });
