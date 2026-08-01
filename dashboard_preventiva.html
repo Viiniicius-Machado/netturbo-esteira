@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <meta name="theme-color" content="#0a0a0a"/>
-  <title>Dashboard Manutenção · Netturbo Esteira</title>
+  <title>Dashboard Preventiva · Netturbo Esteira</title>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -96,10 +96,6 @@
     .detalhe-secao-title{font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);margin:1.1rem 0 .5rem}
     .detalhe-secao-title:first-child{margin-top:0}
 
-    .tipo-tabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.8rem}
-    .tipo-tab{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
-    .tipo-tab.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
-
     .gauge-card{display:flex;align-items:center;gap:1rem}
     .gauge-svg-wrap{position:relative;width:86px;height:86px;flex-shrink:0}
     .gauge-svg{width:100%;height:100%;transform:rotate(-90deg)}
@@ -128,7 +124,7 @@
     .rank-bar-fill{height:100%;background:var(--accent);border-radius:3px}
     .rank-qtd{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.9rem;color:var(--accent);flex-shrink:0}
 
-    /* ── Orçamento (budget mensal editável) — mesmo padrão visual de medicao.html ── */
+    /* ── Orçamento (budget mensal editável, por Conta Contábil) ── */
     .orcamento-item{padding:.8rem 0;border-top:1px solid var(--border)}
     .orcamento-item:first-child{border-top:none;padding-top:0}
     .orcamento-desc{font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:.4rem}
@@ -138,8 +134,6 @@
     .orcamento-linhas > div{display:flex;justify-content:space-between;gap:.5rem;font-size:.72rem;color:var(--text-muted)}
     .orcamento-linhas b{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.82rem;color:var(--text)}
     .orcamento-aviso{font-size:.68rem;color:var(--amber);background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:6px;padding:.4rem .6rem;margin-top:.5rem}
-    .saldo-empresa-item{display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.32rem 0;border-top:1px solid var(--border);font-size:.75rem}
-    .saldo-empresa-item:first-child{border-top:none}
 
     /* ── Efetividade — grid compacto de blocos, em vez de linhas altas com barra ── */
     .efetividade-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:.5rem}
@@ -147,7 +141,6 @@
     .efetividade-tile:hover{transform:translateY(-1px)}
     .efetividade-tile .ef-nome{font-size:.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .efetividade-tile .ef-pct{font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;margin-top:.1rem}
-    .saldo-empresa-valor{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent)}
 
     /* ── Formulários inline simples (registrar orçamento / disponibilidade) ── */
     .form-inline{display:flex;flex-wrap:wrap;gap:.5rem;align-items:flex-end;margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--border)}
@@ -165,11 +158,10 @@
     .destaque-causa{font-size:.68rem;color:var(--text-dim);margin-top:.15rem}
     .destaque-data{font-size:.62rem;color:var(--text-muted);margin-top:.15rem;font-family:monospace}
 
-    /* ── Mapa de Calor (chamados de Manutenção por localização) ── */
+    /* ── Mapa de Calor (chamados de Preventiva por localização) ── */
     .mapa-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-bottom:.7rem}
     .mapa-toolbar select,.mapa-toolbar input{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.5rem .65rem}
     #mapaCalor{height:420px;border-radius:8px;overflow:hidden;background:var(--surface3)}
-    /* inverte os tiles do OpenStreetMap pra combinar com o tema escuro do resto do dashboard */
     #mapaCalor .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.9)}
     .mapa-legenda{display:flex;align-items:center;gap:.6rem;margin-top:.6rem;font-size:.65rem;color:var(--text-muted)}
     .mapa-legenda .barra{flex:1;max-width:220px;height:8px;border-radius:4px;background:linear-gradient(90deg,#0000ff,#00ffff,#00ff00,#ffff00,#ff0000)}
@@ -183,8 +175,8 @@
   <div class="login-box">
     <img class="login-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
     <div class="login-heading">
-      <h2>Dashboard Manutenção</h2>
-      <p>Esteira de Despacho · Manutenção</p>
+      <h2>Dashboard Preventiva</h2>
+      <p>Esteira de Despacho · Liderança</p>
     </div>
     <div class="login-field">
       <label>Senha</label>
@@ -199,8 +191,8 @@
   <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
   <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
   <div>
-    <div class="topbar-brand">Dashboard Manutenção</div>
-    <div class="topbar-sub">Rompimento · Massiva · Acompanhamento/Fiscalização</div>
+    <div class="topbar-brand">Dashboard Preventiva</div>
+    <div class="topbar-sub">Frente Preventiva</div>
   </div>
   <div class="topbar-spacer"></div>
 </header>
@@ -248,16 +240,14 @@
   </div>
 
   <div class="card">
-    <div class="card-header">Budget do Mês (terceiros)</div>
+    <div class="card-header">Budget do Mês (por Conta Contábil)</div>
     <div class="card-body">
       <div id="orcamentoGeralBox"></div>
-      <div id="kpiEmpresasSaldo" style="margin-top:.8rem"></div>
       <div class="form-inline">
         <div class="campo">
-          <label>Categoria</label>
-          <select id="selCategoriaOrcamento">
-            <option value="GERAL">Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)</option>
-            <option value="QUALITY">QUALITY (contrato fixo)</option>
+          <label>Conta Contábil</label>
+          <select id="selContaContabilOrcamento">
+            <option value="">Selecione...</option>
           </select>
         </div>
         <div class="campo">
@@ -283,14 +273,8 @@
   </div>
 
   <div class="card">
-    <div class="card-header">SLA, Eficiência, Tempos Médios e IRR</div>
+    <div class="card-header">SLA, Eficiência e Tempos Médios</div>
     <div class="card-body">
-      <div class="tipo-tabs" id="tipoTabs">
-        <button type="button" class="tipo-tab active" data-tipo="TODOS" onclick="selecionarFiltroTipo('TODOS')">Todos</button>
-        <button type="button" class="tipo-tab" data-tipo="ROMPIMENTO" onclick="selecionarFiltroTipo('ROMPIMENTO')">Rompimento</button>
-        <button type="button" class="tipo-tab" data-tipo="MASSIVA" onclick="selecionarFiltroTipo('MASSIVA')">Massiva</button>
-        <button type="button" class="tipo-tab" data-tipo="ACOMPANHAMENTO / FISCALIZAÇÃO" onclick="selecionarFiltroTipo('ACOMPANHAMENTO / FISCALIZAÇÃO')">Acompanhamento / Fiscalização</button>
-      </div>
       <div class="metric-row">
         <div class="metric-card gauge-card">
           <div class="gauge-svg-wrap">
@@ -306,12 +290,11 @@
             <div class="metric-sub" style="margin-top:.3rem">
               <span style="color:var(--green)">● C/SLA <b id="mCSla">–</b></span>
               &nbsp;&nbsp;<span style="color:var(--red)">● S/SLA <b id="mSSla">–</b></span>
-              <span style="color:var(--text-muted)"> (aba selecionada)</span>
             </div>
           </div>
         </div>
         <div class="metric-card clicavel" id="cardMTTR" onclick="abrirDetalheIndicador('MTTR')">
-          <div class="metric-title" id="mttrMetaTitulo">MTTR Médio (Meta ≤4:00)</div>
+          <div class="metric-title">MTTR Médio (Meta conforme SLA da atividade)</div>
           <div class="metric-big" id="mMTTR">–</div>
           <div class="metric-sub" id="mMTTRGapTempo"></div>
           <div class="metric-hint">Toque para ver as 3 mais rápidas / 3 mais críticas</div>
@@ -327,12 +310,6 @@
           <div class="metric-big" id="mTMC">–</div>
           <div class="metric-sub" id="mTMCGapTempo"></div>
           <div class="metric-hint">Toque para ver as 3 mais rápidas / 3 mais críticas</div>
-        </div>
-        <div class="metric-card clicavel" id="cardIRR" onclick="abrirDetalheIndicador('IRR')">
-          <div class="metric-title">IRR (Meta ≤10%)</div>
-          <div class="metric-big" id="mIRR">–</div>
-          <div class="metric-sub" id="mIRRGapTexto"></div>
-          <div class="metric-hint">Toque para ver os clientes com atendimento repetido</div>
         </div>
       </div>
     </div>
@@ -400,7 +377,7 @@
     </div>
   </div>
 
-  <!-- DETALHE DE INDICADOR (MTTR/MTTD/TMC) — 3 mais rápidas e 3 mais críticas do período/filtro atual -->
+  <!-- DETALHE DE INDICADOR (MTTR/MTTD/TMC) — 3 mais rápidas e 3 mais críticas do mês atual -->
   <div class="detalhe-overlay" id="detalheOverlay" onclick="if(event.target===this) fecharDetalheIndicador()">
     <div class="detalhe-panel">
       <div class="detalhe-header">
@@ -436,24 +413,9 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 const LEADERSHIP_PASSWORD = "Manutencao@101";
 const META_EFICIENCIA = 70;   // %
-const META_MTTR_MIN = 240;    // 4:00 (Recebido → Validação: tempo total do atendimento)
+const META_MTTR_MIN = 240;    // 4:00 — só usado de referência (atividade antiga sem SLA Horas); C/SLA real usa metaSlaMinutos(a)
 const META_MTTD_MIN = 60;     // 1:00 (Despacho → Chegada: tempo de resposta/deslocamento)
 const META_TMC_MIN = 180;     // 3:00 (Chegada → Pedido de Validação: tempo de execução em campo)
-const META_IRR_PCT = 10;      // IRR (Índice de Recursos Repetitivos) — meta ≤10%
-
-let FILTRO_TIPO_ATIVO = 'TODOS'; // 'TODOS' | 'ROMPIMENTO' | 'MASSIVA' | 'ACOMPANHAMENTO / FISCALIZAÇÃO' — filtra só o card de Eficiência/MTTR/MTTD/TMC
-
-// Meta de MTTR por categoria (SLA da matriz oficial do setor, ver MATRIZ_SLA em
-// index.html): Rompimento e Massiva são 4h, Acompanhamento/Fiscalização é 8h.
-// 'TODOS' mistura categorias com SLA diferente — sem comparação justa óbvia,
-// mantém a meta de 4h como referência geral (mesmo critério já usado antes de
-// existir a matriz por categoria).
-const META_MTTR_POR_TIPO = {
-  'TODOS': 240,
-  'ROMPIMENTO': 240,
-  'MASSIVA': 240,
-  'ACOMPANHAMENTO / FISCALIZAÇÃO': 480
-};
 
 // C/SLA por atividade: usa o SLA Horas dela (matriz nova, ver MATRIZ_SLA em
 // index.html/tecnico.html) quando preenchido; atividade antiga (sem essa
@@ -463,12 +425,25 @@ function metaSlaMinutos(a){
   return h > 0 ? h * 60 : META_MTTR_MIN;
 }
 
-// Rótulos derivados de Tipo de Solicitação/Categoria (ver derivarOcorrenciaECausa
-// no Apps Script) — precisam estar aqui também, senão a atividade some do
-// gráfico "Ocorrências no Mês" mesmo com Ocorrência preenchida (montarRankingFixo
-// só mostra as categorias desta lista).
-const TIPOS = ['ROMPIMENTO','MASSIVA','ACOMPANHAMENTO CPFL','PREVENTIVA','AGENDAMENTO','TRANSMISSÃO','IMPLANTAÇÃO','EXTENSÃO DE FIBRA','GTD','PÓS VENDAS','MEDIÇÃO','ACOMPANHAMENTO / FISCALIZAÇÃO','REDE RF'];
-const EMPRESAS = ['VAL','PV','OLIVEIRA','SOLUTEC','QUALITY','NETTURBO'];
+// Rótulo derivado de Tipo de Solicitação/Categoria (ver derivarOcorrenciaECausa
+// no Apps Script) pra Preventiva.
+const TIPOS = ['PREVENTIVA'];
+const EMPRESAS = ['VAL','PV','OLIVEIRA','SOLUTEC','QUALITY','NETTURBO','SOUZA TELECOM','FUSION TELECOM','EFM TELECOM','DOIS IRMÃOS'];
+
+// Mesmas 9 Descrições Contábeis escolhidas no despacho (index.html) — usadas aqui
+// como categoria do budget mensal. Duplicado de propósito, mesmo padrão já usado
+// pra outras listas compartilhadas sem módulo/build neste projeto (ex.: MATRIZ_SLA).
+const DESCRICOES_CONTABEIS = [
+  '3.1.1.2.05.0005 - Serviços de Instalação CLIENTE - IMPLANTAÇÃO',
+  '3.1.1.2.05.0007 - Serviços de Instalação REDE - CONSTRUÇÃO DE REDE',
+  '3.1.1.2.05.0103 - Serviços de Melhoria REDE - REPARO PROGRAMADO DE REDE',
+  '3.1.1.2.05.0008 - Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)',
+  '3.1.1.2.05.0006 - Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)',
+  '3.1.1.2.05.0101 - Serviços Preventivos',
+  '3.1.1.2.05.0102 - Serviços de Retirada',
+  '3.1.1.2.05.0008 - Serviços de Melhoria de REDE',
+  '3.1.1.2.05.0008 - Consultoria de Regularização'
+];
 
 let TODAS_ATIVIDADES = [];
 let DADOS_FILTRADOS = [];
@@ -483,11 +458,17 @@ function fmtMoeda(v){
   return 'R$ ' + Number(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
 }
 
+function popularContaContabilOrcamento(){
+  const el = document.getElementById('selContaContabilOrcamento');
+  if(el) el.innerHTML = '<option value="">Selecione...</option>' + DESCRICOES_CONTABEIS.map(d => `<option value="${d.replace(/"/g,'&quot;')}">${d}</option>`).join('');
+}
+
 function tryLogin(){
   const val = document.getElementById('pwdInput').value;
   if(val === LEADERSHIP_PASSWORD){
     document.getElementById('login-overlay').style.display = 'none';
     document.getElementById('app').style.display = 'block';
+    popularContaContabilOrcamento();
     const hoje = new Date();
     const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0');
     document.getElementById('mesFiltro').value = mesAtual;
@@ -517,10 +498,9 @@ async function carregarDashboard(){
     const [resultEsteira, resultTecnicos, resultOrcamentos, resultDisponibilidade] = await Promise.all([
       respEsteira.json(), respTecnicos.json(), respOrcamentos.json(), respDisponibilidade.json()
     ]);
-    // Dashboard dedicado à frente de Manutenção (Rompimento/Massiva/Acompanhamento-
-    // Fiscalização/REDE RF) — filtra pela coluna 'Tipo de Solicitação', não pelo
-    // rótulo derivado 'Ocorrência', pra pegar certo mesmo as variações "Improdutiva ...".
-    TODAS_ATIVIDADES = (resultEsteira.atividades || []).filter(a => a['Tipo de Solicitação'] === 'Manutenção');
+    // Dashboard dedicado só à frente de Preventiva — Manutenção, Transmissão,
+    // Implantação e GTD têm cada uma o próprio dashboard, pra não duplicar indicador.
+    TODAS_ATIVIDADES = (resultEsteira.atividades || []).filter(a => a['Tipo de Solicitação'] === 'Preventiva');
     TECH_MAP = resultTecnicos.empresas || {};
     TODOS_ORCAMENTOS = resultOrcamentos.orcamentos || [];
     TODOS_PERIODOS_DISPONIBILIDADE = resultDisponibilidade.periodos || [];
@@ -576,6 +556,19 @@ function mesDeTimestamp(str){
   return m[3] + '-' + m[2].padStart(2,'0');
 }
 
+// Parser amplo de data (Date puro, ISO ou "dd/mm/yyyy, hh:mm:ss") — usado pelo
+// filtro de Semana/Ano do Mapa de Calor.
+function parseDataAmpla(val){
+  if(!val) return null;
+  if(val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  const iso = new Date(val);
+  if(!isNaN(iso.getTime())) return iso;
+  const m = String(val).match(/(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2})?:?(\d{2})?/);
+  if(!m) return null;
+  const d = new Date(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]||0), Number(m[5]||0));
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function paraMinutos(str){
   const m = String(str||'').trim().match(/^(\d{1,3}):(\d{2})$/);
   if(!m) return null;
@@ -602,16 +595,10 @@ function montarRankingFixo(dados, campo, categorias){
     .sort((a,b)=>b[1]-a[1]);
 }
 
-// ── BUDGET MENSAL (editável pela tela — ver ORCAMENTOS_MENSAIS no backend) ──
-// Empresas que fecham por LPU (soma calculada) — QUALITY fica de fora daqui
-// porque não tem LPU (contrato fixo, valor registrado igual ao budget geral) e
-// NETTURBO fica de fora porque não é terceiro (mão de obra própria).
-const EMPRESAS_LPU_TERCEIROS = ['VAL','PV','OLIVEIRA','SOLUTEC'];
-
-// Pega o valor vigente de uma categoria pro mês pedido: usa o registro mais
-// recente daquele mês se existir, senão cai pro mês anterior mais recente já
-// registrado (nunca busca no futuro). Cada categoria+mês pode ter mais de um
-// registro (histórico) — o último da lista (ordem de inserção na planilha) vence.
+// ── BUDGET MENSAL POR CONTA CONTÁBIL (editável pela tela — ver ORCAMENTOS_MENSAIS
+// no backend) — cada atividade de Preventiva já vem com 'Conta Contábil' escolhida
+// no despacho (index.html, campo obrigatório desde 29/07); aqui o budget é registrado
+// e comparado por conta.
 function valorOrcamentoVigente(categoria, mesAlvo){
   const doCategoria = TODOS_ORCAMENTOS.filter(o => o.categoria === categoria && o.mes <= mesAlvo);
   if(!doCategoria.length) return { valor: 0, mesOrigem: '', registrado: false };
@@ -621,85 +608,71 @@ function valorOrcamentoVigente(categoria, mesAlvo){
   return { valor: ultimo.valor, mesOrigem: mesMaisRecente, registrado: mesMaisRecente === mesAlvo };
 }
 
-// Soma o "Total" de LPU por empresa prestadora, só o que já passou pela Medição
+// Soma o "Total" de LPU por Conta Contábil, só o que já passou pela Medição
 // (aprovado, pago ou não) e foi preenchido no mês pedido — mesmo critério de
-// "Aprovado" que já existe em medicao.html, aceitando também PAGO (próximo
-// passo do mesmo status). Como LISTAR_ESTEIRA traz linha crua (não dividida por
-// papel), cada linha é somada até duas vezes: uma pro titular, uma pro apoio.
-function somaLpuPorEmpresa(mesAlvo){
+// "Aprovado" já usado em medicao.html/dashboard_manutencao.html, aceitando também
+// PAGO. Como LISTAR_ESTEIRA traz linha crua (não dividida por papel), cada linha
+// é somada até duas vezes: uma pro titular, uma pro apoio.
+function somaLpuPorContaContabil(mesAlvo){
   const somas = {};
   const statusOk = ['APROVADO_AGUARDANDO_NF', 'PAGO'];
   TODAS_ATIVIDADES.forEach(a => {
+    const conta = a['Conta Contábil'] || 'Não informado';
     if(statusOk.includes(a['Status LPU']) && mesDeTimestamp(a['LPU Timestamp Preenchimento']) === mesAlvo){
-      const emp = a['LPU Empresa Prestadora'] || a['Empresa'] || 'Não informado';
-      somas[emp] = (somas[emp]||0) + Number(a['LPU Total']||0);
+      somas[conta] = (somas[conta]||0) + Number(a['LPU Total']||0);
     }
     if(statusOk.includes(a['Status LPU Apoio']) && mesDeTimestamp(a['LPU Apoio Timestamp Preenchimento']) === mesAlvo){
-      const emp = a['LPU Apoio Empresa Prestadora'] || a['Empresa Apoio'] || 'Não informado';
-      somas[emp] = (somas[emp]||0) + Number(a['LPU Apoio Total']||0);
+      somas[conta] = (somas[conta]||0) + Number(a['LPU Apoio Total']||0);
     }
   });
   return somas;
 }
 
 function renderBudget(mes){
-  const geral = valorOrcamentoVigente('GERAL', mes);
-  const quality = valorOrcamentoVigente('QUALITY', mes);
-  const saldosLpu = somaLpuPorEmpresa(mes);
+  const somasLpu = somaLpuPorContaContabil(mes);
+  // Só mostra conta que tem budget registrado (nesse mês ou anterior) ou gasto
+  // aprovado no mês — evita listar as 9 contas fixas com tudo zerado.
+  const contasComDado = new Set([
+    ...TODOS_ORCAMENTOS.filter(o => o.mes <= mes).map(o => o.categoria),
+    ...Object.keys(somasLpu).filter(c => somasLpu[c] > 0)
+  ]);
+  const contas = DESCRICOES_CONTABEIS.filter(c => contasComDado.has(c));
 
-  const comprometido = EMPRESAS_LPU_TERCEIROS.reduce((s,emp) => s + (saldosLpu[emp]||0), 0) + quality.valor;
-  const saldo = geral.valor - comprometido;
-  const pct = geral.valor > 0 ? (comprometido/geral.valor*100) : (comprometido > 0 ? 100 : 0);
-  const pctBarra = Math.min(100, pct);
-  const cor = pct >= 100 ? 'var(--red)' : pct >= 85 ? '#ffa000' : 'var(--accent)';
+  if(!contas.length){
+    document.getElementById('orcamentoGeralBox').innerHTML = '<div style="color:var(--text-muted);font-size:.78rem;font-style:italic">Nenhum budget ou gasto aprovado registrado ainda pra essa frente. Registre o valor do mês abaixo.</div>';
+    return;
+  }
 
-  const avisoGeral = geral.registrado ? '' : (geral.mesOrigem
-    ? `<div class="orcamento-aviso">Sem valor registrado pra este mês — usando o valor de ${geral.mesOrigem}. Registre o valor deste mês abaixo.</div>`
-    : `<div class="orcamento-aviso">Nenhum budget geral registrado ainda. Registre o valor deste mês abaixo.</div>`);
-
-  document.getElementById('orcamentoGeralBox').innerHTML = `
-    <div class="orcamento-item">
-      <div class="orcamento-desc">Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)</div>
+  document.getElementById('orcamentoGeralBox').innerHTML = contas.map(conta => {
+    const orc = valorOrcamentoVigente(conta, mes);
+    const comprometido = somasLpu[conta] || 0;
+    const pct = orc.valor > 0 ? (comprometido/orc.valor*100) : (comprometido > 0 ? 100 : 0);
+    const pctBarra = Math.min(100, pct);
+    const cor = pct >= 100 ? 'var(--red)' : pct >= 85 ? '#ffa000' : 'var(--accent)';
+    const saldo = orc.valor - comprometido;
+    const aviso = orc.registrado ? '' : (orc.mesOrigem
+      ? `<div class="orcamento-aviso">Sem valor registrado pra este mês — usando o valor de ${orc.mesOrigem}.</div>`
+      : `<div class="orcamento-aviso">Nenhum budget registrado ainda pra essa conta — só há gasto aprovado.</div>`);
+    return `<div class="orcamento-item">
+      <div class="orcamento-desc">${conta}</div>
       <div class="orcamento-bar-track"><div class="orcamento-bar-fill" style="width:${pctBarra}%;background:${cor}"></div></div>
       <div class="orcamento-linhas">
-        <div><span>Budget</span><b>${fmtMoeda(geral.valor)}</b></div>
+        <div><span>Budget</span><b>${fmtMoeda(orc.valor)}</b></div>
         <div><span>Comprometido (aprovado)</span><b style="color:${cor}">${fmtMoeda(comprometido)} · ${pct.toFixed(0)}%</b></div>
         <div><span>Saldo</span><b style="color:${saldo<0?'var(--red)':'var(--text)'}">${fmtMoeda(saldo)}</b></div>
       </div>
-      ${avisoGeral}
+      ${aviso}
     </div>`;
-
-  // Resumo clicável em vez da lista sempre visível — abre a subtela com o
-  // detalhamento por prestadora (ver abrirDetalheSaldo).
-  document.getElementById('kpiEmpresasSaldo').innerHTML = `
-    <div class="metric-card clicavel" onclick="abrirDetalheSaldo()">
-      <div class="metric-title">Saldo de LPU por Prestadora (aprovado no mês)</div>
-      <div class="metric-big" style="font-size:1.4rem">${fmtMoeda(comprometido)}</div>
-      <div class="metric-hint">Ver valor de cada terceiro →</div>
-    </div>`;
+  }).join('');
 }
-
-window.abrirDetalheSaldo = function(){
-  const mes = document.getElementById('mesFiltro').value;
-  const saldosLpu = somaLpuPorEmpresa(mes);
-  const quality = valorOrcamentoVigente('QUALITY', mes);
-
-  document.getElementById('detalheTitulo').textContent = 'Saldo de LPU por Prestadora';
-  const linhas = EMPRESAS_LPU_TERCEIROS.map(emp => `
-    <div class="destaque-item"><div class="destaque-topo"><span class="destaque-protocolo">${emp}</span><span class="destaque-tempo">${fmtMoeda(saldosLpu[emp]||0)}</span></div></div>
-  `).join('') + `
-    <div class="destaque-item"><div class="destaque-topo"><span class="destaque-protocolo">QUALITY${quality.registrado?'':' (mês anterior)'}</span><span class="destaque-tempo">${fmtMoeda(quality.valor)}</span></div></div>`;
-
-  document.getElementById('detalheBody').innerHTML = `<div class="detalhe-secao-title">Valor aprovado (Medição), pago ou não, no mês</div>${linhas}`;
-  document.getElementById('detalheOverlay').classList.add('open');
-};
 
 window.registrarOrcamento = async function(){
   const mes = document.getElementById('mesFiltro').value;
-  const categoria = document.getElementById('selCategoriaOrcamento').value;
+  const categoria = document.getElementById('selContaContabilOrcamento').value;
   const valor = document.getElementById('inputValorOrcamento').value;
   const registradoPor = document.getElementById('inputRegistradoPorOrcamento').value.trim();
   if(!mes){ alert('Selecione o mês no filtro antes de registrar.'); return; }
+  if(!categoria){ alert('Selecione a Conta Contábil antes de registrar.'); return; }
   if(valor === '' || Number(valor) < 0){ alert('Informe um valor válido.'); return; }
   if(!registradoPor){ alert('Informe quem está registrando.'); return; }
 
@@ -799,144 +772,95 @@ window.abrirDetalheEfetividade = function(empresa){
   document.getElementById('detalheOverlay').classList.add('open');
 };
 
-// ── IRR (Índice de Recursos Repetitivos) ──────────────────────────
-// Repetição = mesmo Cliente com outro ROMPIMENTO validado nos 30 dias anteriores
-// (usa Timestamp Recebido, a data em que a falha foi reportada). A base de cálculo
-// é só ROMPIMENTO — outros tipos (MASSIVA, PREVENTIVA etc.) não entram na conta.
-// 'Timestamp Recebido' vem como Date puro (sem @STRING@ no Apps Script) e chega no
-// front como string ISO via JSON — new Date(iso) reconstrói o instante certo.
-function parseDataAmpla(val){
-  if(!val) return null;
-  if(val instanceof Date) return isNaN(val.getTime()) ? null : val;
-  const iso = new Date(val);
-  if(!isNaN(iso.getTime())) return iso;
-  const m = String(val).match(/(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2})?:?(\d{2})?/);
-  if(!m) return null;
-  const d = new Date(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]||0), Number(m[5]||0));
-  return isNaN(d.getTime()) ? null : d;
-}
+// Calcula e renderiza Eficiência (gauge) + MTTR + MTTD + TMC do mês (uma única
+// frente por dashboard — sem abas de tipo pra alternar).
+function renderBlocoEficiencia(){
+  const dados = DADOS_FILTRADOS;
 
-// Compara local de duas atividades: Endereço como critério principal, GPS Falha
-// como desempate quando o Endereço estiver vazio em algum dos dois lados.
-function mesmoLocal(a1, a2){
-  const e1 = String(a1['Endereço']||'').trim().toUpperCase();
-  const e2 = String(a2['Endereço']||'').trim().toUpperCase();
-  if(e1 && e2) return e1 === e2;
-  const g1 = String(a1['GPS Falha']||'').trim();
-  const g2 = String(a2['GPS Falha']||'').trim();
-  if(g1 && g2) return g1 === g2;
-  return false;
-}
-
-// Agrupa TODOS os ROMPIMENTOs validados (histórico completo, não só o mês filtrado
-// — uma repetição pode cruzar virada de mês) por Cliente, ordena por data e monta
-// cadeias de visitas com intervalo ≤30 dias entre uma e a seguinte. A partir da 2ª
-// visita de cada cadeia (i>0), a visita conta como "repetição" — e a repetição é
-// atribuída à visita mais recente (quem "herdou" o problema), não à primeira.
-function montarClustersIRR(){
-  const rompimentos = TODAS_ATIVIDADES
-    .filter(a => a['Status']==='VALIDADA' && a['Ocorrência']==='ROMPIMENTO' && a['Cliente'] && a['Timestamp Recebido'])
-    .map(a => ({ a, data: parseDataAmpla(a['Timestamp Recebido']) }))
-    .filter(x => x.data);
-
-  const porCliente = {};
-  rompimentos.forEach(x => {
-    const chave = String(x.a['Cliente']).trim().toUpperCase();
-    (porCliente[chave] = porCliente[chave] || []).push(x);
-  });
-
-  const clusters = [];
-  Object.values(porCliente).forEach(visitas => {
-    visitas.sort((x,y) => x.data - y.data);
-    let clusterAtual = [visitas[0]];
-    for(let i=1;i<visitas.length;i++){
-      const dias = (visitas[i].data - visitas[i-1].data) / 86400000;
-      if(dias <= 30){
-        clusterAtual.push(visitas[i]);
-      }else{
-        if(clusterAtual.length >= 2) clusters.push(clusterAtual);
-        clusterAtual = [visitas[i]];
-      }
+  let cSla=0, sSla=0, somaMTTR=0, contMTTR=0, somaMTTD=0, contMTTD=0, somaTMC=0, contTMC=0;
+  dados.forEach(a=>{
+    const mttr = paraMinutos(a['MTTR']);
+    const mttd = paraMinutos(a['MTTD']);
+    const tmc = paraMinutos(a['TMC']);
+    if(mttr!==null){
+      somaMTTR += mttr; contMTTR++;
+      if(mttr <= metaSlaMinutos(a)) cSla++; else sSla++;
     }
-    if(clusterAtual.length >= 2) clusters.push(clusterAtual);
-  });
-  return clusters;
-}
-
-// Mapa rowIndex -> { repetida, cluster, posicao } pra consulta rápida na hora de
-// render (card + tabela de detalhe) sem refazer a clusterização várias vezes.
-function montarMapaRepeticaoIRR(){
-  const mapa = {};
-  montarClustersIRR().forEach(cluster => {
-    cluster.forEach((v,i) => { mapa[v.a.rowIndex] = { repetida: i>0, cluster, posicao: i }; });
-  });
-  return mapa;
-}
-
-let MAPA_IRR = {};
-
-function renderIRR(){
-  MAPA_IRR = montarMapaRepeticaoIRR();
-  const rompimentosDoMes = DADOS_FILTRADOS.filter(a=>a['Ocorrência']==='ROMPIMENTO');
-  const totalRompimentos = rompimentosDoMes.length;
-  const repetidosDoMes = rompimentosDoMes.filter(a => MAPA_IRR[a.rowIndex] && MAPA_IRR[a.rowIndex].repetida).length;
-  const irrPct = totalRompimentos ? (repetidosDoMes/totalRompimentos*100) : 0;
-
-  document.getElementById('mIRR').textContent = totalRompimentos ? irrPct.toFixed(1)+'%' : '–';
-  const faixaIRR = totalRompimentos ? faixaStatus(irrPct, META_IRR_PCT, false) : '';
-  document.getElementById('cardIRR').className = 'metric-card clicavel' + (faixaIRR ? ' m-'+faixaIRR : '');
-  const diffIRR = totalRompimentos ? irrPct - META_IRR_PCT : null;
-  document.getElementById('mIRRGapTexto').textContent = diffIRR===null ? 'Sem rompimentos nesse mês' :
-    `${repetidosDoMes}/${totalRompimentos} rompimento(s) · ${diffIRR<=0 ? Math.abs(diffIRR).toFixed(1)+'% abaixo da meta' : '+'+diffIRR.toFixed(1)+'% acima da meta'}`;
-}
-
-function abrirDetalheIRR(){
-  const rompimentosDoMes = DADOS_FILTRADOS.filter(a=>a['Ocorrência']==='ROMPIMENTO');
-  const repetidosDoMes = rompimentosDoMes.filter(a => MAPA_IRR[a.rowIndex] && MAPA_IRR[a.rowIndex].repetida);
-
-  // Um cluster pode ter mais de uma visita repetida dentro do mês filtrado — mostra
-  // o cluster (histórico completo da cadeia) só uma vez, não uma vez por repetição.
-  const clustersUnicos = [];
-  const vistos = new Set();
-  repetidosDoMes.forEach(a=>{
-    const cluster = MAPA_IRR[a.rowIndex].cluster;
-    if(vistos.has(cluster)) return;
-    vistos.add(cluster);
-    clustersUnicos.push(cluster);
+    if(mttd!==null){ somaMTTD += mttd; contMTTD++; }
+    if(tmc!==null){ somaTMC += tmc; contTMC++; }
   });
 
-  document.getElementById('detalheTitulo').textContent = 'IRR — Clientes com Atendimento Repetido (≤30 dias)';
-  if(!clustersUnicos.length){
-    document.getElementById('detalheBody').innerHTML = '<div class="empty-msg">Nenhum atendimento repetido nesse mês.</div>';
-  }else{
-    document.getElementById('detalheBody').innerHTML = clustersUnicos.map(cluster => {
-      const cliente = cluster[0].a['Cliente'] || '—';
-      const linhas = cluster.map((v,i) => {
-        const anterior = i>0 ? cluster[i-1].a : null;
-        const localTexto = !anterior ? 'Primeiro atendimento do ciclo'
-          : mesmoLocal(v.a, anterior)
-            ? '<span style="color:var(--red);font-weight:700">⚠ Atenção — mesmo local do atendimento anterior</span>'
-            : 'Local diferente do atendimento anterior';
-        return `<div class="destaque-item">
-          <div class="destaque-topo">
-            <span class="destaque-protocolo">${v.a['Protocolo O&M']||v.a['Protocolo NOC']||'—'}</span>
-            <span class="destaque-data">${v.data.toLocaleDateString('pt-BR')}</span>
-          </div>
-          <div class="destaque-cliente">Técnico: ${v.a['Técnico']||'—'} (${v.a['Empresa']||'—'})</div>
-          <div class="destaque-causa">Causa: ${v.a['Causa']||'Sem causa registrada'}</div>
-          <div class="destaque-causa" style="margin-top:.2rem">${localTexto}</div>
-        </div>`;
-      }).join('');
-      return `<div class="detalhe-secao-title">${cliente} — ${cluster.length} atendimentos em ≤30 dias</div>${linhas}`;
-    }).join('');
-  }
+  document.getElementById('mCSla').textContent = cSla;
+  document.getElementById('mSSla').textContent = sSla;
+
+  const totalSla = cSla + sSla;
+  const eficiencia = totalSla ? Math.round(cSla/totalSla*100) : 0;
+  const corEficiencia = !totalSla ? 'var(--text-muted)' :
+    (eficiencia >= META_EFICIENCIA ? 'var(--green)' : (eficiencia >= META_EFICIENCIA*0.85 ? 'var(--amber)' : 'var(--red)'));
+  document.getElementById('gEficienciaNum').textContent = totalSla ? eficiencia + '%' : '–';
+  document.getElementById('gEficienciaNum').style.color = corEficiencia;
+  renderGauge('gEficienciaFill', totalSla ? eficiencia : 0, corEficiencia);
+  const gapEf = gapContagem(cSla, sSla, META_EFICIENCIA);
+  document.getElementById('mEficienciaGapTexto').textContent = !totalSla
+    ? 'Sem dados nesse mês'
+    : (gapEf === 0 ? '✓ Meta batida' : `Faltam ${gapEf} atividade(s) dentro do SLA pra bater a meta`);
+
+  // MTTR: SLA varia muito por categoria dentro da mesma frente (4h a 24h) — sem
+  // uma meta única representativa, mostra o tempo médio bruto sem faixa de cor
+  // fixa; o C/SLA acima (que usa metaSlaMinutos por atividade) é o indicador real.
+  const mttrMedioMin = contMTTR ? Math.round(somaMTTR/contMTTR) : null;
+  document.getElementById('mMTTR').textContent = fmtMin(mttrMedioMin);
+  document.getElementById('cardMTTR').className = 'metric-card clicavel';
+  document.getElementById('mMTTRGapTempo').textContent = contMTTR ? `${contMTTR} atividade(s) com tempo registrado` : 'Sem dados';
+
+  const mttdMedioMin = contMTTD ? Math.round(somaMTTD/contMTTD) : null;
+  document.getElementById('mMTTD').textContent = fmtMin(mttdMedioMin);
+  const faixaMTTD = faixaStatus(mttdMedioMin, META_MTTD_MIN, false);
+  document.getElementById('cardMTTD').className = 'metric-card clicavel' + (faixaMTTD ? ' m-' + faixaMTTD : '');
+  const diffMTTD = mttdMedioMin!==null ? mttdMedioMin - META_MTTD_MIN : null;
+  document.getElementById('mMTTDGapTempo').textContent = diffMTTD===null ? 'Sem dados' :
+    (diffMTTD<=0 ? `${fmtMin(Math.abs(diffMTTD))} abaixo da meta` : `+${fmtMin(diffMTTD)} acima da meta`);
+
+  const tmcMedioMin = contTMC ? Math.round(somaTMC/contTMC) : null;
+  document.getElementById('mTMC').textContent = fmtMin(tmcMedioMin);
+  const faixaTMC = faixaStatus(tmcMedioMin, META_TMC_MIN, false);
+  document.getElementById('cardTMC').className = 'metric-card clicavel' + (faixaTMC ? ' m-' + faixaTMC : '');
+  const diffTMC = tmcMedioMin!==null ? tmcMedioMin - META_TMC_MIN : null;
+  document.getElementById('mTMCGapTempo').textContent = diffTMC===null ? 'Sem dados' :
+    (diffTMC<=0 ? `${fmtMin(Math.abs(diffTMC))} abaixo da meta` : `+${fmtMin(diffTMC)} acima da meta`);
+}
+
+// ── DETALHE DE INDICADOR (clique no card MTTR/MTTD/TMC) ─────────
+const INDICADOR_DETALHE_CFG = {
+  MTTR: { campo:'MTTR', meta:META_MTTR_MIN, label:'MTTR' },
+  MTTD: { campo:'MTTD', meta:META_MTTD_MIN, label:'MTTD' },
+  TMC:  { campo:'TMC',  meta:META_TMC_MIN,  label:'TMC'  }
+};
+
+window.abrirDetalheIndicador = function(indicador){
+  const cfg = INDICADOR_DETALHE_CFG[indicador];
+  if(!cfg) return;
+  const dados = DADOS_FILTRADOS;
+  const dest = montarDestaques(dados, cfg.campo, cfg.meta);
+
+  document.getElementById('detalheTitulo').textContent = cfg.label + (indicador==='MTTR' ? '' : ' — Meta ≤' + fmtMin(cfg.meta));
+  document.getElementById('detalheBody').innerHTML = `
+    <div class="detalhe-secao-title">3 mais rápidas</div>
+    <div id="detalheRapidas"></div>
+    <div class="detalhe-secao-title">3 mais críticas${indicador==='MTTR' ? ' (maior tempo)' : ' (acima da meta)'}</div>
+    <div id="detalheCriticas"></div>
+  `;
+  renderDestaqueLista('detalheRapidas', dest.rapidas, false);
+  renderDestaqueLista('detalheCriticas', dest.criticas.length ? dest.criticas : montarDestaques(dados, cfg.campo, 0).criticas.slice(-3).reverse(), true);
   document.getElementById('detalheOverlay').classList.add('open');
-}
+};
+
+window.fecharDetalheIndicador = function(){
+  document.getElementById('detalheOverlay').classList.remove('open');
+};
 
 // Monta as top 3 mais rápidas (menor tempo) e as top 3 mais críticas
-// (maior estouro acima da meta) de um campo de tempo ('MTTR' ou 'MTTD').
-// "Estouro" = tempo - meta, então a ordenação de críticas reflete o quanto
-// cada atividade passou do limite, não só o tempo bruto.
+// (maior estouro acima da meta) de um campo de tempo ('MTTR', 'MTTD' ou 'TMC').
 function montarDestaques(dados, campoTempo, metaMin){
   const comTempo = dados
     .map(a => ({ a, min: paraMinutos(a[campoTempo]) }))
@@ -1005,124 +929,18 @@ function gapContagem(dentro, fora, metaPct){
   return Math.max(0, Math.ceil(x));
 }
 
-// Troca a aba Todos/Rompimento/Massiva do card de Eficiência e re-renderiza só ele
-window.selecionarFiltroTipo = function(tipo){
-  FILTRO_TIPO_ATIVO = tipo;
-  document.querySelectorAll('#tipoTabs .tipo-tab').forEach(b=>b.classList.toggle('active', b.dataset.tipo===tipo));
-  renderBlocoEficiencia();
-};
-
-// Calcula e renderiza Eficiência (gauge) + MTTR + MTTD + TMC, sobre o subconjunto de
-// DADOS_FILTRADOS que bate com FILTRO_TIPO_ATIVO ('TODOS' usa tudo, sem filtrar).
-function renderBlocoEficiencia(){
-  const dados = FILTRO_TIPO_ATIVO === 'TODOS' ? DADOS_FILTRADOS : DADOS_FILTRADOS.filter(a=>a['Ocorrência']===FILTRO_TIPO_ATIVO);
-
-  let cSla=0, sSla=0, somaMTTR=0, contMTTR=0, somaMTTD=0, contMTTD=0, somaTMC=0, contTMC=0;
-  dados.forEach(a=>{
-    const mttr = paraMinutos(a['MTTR']);
-    const mttd = paraMinutos(a['MTTD']);
-    const tmc = paraMinutos(a['TMC']);
-    if(mttr!==null){
-      somaMTTR += mttr; contMTTR++;
-      if(mttr <= metaSlaMinutos(a)) cSla++; else sSla++;
-    }
-    if(mttd!==null){ somaMTTD += mttd; contMTTD++; }
-    if(tmc!==null){ somaTMC += tmc; contTMC++; }
-  });
-
-  document.getElementById('mCSla').textContent = cSla;
-  document.getElementById('mSSla').textContent = sSla;
-
-  const totalSla = cSla + sSla;
-  const eficiencia = totalSla ? Math.round(cSla/totalSla*100) : 0;
-  const corEficiencia = !totalSla ? 'var(--text-muted)' :
-    (eficiencia >= META_EFICIENCIA ? 'var(--green)' : (eficiencia >= META_EFICIENCIA*0.85 ? 'var(--amber)' : 'var(--red)'));
-  document.getElementById('gEficienciaNum').textContent = totalSla ? eficiencia + '%' : '–';
-  document.getElementById('gEficienciaNum').style.color = corEficiencia;
-  renderGauge('gEficienciaFill', totalSla ? eficiencia : 0, corEficiencia);
-  const gapEf = gapContagem(cSla, sSla, META_EFICIENCIA);
-  document.getElementById('mEficienciaGapTexto').textContent = !totalSla
-    ? 'Sem dados nesse mês'
-    : (gapEf === 0 ? '✓ Meta batida' : `Faltam ${gapEf} atividade(s) dentro do SLA pra bater a meta`);
-
-  const metaMttrAtual = META_MTTR_POR_TIPO[FILTRO_TIPO_ATIVO] ?? META_MTTR_MIN;
-  document.getElementById('mttrMetaTitulo').textContent = 'MTTR Médio (Meta ≤' + fmtMin(metaMttrAtual) + ')';
-  const mttrMedioMin = contMTTR ? Math.round(somaMTTR/contMTTR) : null;
-  document.getElementById('mMTTR').textContent = fmtMin(mttrMedioMin);
-  const faixaMTTR = faixaStatus(mttrMedioMin, metaMttrAtual, false);
-  document.getElementById('cardMTTR').className = 'metric-card clicavel' + (faixaMTTR ? ' m-' + faixaMTTR : '');
-  const diffMTTR = mttrMedioMin!==null ? mttrMedioMin - metaMttrAtual : null;
-  document.getElementById('mMTTRGapTempo').textContent = diffMTTR===null ? 'Sem dados' :
-    (diffMTTR<=0 ? `${fmtMin(Math.abs(diffMTTR))} abaixo da meta` : `+${fmtMin(diffMTTR)} acima da meta`);
-
-  const mttdMedioMin = contMTTD ? Math.round(somaMTTD/contMTTD) : null;
-  document.getElementById('mMTTD').textContent = fmtMin(mttdMedioMin);
-  const faixaMTTD = faixaStatus(mttdMedioMin, META_MTTD_MIN, false);
-  document.getElementById('cardMTTD').className = 'metric-card clicavel' + (faixaMTTD ? ' m-' + faixaMTTD : '');
-  const diffMTTD = mttdMedioMin!==null ? mttdMedioMin - META_MTTD_MIN : null;
-  document.getElementById('mMTTDGapTempo').textContent = diffMTTD===null ? 'Sem dados' :
-    (diffMTTD<=0 ? `${fmtMin(Math.abs(diffMTTD))} abaixo da meta` : `+${fmtMin(diffMTTD)} acima da meta`);
-
-  const tmcMedioMin = contTMC ? Math.round(somaTMC/contTMC) : null;
-  document.getElementById('mTMC').textContent = fmtMin(tmcMedioMin);
-  const faixaTMC = faixaStatus(tmcMedioMin, META_TMC_MIN, false);
-  document.getElementById('cardTMC').className = 'metric-card clicavel' + (faixaTMC ? ' m-' + faixaTMC : '');
-  const diffTMC = tmcMedioMin!==null ? tmcMedioMin - META_TMC_MIN : null;
-  document.getElementById('mTMCGapTempo').textContent = diffTMC===null ? 'Sem dados' :
-    (diffTMC<=0 ? `${fmtMin(Math.abs(diffTMC))} abaixo da meta` : `+${fmtMin(diffTMC)} acima da meta`);
-}
-
-// ── DETALHE DE INDICADOR (clique no card MTTR/MTTD/TMC) ─────────
-// Mesmo cálculo/formato já usado nos blocos "Destaques MTTR/MTTD" (montarDestaques +
-// renderDestaqueLista) — só reaproveita numa sub-página modal, sem mudar como o número
-// principal do card é exibido, e estende a mesma lógica pro TMC (que não tinha destaque).
-const INDICADOR_DETALHE_CFG = {
-  MTTR: { campo:'MTTR', meta:META_MTTR_MIN, label:'MTTR' },
-  MTTD: { campo:'MTTD', meta:META_MTTD_MIN, label:'MTTD' },
-  TMC:  { campo:'TMC',  meta:META_TMC_MIN,  label:'TMC'  }
-};
-
-window.abrirDetalheIndicador = function(indicador){
-  if(indicador === 'IRR'){ abrirDetalheIRR(); return; }
-  const cfg = INDICADOR_DETALHE_CFG[indicador];
-  if(!cfg) return;
-  const meta = indicador === 'MTTR' ? (META_MTTR_POR_TIPO[FILTRO_TIPO_ATIVO] ?? cfg.meta) : cfg.meta;
-  const dados = FILTRO_TIPO_ATIVO === 'TODOS' ? DADOS_FILTRADOS : DADOS_FILTRADOS.filter(a=>a['Ocorrência']===FILTRO_TIPO_ATIVO);
-  const dest = montarDestaques(dados, cfg.campo, meta);
-
-  document.getElementById('detalheTitulo').textContent = cfg.label + ' — Meta ≤' + fmtMin(meta);
-  document.getElementById('detalheBody').innerHTML = `
-    <div class="detalhe-secao-title">3 mais rápidas</div>
-    <div id="detalheRapidas"></div>
-    <div class="detalhe-secao-title">3 mais críticas (acima da meta)</div>
-    <div id="detalheCriticas"></div>
-  `;
-  renderDestaqueLista('detalheRapidas', dest.rapidas, false);
-  renderDestaqueLista('detalheCriticas', dest.criticas, true);
-  document.getElementById('detalheOverlay').classList.add('open');
-};
-
-window.fecharDetalheIndicador = function(){
-  document.getElementById('detalheOverlay').classList.remove('open');
-};
-
 function renderDashboard(){
   const mes = document.getElementById('mesFiltro').value;
   DADOS_FILTRADOS = TODAS_ATIVIDADES.filter(a => a['Status']==='VALIDADA' && mesDeTimestamp(a['Timestamp Validação'])===mes);
 
-  // ── Ocorrências e Produção por Empresa — mesma barra-ranking de Cidades/Causas,
-  // só que com a lista fixa de categorias (mesmo as com contagem zero), em vez do
-  // top 5 filtrado de contarPorCampo.
   renderRanking('kpiOcorrencias', montarRankingFixo(DADOS_FILTRADOS, 'Ocorrência', TIPOS).filter(([,qtd])=>qtd>0));
   renderRanking('kpiEmpresas', montarRankingFixo(DADOS_FILTRADOS, 'Empresa', EMPRESAS));
   renderBudget(mes);
   renderEfetividade(mes);
 
-  // ── Ranking de cidades e causas mais comuns ──
   renderRanking('rankCidades', contarPorCampo(DADOS_FILTRADOS, 'Cidade Falha'));
   renderRanking('rankCausas', contarPorCampo(DADOS_FILTRADOS, 'Causa'));
 
-  // ── C/SLA e S/SLA gerais (KPI row do topo — não entra no filtro Rompimento/Massiva) ──
   let cSlaGeral=0, sSlaGeral=0;
   DADOS_FILTRADOS.forEach(a=>{
     const mttr = paraMinutos(a['MTTR']);
@@ -1133,9 +951,7 @@ function renderDashboard(){
   document.getElementById('stSSla').textContent = sSlaGeral;
 
   renderBlocoEficiencia();
-  renderIRR();
 
-  // ── Tabela ──
   const tbody = document.getElementById('tbodyDados');
   document.getElementById('emptyMsg').style.display = DADOS_FILTRADOS.length ? 'none' : 'block';
   tbody.innerHTML = DADOS_FILTRADOS.map(a=>{
@@ -1161,12 +977,39 @@ function renderDashboard(){
   }).join('');
 }
 
-// ── MAPA DE CALOR — localização dos chamados de Manutenção ──────────────
-// Coordenada da atividade: GPS Falha (capturado pelo técnico no local) é o
-// principal; quando o técnico não captura (não é obrigatório), cai pro GPS da
-// Caixa Nova A/B fusionada na mesma atividade (mesmo endereço, mais próximo
-// possível do problema real). Todos usam o mesmo formato de link salvo pelo
-// tecnico.html: "https://maps.google.com/?q=LAT,LON".
+window.exportarExcel = function(){
+  const rows = DADOS_FILTRADOS.map(a=>{
+    const mttr = paraMinutos(a['MTTR']);
+    const slaOk = mttr!==null ? (mttr<=metaSlaMinutos(a)) : null;
+    return {
+      'Empresa': a['Empresa']||'',
+      'Técnico': a['Técnico']||'',
+      'Equipe Apoio': a['Técnico Apoio'] ? (a['Empresa Apoio']+' - '+a['Técnico Apoio']) : '',
+      'Protocolo': a['Protocolo O&M']||a['Protocolo NOC']||'',
+      'Cliente': a['Cliente']||'',
+      'Cidade': a['Cidade Falha']||'',
+      'Tipo de Ocorrência': a['Ocorrência']||'',
+      'Causa': a['Causa']||'',
+      'Início': a['Hora Início']||'',
+      'Chegada': a['Hora Chegada']||'',
+      'Validado em': a['Timestamp Validação']||'',
+      'MTTR': a['MTTR']||'',
+      'MTTD': a['MTTD']||'',
+      'Status SLA': slaOk===null?'Sem dado':(slaOk?'C/SLA':'S/SLA'),
+      'Validado Por': a['Validado Por']||''
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Consolidado');
+  const mes = document.getElementById('mesFiltro').value || 'geral';
+  XLSX.writeFile(wb, `Dashboard_Preventiva_${mes}.xlsx`);
+};
+
+// ── MAPA DE CALOR — localização dos chamados (mesma lógica do dashboard_manutencao.html) ──
+// Coordenada da atividade: GPS Falha é o principal; quando não tem, cai pro GPS
+// da Caixa Nova A/B fusionada na mesma atividade. Todos usam o mesmo formato de
+// link salvo pelo tecnico.html: "https://maps.google.com/?q=LAT,LON".
 function extrairLatLon(a){
   const candidatos = [a['GPS Falha'], a['GPS Caixa Nova A'], a['GPS Caixa Nova B']];
   for(const c of candidatos){
@@ -1237,7 +1080,6 @@ window.renderMapaCalor = function(){
   }else{
     MAPA_LEAFLET.setView([-15.78,-47.93], 4); // sem pontos no período — centraliza no Brasil
   }
-  // Leaflet só calcula o tamanho certo se o container já estiver visível — força recálculo.
   setTimeout(()=>MAPA_LEAFLET.invalidateSize(), 200);
 
   document.getElementById('mapaContagem').textContent = dadosPeriodo.length
@@ -1294,36 +1136,7 @@ window.exportarEnderecosMapa = function(){
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Enderecos');
-  XLSX.writeFile(wb, 'Enderecos_Preventiva_Manutencao.xlsx');
-};
-
-window.exportarExcel = function(){
-  const rows = DADOS_FILTRADOS.map(a=>{
-    const mttr = paraMinutos(a['MTTR']);
-    const slaOk = mttr!==null ? (mttr<=metaSlaMinutos(a)) : null;
-    return {
-      'Empresa': a['Empresa']||'',
-      'Técnico': a['Técnico']||'',
-      'Equipe Apoio': a['Técnico Apoio'] ? (a['Empresa Apoio']+' - '+a['Técnico Apoio']) : '',
-      'Protocolo': a['Protocolo O&M']||a['Protocolo NOC']||'',
-      'Cliente': a['Cliente']||'',
-      'Cidade': a['Cidade Falha']||'',
-      'Tipo de Ocorrência': a['Ocorrência']||'',
-      'Causa': a['Causa']||'',
-      'Início': a['Hora Início']||'',
-      'Chegada': a['Hora Chegada']||'',
-      'Validado em': a['Timestamp Validação']||'',
-      'MTTR': a['MTTR']||'',
-      'MTTD': a['MTTD']||'',
-      'Status SLA': slaOk===null?'Sem dado':(slaOk?'C/SLA':'S/SLA'),
-      'Validado Por': a['Validado Por']||''
-    };
-  });
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Consolidado');
-  const mes = document.getElementById('mesFiltro').value || 'geral';
-  XLSX.writeFile(wb, `Dashboard_Manutencao_${mes}.xlsx`);
+  XLSX.writeFile(wb, 'Enderecos_Candidatos_Preventiva.xlsx');
 };
 </script>
 </body>
