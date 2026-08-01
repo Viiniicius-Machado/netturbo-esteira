@@ -640,26 +640,16 @@ function resetComplemento(ss, data) {
 const ABA_ACESSOS_LID = 'ACESSOS_LIDERANCA';
 const HEADERS_ACESSOS_LID = ['Nome','Cargo','PIN','Complemento Hash','Configurado','Telas','Ativo','Último Acesso'];
 
-// Nomes já usados hoje nos seletores "Você é..." / "Aprovando como" / "Validando
-// como" espalhados pelas telas — semente inicial da aba (só cria quem não existe
-// ainda; PIN e Telas o Vinicius preenche direto na planilha).
-const USUARIOS_LIDERANCA_SEED = [
-  "Vinicius Machado","Weslley Rodrigues","Leonardo Egídio","Reginaldo Venâncio",
-  "Gabriel Milhomens","Emerson Silva","Elcio Junior","Nathan Santos","Paulo Cesar",
-  "Odirley Rodrigues","Pamela Paulina","Giselle","Mariane","Gabriel Resende","Rubens Lima"
-];
-
+// A aba já foi criada e semeada manualmente uma vez (ver histórico) — daqui pra
+// frente é só garantir que ela existe, sem reinserir linha nenhuma sozinho. Uma
+// versão anterior recriava um conjunto fixo de nomes toda vez que a aba era
+// consultada (o mesmo padrão usado em ACESSOS_TECNICOS, onde TECH_MAP_BACKEND é
+// fonte de verdade permanente) — aqui isso era errado: fazia nome apagado pelo
+// gestor (ex.: "Giselle"/"Mariane" depois de virarem "Giselle Silva"/"Mariana
+// Cruz") reaparecer sozinho no próximo login. Adicionar/remover pessoa agora é
+// só editar a linha direto na planilha, sem nenhum código "revivendo" nada.
 function garantirAcessosLideranca(ss) {
-  const sheet = garantirAba(ss, ABA_ACESSOS_LID, HEADERS_ACESSOS_LID, '#1a1a1a', '#5aa9e6');
-  const existentes = sheet.getLastRow() > 1
-    ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().map(r => r[0])
-    : [];
-  USUARIOS_LIDERANCA_SEED.forEach(nome => {
-    if (existentes.indexOf(nome) === -1) {
-      sheet.appendRow([nome, '', '', '', 'não', '', 'sim', '']);
-    }
-  });
-  return sheet;
+  return garantirAba(ss, ABA_ACESSOS_LID, HEADERS_ACESSOS_LID, '#1a1a1a', '#5aa9e6');
 }
 
 function encontrarLinhaAcessoLideranca(sheet, nome) {
