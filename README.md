@@ -96,10 +96,10 @@ Um painel dedicado por frente (Implantação, Transmissão, GTD e Preventiva —
 Relatório fotográfico de preventiva em rede externa, com geração de PDF. Acesso do técnico (mesma sessão de login de `tecnico.html`).
 
 ### `jornada_excedente.html` — Jornada Excedente
-Justificativa de jornada excedente (limite > 40h no mês), com detalhamento dos dias/motivos e assinaturas do líder e colaborador — geração de PDF. Acesso da liderança.
+Justificativa de jornada excedente (limite > 40h no mês), com detalhamento dos dias/motivos e assinaturas do líder e colaborador — geração de PDF. Acesso restrito à liderança (`auth.js`).
 
 ### `fiscal_v2.html` — Fiscalização
-Checklist de fiscalização em campo (acompanhamento de obra ou auditoria de ferramental/EPI/EPC), com fotos e assinaturas — geração de PDF. Acesso da liderança.
+Checklist de fiscalização em campo (acompanhamento de obra ou auditoria de ferramental/EPI/EPC), com fotos e assinaturas — geração de PDF. Acesso restrito à liderança (`auth.js`).
 
 ### `treinamento.html` — Treinamento / Alinhamento
 Lista de presença digital para treinamentos e alinhamentos de processo, substituindo o formulário em papel (`Print/Lista de Presença - O&M.docx`) — logo NetTurbo embutida em base64 (extraída do próprio .docx, que já tinha a marca certa dentro). Acesso restrito à liderança (`auth.js`). 100% client-side (sem persistência no backend) — gera PDF e baixa, mesmo padrão de `fiscal_v2.html`/`jornada_excedente.html`.
@@ -192,9 +192,8 @@ O arquivo `.claude/docs/netturbo-esteira-apps-script-*.gs` é a cópia de refer�
 Duas famílias de login independentes, mesmo mecanismo de base (PIN fornecido pela liderança + Complemento pessoal escolhido no primeiro acesso, cujo hash SHA-256 fica salvo na planilha):
 
 - **Técnicos** (`tecnico.html`, `PREENCHIMENTO_LPU.html`, `fechamento_lpu.html`, `manutencao_preventiva.html`): login por Empresa/Técnico, validado contra a aba `ACESSOS_TECNICOS` (ações `LOGIN_TECNICO`/`RESET_COMPLEMENTO`). Sessão em `sessionStorage`.
-- **Liderança/operacional** (`index.html`, `aprovacao_lpu.html`, `medicao.html`, `geogrid.html`, `painel.html`, os 6 dashboards e `treinamento.html`): login por Nome, validado contra a aba `ACESSOS_LIDERANCA` (ações `LOGIN_LIDERANCA`/`RESET_COMPLEMENTO_LIDERANCA`/`LISTAR_USUARIOS_LIDERANCA`), via um arquivo compartilhado `auth.js` (`NetturboAuth.proteger/usuario/temAcesso/sair`) incluído em cada uma dessas telas. Sessão em `localStorage` com validade de 12h, com um chip "Olá, {nome} · Sair" injetado automaticamente no `.topbar`. Substituiu a antiga senha única (`LEADERSHIP_PASSWORD`) + seletores manuais de "quem está mexendo" ("Você é...", "Aprovando como", "Validando como") — agora todo registro sai carimbado com o nome de quem logou de verdade.
-  - A coluna **Telas** da aba `ACESSOS_LIDERANCA` (lista separada por vírgula, ou `*` para liberar tudo) é o que define, por pessoa, quais dessas telas ela pode acessar — editável direto na planilha, sem mexer em código. `painel.html` usa essa mesma permissão pra esconder os cards das telas bloqueadas.
-  - `fiscal_v2.html` e `jornada_excedente.html` ficaram fora dessa migração (não tinham nenhum gate antes) por decisão explícita, e podem ser cobertas numa rodada futura.
+- **Liderança/operacional** (`index.html`, `aprovacao_lpu.html`, `medicao.html`, `geogrid.html`, `painel.html`, os 6 dashboards, `treinamento.html`, `fiscal_v2.html` e `jornada_excedente.html`): login por Nome, validado contra a aba `ACESSOS_LIDERANCA` (ações `LOGIN_LIDERANCA`/`RESET_COMPLEMENTO_LIDERANCA`/`LISTAR_USUARIOS_LIDERANCA`), via um arquivo compartilhado `auth.js` (`NetturboAuth.proteger/usuario/temAcesso/sair`) incluído em cada uma dessas telas. Sessão em `localStorage` com validade de 12h, com um chip "Olá, {nome} · Sair" injetado automaticamente no `.topbar`. Substituiu a antiga senha única (`LEADERSHIP_PASSWORD` em 9 delas, hash fixo `LIDER_HASH` em `fiscal_v2.html`/`jornada_excedente.html`) + seletores manuais de "quem está mexendo" ("Você é...", "Aprovando como", "Validando como") — agora todo registro sai carimbado com o nome de quem logou de verdade.
+  - A coluna **Telas** da aba `ACESSOS_LIDERANCA` (lista separada por vírgula, ou `*` para liberar tudo) é o que define, por pessoa, quais dessas telas ela pode acessar — editável direto na planilha, sem mexer em código, usando o mesmo texto que aparece no `titulo` do card em `painel.html` (comparação ignora maiúscula/minúscula, mas não corrige erro de digitação). `painel.html` checa essa permissão em **todos** os cards antes de exibi-los — inclusive os de login de técnico e os dois que só tinham senha própria — mas isso decide só a visibilidade do card no painel: `tecnico.html`/`PREENCHIMENTO_LPU.html`/`fechamento_lpu.html`/`manutencao_preventiva.html` continuam com o próprio login de técnico por baixo, então quem não é técnico cadastrado não passa da tela de login mesmo tendo o link.
 
 ## Como rodar localmente
 

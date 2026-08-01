@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="auth.js"></script>
   <style>
     :root{
       --green:#8bc34a;--green-dark:#5d8a1f;--green-glow:rgba(139,195,74,.22);--green-dim:rgba(139,195,74,.08);
@@ -20,24 +21,6 @@
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html{font-size:15px;scroll-behavior:smooth}
     body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
-
-    /* LOGIN */
-    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
-    .login-box{width:100%;max-width:340px;background:linear-gradient(160deg,#131813,#0f0f0f);border:1px solid #1e2e12;border-radius:20px;padding:2.5rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.4rem;box-shadow:0 0 80px rgba(168,201,60,.07)}
-    .login-logo-wrap{width:120px;background:#fff;border-radius:12px;padding:.6rem}
-    .login-logo-wrap img{width:100%;height:auto;object-fit:contain;display:block}
-    .login-heading{text-align:center}
-    .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);line-height:1}
-    .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase;margin-top:.3rem}
-    .login-badge{font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.28rem .75rem;border-radius:20px;background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)}
-    .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
-    .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim)}
-    .login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-family:'Inter',sans-serif;font-size:.95rem;padding:.75rem 1rem;width:100%;transition:border-color .2s,box-shadow .2s}
-    .login-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(168,201,60,.1)}
-    .login-btn{width:100%;padding:.85rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:opacity .2s}
-    .login-btn:active{opacity:.85}
-    .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
-    .login-error.visible{display:block}
 
     /* HEADER */
     .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
@@ -117,21 +100,6 @@
   </style>
 </head>
 <body>
-
-<!-- LOGIN -->
-<div id="login-overlay">
-  <div class="login-box">
-    <div class="login-logo-wrap"><img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo"/></div>
-    <div class="login-heading"><h2>Netturbo</h2><p>Jornada Excedente · Liderança</p></div>
-    <div class="login-badge">Acesso Restrito</div>
-    <div class="login-field">
-      <label>Senha da Liderança</label>
-      <input type="password" id="login-senha" placeholder="••••••••" onkeydown="if(event.key==='Enter')fazerLogin()" autocomplete="current-password"/>
-    </div>
-    <div class="login-error" id="login-erro">Senha incorreta.</div>
-    <button class="login-btn" onclick="fazerLogin()">Acessar</button>
-  </div>
-</div>
 
 <!-- HEADER -->
 <header class="topbar">
@@ -239,24 +207,10 @@
 <div id="pdf-root"></div>
 
 <script>
-// ── LINHAS DE EXCESSO ───────────────────────────────────────────
-// Declarado antes do bloco de AUTH de propósito: o auto-login da sessão salva (mais
-// abaixo) chama inicializar() de forma síncrona durante o carregamento da página, e
-// inicializar() lê excRows — se "let excRows" viesse depois dessa chamada, dava
-// ReferenceError (temporal dead zone) e a lista de linhas nunca era criada, deixando
-// o campo "Detalhamento do Excesso" sem nenhum input pra digitar.
-let excRows=[];
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 
-// ── AUTH ────────────────────────────────────────────────────────
-const LIDER_HASH='7d5d2aad8b9f6e751886444ac5125a3d7552ce3d5e3361808dcfe5e0fd811c0e';
-async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}
-async function fazerLogin(){
-  const h=await sha256(document.getElementById('login-senha').value);
-  if(h===LIDER_HASH){sessionStorage.setItem('jornada_auth','1');document.getElementById('login-overlay').style.display='none';inicializar();}
-  else{const e=document.getElementById('login-erro');e.classList.add('visible');document.getElementById('login-senha').value='';setTimeout(()=>e.classList.remove('visible'),3000);}
-}
-window.fazerLogin=fazerLogin;
-if(sessionStorage.getItem('jornada_auth')==='1'){document.getElementById('login-overlay').style.display='none';inicializar();}
+// ── LINHAS DE EXCESSO ───────────────────────────────────────────
+let excRows=[];
 
 function renderExc(){
   const list=document.getElementById('exc-list');
@@ -438,19 +392,21 @@ window.limparTudo=function(){
   ['colaborador','lider','mes-ref','total-horas','justificativa','plano-acao','data-lider','data-colaborador'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   excRows=[];renderExc();
   ['sig-lider','sig-colaborador'].forEach(limparSig);
-  inicializar();
+  iniciarApp();
   showToast('Formulário limpo!');
 };
 
 let toastTimer;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3200);}
 
-function inicializar(){
+function iniciarApp(){
   ['sig-lider','sig-colaborador'].forEach(initSig);
   if(excRows.length===0) for(let i=0;i<7;i++) addExcRow();
   const hoje=new Date().toISOString().split('T')[0];
   document.getElementById('data-lider').value=hoje;
 }
+
+NetturboAuth.proteger({ tela:'Jornada Excedente', aoEntrar: iniciarApp });
 </script>
 </body>
 </html>
