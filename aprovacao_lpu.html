@@ -7,6 +7,7 @@
   <title>Aprovação de LPU · Netturbo Esteira</title>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="auth.js"></script>
   <style>
     :root{
       --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
@@ -19,19 +20,6 @@
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html{font-size:15px}
     body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
-
-    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
-    .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
-    .login-logo{width:120px;height:auto;object-fit:contain;background:#fff;border-radius:12px;padding:.6rem}
-    .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);text-align:center}
-    .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
-    .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
-    .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
-    .login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.92rem;padding:.7rem .9rem;width:100%}
-    .login-field input:focus{outline:none;border-color:var(--accent)}
-    .login-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
-    .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
-    .login-error.visible{display:block}
 
     .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
     .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
@@ -70,22 +58,6 @@
 </head>
 <body>
 
-<div id="login-overlay">
-  <div class="login-box">
-    <img class="login-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
-    <div class="login-heading">
-      <h2>Aprovação de LPU</h2>
-      <p>Por Descrição Contábil · Gestores</p>
-    </div>
-    <div class="login-field">
-      <label>Senha</label>
-      <input type="password" id="pwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()"/>
-    </div>
-    <div class="login-error" id="loginErro">Senha incorreta.</div>
-    <button class="login-btn" onclick="tryLogin()">Entrar</button>
-  </div>
-</div>
-
 <header class="topbar">
   <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
   <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
@@ -97,15 +69,6 @@
 </header>
 
 <div class="page-actions">
-  <div style="display:flex;flex-direction:column;gap:.15rem">
-    <label for="selAprovador" style="font-size:.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Aprovando como</label>
-    <select id="selAprovador" onchange="salvarAprovador()" style="background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.4rem .6rem">
-      <option value="">Selecione...</option>
-      <option value="Vinicius Machado">Vinicius Machado</option>
-      <option value="Gabriel Milhomens">Gabriel Milhomens</option>
-      <option value="Emerson Silva">Emerson Silva</option>
-    </select>
-  </div>
   <a href="medicao.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Medição</a>
   <a href="painel.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Painel</a>
 </div>
@@ -139,7 +102,6 @@
 
 <script>
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
-const LEADERSHIP_PASSWORD = "Manutencao@101";
 
 // Assinatura escaneada de cada gestor (imagem real, embutida em base64 pra não
 // depender de hospedar/servir a pasta Print/ separadamente — mesmo padrão já usado
@@ -171,24 +133,9 @@ function popularDescricoes(){
     DESCRICOES_CONTABEIS.map(d => `<option value="${d.replace(/"/g,'&quot;')}">${d}</option>`).join('');
 }
 
-// A senha de acesso é compartilhada entre os gestores — este seletor identifica quem
-// de fato está aprovando cada LPU, pra ficar registrado (mesmo padrão já usado em
-// medicao.html com "Validando como").
+// Quem está aprovando cada LPU, pra ficar registrado — antes era um seletor manual
+// (senha compartilhada entre gestores); agora vem direto do login por PIN.
 let APROVADOR_ATUAL = '';
-
-function salvarAprovador(){
-  APROVADOR_ATUAL = document.getElementById('selAprovador').value;
-  sessionStorage.setItem('aprovacao_lpu_gestor', APROVADOR_ATUAL);
-}
-window.salvarAprovador = salvarAprovador;
-
-function exigirAprovador(){
-  if(!APROVADOR_ATUAL){
-    showToast('Selecione quem está aprovando (canto superior direito) antes de continuar.');
-    return false;
-  }
-  return true;
-}
 
 let TODAS_ATIVIDADES = [];
 // Assinaturas já feitas NESTA sessão, antes do clique em "Aprovar" — chave
@@ -197,29 +144,15 @@ let TODAS_ATIVIDADES = [];
 // é chamado, no clique de "Assinar" — isso aqui é só o estado local da tela).
 let ASSINATURAS_PENDENTES = {};
 
-function tryLogin(){
-  const val = document.getElementById('pwdInput').value;
-  if(val === LEADERSHIP_PASSWORD){
-    document.getElementById('login-overlay').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    popularDescricoes();
-    const aprovadorSalvo = sessionStorage.getItem('aprovacao_lpu_gestor');
-    if(aprovadorSalvo){
-      APROVADOR_ATUAL = aprovadorSalvo;
-      document.getElementById('selAprovador').value = aprovadorSalvo;
-    }
-    carregarAprovacao();
-    if(!window._aprovAutoRefresh){
-      window._aprovAutoRefresh = setInterval(carregarAprovacao, 30000);
-    }
-  }else{
-    const e = document.getElementById('loginErro');
-    e.classList.add('visible');
-    document.getElementById('pwdInput').value = '';
-    setTimeout(()=>e.classList.remove('visible'), 3000);
+function iniciarApp(){
+  APROVADOR_ATUAL = NetturboAuth.usuario().nome;
+  document.getElementById('app').style.display = 'block';
+  popularDescricoes();
+  carregarAprovacao();
+  if(!window._aprovAutoRefresh){
+    window._aprovAutoRefresh = setInterval(carregarAprovacao, 30000);
   }
 }
-window.tryLogin = tryLogin;
 
 async function carregarAprovacao(){
   try{
@@ -344,7 +277,6 @@ window.renderPendentesPreenchimento = renderPendentesPreenchimento;
 // técnico prestador em PREENCHIMENTO_LPU.html (REGISTRAR_ASSINATURA_LPU é genérico
 // por nome, funciona igual pra gestor). Só depois disso o botão "Aprovar" libera.
 window.assinarAprovacao = async function(rowIndex, tipoLpu){
-  if(!exigirAprovador()) return;
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
@@ -361,7 +293,6 @@ window.assinarAprovacao = async function(rowIndex, tipoLpu){
 };
 
 window.aprovarLpu = async function(rowIndex, tipoLpu){
-  if(!exigirAprovador()) return;
   const chave = `${rowIndex}_${tipoLpu}`;
   const assinatura = ASSINATURAS_PENDENTES[chave];
   if(!assinatura){ showToast('Assine antes de aprovar.'); return; }
@@ -387,7 +318,6 @@ window.aprovarLpu = async function(rowIndex, tipoLpu){
 };
 
 window.naoValidarLpu = async function(rowIndex, tipoLpu){
-  if(!exigirAprovador()) return;
   const motivo = prompt('Motivo da não validação da LPU (o técnico vai ver isso e precisa corrigir):');
   if(motivo === null) return;
   if(!motivo.trim()){ showToast('Informe o motivo da não validação.'); return; }
@@ -495,6 +425,8 @@ function showToast(msg){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(()=>{ t.style.display='none'; }, 3200);
 }
+
+NetturboAuth.proteger({ tela:'aprovacao_lpu', aoEntrar: iniciarApp });
 </script>
 </body>
 </html>

@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#0a0a0a"/>
   <title>Esteira Despacho - Manutenção · Netturbo</title>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script src="auth.js"></script>
   <style>
     :root{
       --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-glow:rgba(168,201,60,.22);--accent-dim:rgba(168,201,60,.08);
@@ -18,18 +19,6 @@
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html{font-size:15px;scroll-behavior:smooth}
     body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
-
-    #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
-    .login-box{width:100%;max-width:340px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.5rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.4rem}
-    .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);text-align:center}
-    .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase;margin-top:.3rem;text-align:center}
-    .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
-    .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim)}
-    .login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.95rem;padding:.75rem 1rem;width:100%}
-    .login-field input:focus{outline:none;border-color:var(--accent)}
-    .login-btn{width:100%;padding:.85rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;cursor:pointer}
-    .login-error{font-size:.75rem;color:var(--red);background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
-    .login-error.visible{display:block}
 
     .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
     .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
@@ -111,22 +100,6 @@
 </head>
 <body>
 
-<div id="login-overlay">
-  <div class="login-box">
-    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:120px;height:auto;background:#fff;border-radius:12px;padding:.6rem" onerror="this.style.display='none'"/>
-    <div class="login-heading">
-      <h2>Netturbo</h2>
-      <p>Esteira Despacho - Manutenção · Liderança</p>
-    </div>
-    <div class="login-field">
-      <label>Senha</label>
-      <input type="password" id="pwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()"/>
-    </div>
-    <div class="login-error" id="loginErro">Senha incorreta.</div>
-    <button class="login-btn" onclick="tryLogin()">Entrar</button>
-  </div>
-</div>
-
 <header class="topbar">
   <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
   <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
@@ -147,24 +120,6 @@
   <section class="card">
     <div class="card-header"><h2>Nova Solicitação do NOC</h2>
       <div style="flex:1"></div>
-      <select id="selLiderAtual" style="margin-right:.5rem;font-size:.75rem;padding:.35rem .6rem">
-        <option value="">Você é...</option>
-        <option value="Vinicius Machado">Vinicius Machado</option>
-        <option value="Weslley Rodrigues">Weslley Rodrigues</option>
-        <option value="Leonardo Egídio">Leonardo Egídio</option>
-        <option value="Reginaldo Venâncio">Reginaldo Venâncio</option>
-        <option value="Gabriel Milhomens">Gabriel Milhomens</option>
-        <option value="Emerson Silva">Emerson Silva</option>
-        <option value="Elcio Junior">Elcio Junior</option>
-        <option value="Nathan Santos">Nathan Santos</option>
-        <option value="Paulo Cesar">Paulo Cesar</option>
-        <option value="Odirley Rodrigues">Odirley Rodrigues</option>
-        <option value="Pamela Paulina">Pamela Paulina</option>
-        <option value="Giselle">Giselle</option>
-        <option value="Mariane">Mariane</option>
-        <option value="Gabriel Resende">Gabriel Resende</option>
-        <option value="Rubens Lima">Rubens Lima</option>
-      </select>
     </div>
     <div class="card-body">
       <label style="font-size:.68rem;color:var(--text-muted);display:block;margin-bottom:.4rem">Cole aqui a mensagem recebida do NOC no WhatsApp:</label>
@@ -312,7 +267,6 @@
 <script>
 // ── CONFIGURAÇÃO ──────────────────────────────────────────────
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
-const LEADERSHIP_PASSWORD = "Manutencao@101";
 
 // ── MATRIZ SLA (Tipo de Solicitação → Categoria 1 → 2 → 3 → 4 → SLA em horas) ──
 // Matriz oficial do setor (planilha "MATRIZ NOVA O&M Elleven V2.xlsx"), extraída
@@ -788,24 +742,14 @@ window.sincronizarDataFimDisp = function(){
   if(!fim.value) fim.value = document.getElementById('inputDataInicioDisp').value;
 };
 
-function tryLogin(){
-  const val = document.getElementById('pwdInput').value;
-  if(val === LEADERSHIP_PASSWORD){
-    document.getElementById('login-overlay').style.display = 'none';
-    popularTiposSolicitacao();
-    popularContaContabil();
-    carregarTecnicos().then(carregarEsteira);
-    if(!window._esteiraAutoRefresh){
-      window._esteiraAutoRefresh = setInterval(carregarEsteira, 15000);
-    }
-  }else{
-    const e = document.getElementById('loginErro');
-    e.classList.add('visible');
-    document.getElementById('pwdInput').value = '';
-    setTimeout(()=>e.classList.remove('visible'), 3000);
+function iniciarApp(){
+  popularTiposSolicitacao();
+  popularContaContabil();
+  carregarTecnicos().then(carregarEsteira);
+  if(!window._esteiraAutoRefresh){
+    window._esteiraAutoRefresh = setInterval(carregarEsteira, 15000);
   }
 }
-window.tryLogin = tryLogin;
 
 // ── PARSER DA MÁSCARA DO NOC ────────────────────────────────────
 // Regra geral: cada linha reconhecida vira um campo; linhas seguintes sem
@@ -1111,11 +1055,10 @@ window.registrarDisponibilidade = async function(){
   const dataInicio = document.getElementById('inputDataInicioDisp').value;
   const dataFim = document.getElementById('inputDataFimDisp').value || dataInicio;
   const observacao = document.getElementById('inputObsDisp').value.trim();
-  const registradoPor = document.getElementById('selLiderAtual').value;
+  const registradoPor = NetturboAuth.usuario().nome;
 
   if(!empresa || !tecnico){ showToast('Escolha empresa e técnico.'); return; }
   if(!dataInicio){ showToast('Informe a data de início.'); return; }
-  if(!registradoPor){ showToast('Selecione "Você é..." antes de registrar.'); return; }
 
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
@@ -1358,8 +1301,7 @@ function renderEsteira(){
 // líder", ver aprovarGeogridLider no backend).
 
 window.validar = async function(rowIndex, aprovado){
-  const validadoPor = document.getElementById('selLiderAtual').value;
-  if(!validadoPor){ showToast('Selecione "Você é..." antes de validar.'); return; }
+  const validadoPor = NetturboAuth.usuario().nome;
 
   let motivo = '';
   let payloadExtra = {};
@@ -1702,6 +1644,8 @@ function showToast(msg){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
 }
+
+NetturboAuth.proteger({ tela:'index', aoEntrar: iniciarApp });
 </script>
 </body>
 </html>

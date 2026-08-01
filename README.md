@@ -4,10 +4,10 @@ Sistema web para gestão de despacho, acompanhamento de atendimentos técnicos d
 
 ## Páginas
 
-O projeto é composto por várias telas independentes, cada uma com login próprio. `painel.html` é o hub de acesso rápido a todas elas.
+O projeto é composto por várias telas independentes, cada uma com login próprio. `painel.html` é o hub de acesso rápido a todas elas. Duas famílias de login coexistem — ver "Autenticação" em Arquitetura.
 
 ### `painel.html` — Painel
-Hub central de acesso rápido a todas as telas abaixo, com cards agrupados em três seções (Operação, Financeiro/LPU, Liderança) e busca que filtra os cards em tempo real. Sidebar fixa com 4 opções de navegação — Geral (rola pro topo), Operação, Financeiro/LPU e Liderança (rolam até a seção correspondente) — com destaque automático da seção visível ao rolar a página. Usa a mesma barra superior (`.topbar`) compartilhada por todas as outras telas — ver Arquitetura.
+Hub central de acesso rápido a todas as telas abaixo, com cards agrupados em três seções (Operação, Financeiro/LPU, Liderança) e busca que filtra os cards em tempo real. Sidebar fixa com 4 opções de navegação — Geral (rola pro topo), Operação, Financeiro/LPU e Liderança (rolam até a seção correspondente) — com destaque automático da seção visível ao rolar a página. Usa a mesma barra superior (`.topbar`) compartilhada por todas as outras telas — ver Arquitetura. Exige login (`auth.js`, liberado a qualquer pessoa cadastrada) e esconde os cards das telas em que a pessoa logada não tem permissão (coluna "Telas" de `ACESSOS_LIDERANCA` — ver Autenticação).
 
 ### `index.html` — Esteira Despacho - Manutenção
 Tela do time de despacho/atendimento.
@@ -45,7 +45,7 @@ Formulário de cobrança (LPU) vinculado a um chamado já validado. Acesso de t�
 - Também usado pela equipe de apoio (`?tipoLpu=apoio` na URL), quando ela decide que teve cobrança própria — ver seção de LPU abaixo.
 
 ### `aprovacao_lpu.html` — Aprovação de LPU
-Fila de LPUs aguardando aprovação (`Status LPU`/`Status LPU Apoio === AGUARDANDO_APROVADOR`), organizada por **Descrição Contábil** — migrou de dentro de `index.html` pra uma tela própria. Acesso restrito à liderança, com senha compartilhada + seletor "Aprovando como" (Vinicius Machado, Gabriel Milhomens, Emerson Silva).
+Fila de LPUs aguardando aprovação (`Status LPU`/`Status LPU Apoio === AGUARDANDO_APROVADOR`), organizada por **Descrição Contábil** — migrou de dentro de `index.html` pra uma tela própria. Acesso restrito à liderança via login individual (`auth.js`) — quem está aprovando é o próprio nome logado, não há mais seletor manual.
 - **Aguardando Preenchimento do Técnico**: card separado, acima da fila de aprovação, com todas as obras já validadas mas que o técnico ainda não preencheu a LPU (`Status LPU`/`Status LPU Apoio === PENDENTE_PREENCHIMENTO`). Filtra pelo mesmo seletor de Descrição Contábil do topo, só que usando o campo **Conta Contábil** escolhido no despacho (`index.html`), já que a Descrição Contábil de verdade só existe depois que o técnico preenche.
 - Filtro por Descrição Contábil (mesmas 9 opções de `PREENCHIMENTO_LPU.html`), com "Todas" como padrão — vale tanto pra fila de aprovação quanto pro card de pendentes de preenchimento acima.
 - Antes de aprovar, o gestor precisa **assinar** — mesmo botão/contador de `PREENCHIMENTO_LPU.html` (`REGISTRAR_ASSINATURA_LPU`, contador histórico por nome): o botão "Aprovar" só libera depois do clique em "Assinar", que grava "Assinatura Nº X" também na página extra do PDF. A página extra mostra a **assinatura escaneada de verdade** (imagem, `IMAGENS_ASSINATURA` — Vinicius Machado, Gabriel Milhomens, Emerson Silva, embutida em base64 direto no HTML) logo abaixo do título, com data/hora e "Assinatura Nº X" abaixo da imagem; gestor sem imagem cadastrada cai no carimbo antigo (só nome em texto).
@@ -53,7 +53,7 @@ Fila de LPUs aguardando aprovação (`Status LPU`/`Status LPU Apoio === AGUARDAN
 - Depois de aprovada, a LPU segue o mesmo caminho de sempre (`AGUARDANDO_MEDICAO` → aparece em `medicao.html`).
 
 ### `medicao.html` — Medição
-Aprovação final das LPUs e fechamento financeiro. Acesso restrito à liderança, com senha compartilhada + seletor "Validando como" (Pamela Paulina, Giselle Silva) pra identificar quem de fato aprovou/confirmou cada ação — obrigatório antes de aprovar, reprovar, confirmar pagamento ou reprovar um fechamento.
+Aprovação final das LPUs e fechamento financeiro. Acesso restrito à liderança via login individual (`auth.js`) — quem de fato aprovou/confirmou cada ação (aprovar, reprovar, confirmar pagamento, reprovar fechamento) é o próprio nome logado, não há mais seletor manual.
 - Fila de LPUs aguardando aprovação da Medição, com link pro relatório PDF. Antes de aprovar, o validador precisa **assinar** — mesmo mecanismo de `aprovacao_lpu.html` (`REGISTRAR_ASSINATURA_LPU`): o botão "Aprovar" só libera depois do clique em "Assinar", que acrescenta MAIS uma página de carimbo no PDF (além da que `aprovacao_lpu.html` já colocou), com a assinatura escaneada (`IMAGENS_ASSINATURA` — Pamela Paulina, Giselle Silva), data/hora e "Assinatura Nº X". "Reprovar" continua sem exigir assinatura.
 - Fechamentos aguardando pagamento: um card por Nota Fiscal anexada pelo prestador (ver `fechamento_lpu.html`), com o valor total do lote. Dois botões: **Confirmar Pagamento** (marca todas as atividades do lote como `PAGO`) ou **Reprovar** (NF errada/ilegível/valor divergente etc. — desfaz a NF anexada, a atividade volta a aparecer como "Pendente de Fechamento" pro prestador em `fechamento_lpu.html`, com o motivo visível; a aprovação da Medição em si não é desfeita).
 - Descritivo das Atividades: tabela do mês filtrado com tudo que já teve LPU gerada, com botão de exportar Excel. A visão financeira completa (orçamento, CAPEX/OPEX, valor por prestadora/descrição contábil) migrou para `dashboard_medicao.html` — ver abaixo.
@@ -100,6 +100,13 @@ Justificativa de jornada excedente (limite > 40h no mês), com detalhamento dos 
 
 ### `fiscal_v2.html` — Fiscalização
 Checklist de fiscalização em campo (acompanhamento de obra ou auditoria de ferramental/EPI/EPC), com fotos e assinaturas — geração de PDF. Acesso da liderança.
+
+### `treinamento.html` — Treinamento / Alinhamento
+Lista de presença digital para treinamentos e alinhamentos de processo, substituindo o formulário em papel (`Print/Lista de Presença - O&M.docx`) — logo NetTurbo embutida em base64 (extraída do próprio .docx, que já tinha a marca certa dentro). Acesso restrito à liderança (`auth.js`). 100% client-side (sem persistência no backend) — gera PDF e baixa, mesmo padrão de `fiscal_v2.html`/`jornada_excedente.html`.
+- Identificação: Tema/Título (digitável), Tipo (Treinamento/Alinhamento de Processo), Objetivo, Data, Horário início/fim, Local e Ministrado por (pré-preenchido com o usuário logado).
+- Participantes: nome + setor + assinatura coletada por touch direto no celular (canvas), um por linha, com botão para adicionar/remover participante.
+- Registro fotográfico: só destrava depois que pelo menos um participante tiver nome **e** assinatura preenchidos — usa a mesma compressão de imagem de `manutencao_preventiva.html` antes de anexar.
+- Gera um PDF multi-página (jsPDF + html2canvas): identificação + tabela de presença com as assinaturas, seguida das páginas de registro fotográfico.
 
 ### `geogrid.html` — Controle GEOGRID
 Fila para a sala técnica replicar manualmente no GEOGRID as fusões fora do padrão registradas em `tecnico.html` (quando o técnico desenha ao menos uma ligação de fibra nas "Perguntas rápidas de fusão"). Mostra protocolo/cliente/endereço/técnico e, por CEO trabalhada, o mesmo diagrama de fibras (nomenclatura, tipo de cabo por lado, splitter(s) em cascata e pareamento) que o técnico desenhou em campo. Uma caixa nova SEM nenhuma fusão desenhada (Número da CEO + Nomenclatura do cabo preenchidos, mas nenhuma ligação de fibra) também entra aqui — como um card simples (CEO Nº, nomenclatura, localização), sem diagrama nenhum, seguindo o mesmo fluxo de validação do líder → sala técnica; não duplica se a mesma CEO já tiver uma fusão de verdade registrada.
@@ -161,7 +168,7 @@ A Medição também pode reprovar o fechamento já com NF anexada (NF errada/ile
 painel.html / index.html / tecnico.html / dashboard_manutencao.html / dashboard_implantacao.html /
 dashboard_transmissao.html / dashboard_gtd.html / dashboard_preventiva.html /
 PREENCHIMENTO_LPU.html / aprovacao_lpu.html / medicao.html / dashboard_medicao.html /
-fechamento_lpu.html / manutencao_preventiva.html /
+fechamento_lpu.html / manutencao_preventiva.html / treinamento.html /
 jornada_excedente.html / fiscal_v2.html / geogrid.html
               │
               │  fetch (GET/POST) — parâmetro "acao"
@@ -172,13 +179,22 @@ jornada_excedente.html / fiscal_v2.html / geogrid.html
         Google Sheets (dados)
 ```
 
-Todas as páginas consomem o mesmo backend (`APPS_SCRIPT_URL`, definido no `<script>` de cada arquivo), através de ações como `LISTAR_ESTEIRA`, `LISTAR_TECNICOS`, `LISTAR_ATIVIDADES_TECNICO`, `RESUMO_DIARIO_TECNICO`, `RESUMO_MENSAL_TECNICO`, `SALVAR_LPU_ATIVIDADE`, `VALIDAR_LPU_APROVADOR`, `VALIDAR_LPU_MEDICAO`, `DECIDIR_LPU_APOIO`, `FECHAR_LPU_NF`, `LISTAR_LPU_FECHAMENTO`, `LISTAR_LPU_PAGAMENTO`, `MARCAR_LPU_PAGO`, `REPROVAR_LPU_NF`, `LPU_OBTER_PDF`, `LPU_ATUALIZAR_PDF`, `REGISTRAR_ASSINATURA_LPU`, `REGISTRAR_ORCAMENTO_MENSAL`, `LISTAR_ORCAMENTOS_MENSAIS`, `REGISTRAR_DISPONIBILIDADE`, `EXCLUIR_DISPONIBILIDADE`, `LISTAR_DISPONIBILIDADE`, `SALVAR_INFO_DESPACHO`, `LISTAR_GEOGRID`, `CONCLUIR_GEOGRID`, `RECUSAR_GEOGRID`, `REENVIAR_GEOGRID`, `EXCLUIR_GEOGRID`, `APROVAR_GEOGRID_LIDER`, entre outras. Não há backend próprio nem banco de dados neste repositório — a lógica de persistência vive no Apps Script/planilha vinculados.
+Todas as páginas consomem o mesmo backend (`APPS_SCRIPT_URL`, definido no `<script>` de cada arquivo), através de ações como `LISTAR_ESTEIRA`, `LISTAR_TECNICOS`, `LISTAR_ATIVIDADES_TECNICO`, `RESUMO_DIARIO_TECNICO`, `RESUMO_MENSAL_TECNICO`, `SALVAR_LPU_ATIVIDADE`, `VALIDAR_LPU_APROVADOR`, `VALIDAR_LPU_MEDICAO`, `DECIDIR_LPU_APOIO`, `FECHAR_LPU_NF`, `LISTAR_LPU_FECHAMENTO`, `LISTAR_LPU_PAGAMENTO`, `MARCAR_LPU_PAGO`, `REPROVAR_LPU_NF`, `LPU_OBTER_PDF`, `LPU_ATUALIZAR_PDF`, `REGISTRAR_ASSINATURA_LPU`, `REGISTRAR_ORCAMENTO_MENSAL`, `LISTAR_ORCAMENTOS_MENSAIS`, `REGISTRAR_DISPONIBILIDADE`, `EXCLUIR_DISPONIBILIDADE`, `LISTAR_DISPONIBILIDADE`, `SALVAR_INFO_DESPACHO`, `LISTAR_GEOGRID`, `CONCLUIR_GEOGRID`, `RECUSAR_GEOGRID`, `REENVIAR_GEOGRID`, `EXCLUIR_GEOGRID`, `APROVAR_GEOGRID_LIDER`, `LOGIN_LIDERANCA`, `RESET_COMPLEMENTO_LIDERANCA`, `LISTAR_USUARIOS_LIDERANCA`, entre outras. Não há backend próprio nem banco de dados neste repositório — a lógica de persistência vive no Apps Script/planilha vinculados.
 
 Todas as telas compartilham o mesmo cabeçalho (`.topbar`): barra verde sólida fixa no topo, com logo e marca/subtítulo — sem elementos funcionais (botões, links, seletores) nela, que ficam numa linha própria (`.page-actions`) logo abaixo, dentro do conteúdo de cada página.
 
-As telas se dividem em dois perfis de layout: **desktop** (`index.html`, `painel.html`, `dashboard_manutencao.html`, `dashboard_implantacao.html`, `dashboard_transmissao.html`, `dashboard_gtd.html`, `dashboard_preventiva.html`, `dashboard_medicao.html`, `medicao.html`, `aprovacao_lpu.html`, `geogrid.html`, `manutencao_preventiva.html`, `jornada_excedente.html` — acessadas por computador pela liderança, largura de conteúdo até 1400px) e **mobile** (`tecnico.html`, `PREENCHIMENTO_LPU.html`, `fechamento_lpu.html`, `fiscal_v2.html` — preenchidas pelo técnico no celular em campo, layout estreito de propósito).
+As telas se dividem em dois perfis de layout: **desktop** (`index.html`, `painel.html`, `dashboard_manutencao.html`, `dashboard_implantacao.html`, `dashboard_transmissao.html`, `dashboard_gtd.html`, `dashboard_preventiva.html`, `dashboard_medicao.html`, `medicao.html`, `aprovacao_lpu.html`, `geogrid.html`, `manutencao_preventiva.html`, `jornada_excedente.html`, `treinamento.html` — acessadas por computador pela liderança, largura de conteúdo até 1400px, exceto `treinamento.html`/`jornada_excedente.html`/`fiscal_v2.html` que usam largura estreita mesmo sendo telas de liderança) e **mobile** (`tecnico.html`, `PREENCHIMENTO_LPU.html`, `fechamento_lpu.html`, `fiscal_v2.html` — preenchidas pelo técnico no celular em campo, layout estreito de propósito).
 
 O arquivo `.claude/docs/netturbo-esteira-apps-script-*.gs` é a cópia de referência do código do Apps Script de produção — alterações nele precisam ser coladas manualmente no editor do Apps Script e reimplantadas (Implantar → Gerenciar implantações → Nova versão) pra valerem no `/exec` que os front-ends chamam.
+
+### Autenticação
+
+Duas famílias de login independentes, mesmo mecanismo de base (PIN fornecido pela liderança + Complemento pessoal escolhido no primeiro acesso, cujo hash SHA-256 fica salvo na planilha):
+
+- **Técnicos** (`tecnico.html`, `PREENCHIMENTO_LPU.html`, `fechamento_lpu.html`, `manutencao_preventiva.html`): login por Empresa/Técnico, validado contra a aba `ACESSOS_TECNICOS` (ações `LOGIN_TECNICO`/`RESET_COMPLEMENTO`). Sessão em `sessionStorage`.
+- **Liderança/operacional** (`index.html`, `aprovacao_lpu.html`, `medicao.html`, `geogrid.html`, `painel.html`, os 6 dashboards e `treinamento.html`): login por Nome, validado contra a aba `ACESSOS_LIDERANCA` (ações `LOGIN_LIDERANCA`/`RESET_COMPLEMENTO_LIDERANCA`/`LISTAR_USUARIOS_LIDERANCA`), via um arquivo compartilhado `auth.js` (`NetturboAuth.proteger/usuario/temAcesso/sair`) incluído em cada uma dessas telas. Sessão em `localStorage` com validade de 12h, com um chip "Olá, {nome} · Sair" injetado automaticamente no `.topbar`. Substituiu a antiga senha única (`LEADERSHIP_PASSWORD`) + seletores manuais de "quem está mexendo" ("Você é...", "Aprovando como", "Validando como") — agora todo registro sai carimbado com o nome de quem logou de verdade.
+  - A coluna **Telas** da aba `ACESSOS_LIDERANCA` (lista separada por vírgula, ou `*` para liberar tudo) é o que define, por pessoa, quais dessas telas ela pode acessar — editável direto na planilha, sem mexer em código. `painel.html` usa essa mesma permissão pra esconder os cards das telas bloqueadas.
+  - `fiscal_v2.html` e `jornada_excedente.html` ficaram fora dessa migração (não tinham nenhum gate antes) por decisão explícita, e podem ser cobertas numa rodada futura.
 
 ## Como rodar localmente
 

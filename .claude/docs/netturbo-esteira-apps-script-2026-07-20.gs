@@ -162,6 +162,8 @@ function doPost(e) {
     if (acao === 'RECUSAR_GEOGRID')      return recusarGeogrid(ss, data);
     if (acao === 'EXCLUIR_GEOGRID')      return excluirGeogrid(ss, data);
     if (acao === 'APROVAR_GEOGRID_LIDER') return aprovarGeogridLider(ss, data);
+    if (acao === 'LOGIN_LIDERANCA')      return loginLideranca(ss, data);
+    if (acao === 'RESET_COMPLEMENTO_LIDERANCA') return resetComplementoLideranca(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -187,6 +189,7 @@ function doGet(e) {
   if (params.acao === 'LISTAR_ORCAMENTOS_MENSAIS') return listarOrcamentosMensais(ss);
   if (params.acao === 'LISTAR_DISPONIBILIDADE') return listarDisponibilidade(ss);
   if (params.acao === 'LISTAR_GEOGRID') return listarGeogrid(ss);
+  if (params.acao === 'LISTAR_USUARIOS_LIDERANCA') return listarUsuariosLideranca(ss);
   return resposta('ok', { sistema: 'Netturbo Esteira de Despacho' });
 }
 
@@ -625,6 +628,107 @@ function resetComplemento(ss, data) {
   sheet.getRange(encontrado.linha, 4).setValue(hash);
   sheet.getRange(encontrado.linha, 5).setValue('sim');
   sheet.getRange(encontrado.linha, 6).setValue(new Date().toLocaleString('pt-BR'));
+  return resposta('ok', {});
+}
+
+// ── ACESSO DE LIDERANÇA/OPERACIONAL (PIN + Complemento por pessoa) ──────
+// Mesmo mecanismo de ACESSOS_TECNICOS, mas para quem hoje usa a senha única
+// (LEADERSHIP_PASSWORD) nas telas de despacho/aprovação/dashboards. A coluna
+// 'Telas' é o que o gestor edita na planilha pra decidir quem executa o quê —
+// lista separada por vírgula com a chave de cada tela (ex.: "index, medicao"),
+// ou "*" pra liberar tudo. 'Ativo' = 'não' desliga o acesso sem apagar a linha.
+const ABA_ACESSOS_LID = 'ACESSOS_LIDERANCA';
+const HEADERS_ACESSOS_LID = ['Nome','Cargo','PIN','Complemento Hash','Configurado','Telas','Ativo','Último Acesso'];
+
+// Nomes já usados hoje nos seletores "Você é..." / "Aprovando como" / "Validando
+// como" espalhados pelas telas — semente inicial da aba (só cria quem não existe
+// ainda; PIN e Telas o Vinicius preenche direto na planilha).
+const USUARIOS_LIDERANCA_SEED = [
+  "Vinicius Machado","Weslley Rodrigues","Leonardo Egídio","Reginaldo Venâncio",
+  "Gabriel Milhomens","Emerson Silva","Elcio Junior","Nathan Santos","Paulo Cesar",
+  "Odirley Rodrigues","Pamela Paulina","Giselle","Mariane","Gabriel Resende","Rubens Lima"
+];
+
+function garantirAcessosLideranca(ss) {
+  const sheet = garantirAba(ss, ABA_ACESSOS_LID, HEADERS_ACESSOS_LID, '#1a1a1a', '#5aa9e6');
+  const existentes = sheet.getLastRow() > 1
+    ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().map(r => r[0])
+    : [];
+  USUARIOS_LIDERANCA_SEED.forEach(nome => {
+    if (existentes.indexOf(nome) === -1) {
+      sheet.appendRow([nome, '', '', '', 'não', '', 'sim', '']);
+    }
+  });
+  return sheet;
+}
+
+function encontrarLinhaAcessoLideranca(sheet, nome) {
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === nome) return { linha: i + 1, dados: data[i] };
+  }
+  return null;
+}
+
+// Devolve só nome + cargo (nunca PIN/hash) — é o que popula o select do login.
+function listarUsuariosLideranca(ss) {
+  const sheet = garantirAcessosLideranca(ss);
+  if (sheet.getLastRow() < 2) return resposta('ok', { usuarios: [] });
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+  const usuarios = data
+    .filter(row => String(row[0] || '').trim() && String(row[6] || '').trim().toLowerCase() !== 'não')
+    .map(row => ({ nome: String(row[0]).trim(), cargo: String(row[1] || '').trim() }));
+  return resposta('ok', { usuarios: usuarios });
+}
+
+function loginLideranca(ss, data) {
+  const sheet = garantirAcessosLideranca(ss);
+  const encontrado = encontrarLinhaAcessoLideranca(sheet, data.nome);
+  if (!encontrado) return resposta('error', { message: 'Usuário não encontrado.' });
+
+  const [ , cargo, pinSalvo, hashSalvo, configurado, telasStr, ativo ] = encontrado.dados;
+  if (String(ativo || '').trim().toLowerCase() === 'não') {
+    return resposta('error', { message: 'Acesso desativado. Fale com a liderança.' });
+  }
+  if (!pinSalvo || String(pinSalvo).trim() === '') {
+    return resposta('error', { message: 'Nenhum PIN cadastrado para este usuário ainda. Fale com a liderança.' });
+  }
+  if (String(data.pin).trim() !== String(pinSalvo).trim()) {
+    return resposta('error', { message: 'PIN incorreto.' });
+  }
+
+  const telas = String(telasStr || '').split(',').map(t => t.trim()).filter(Boolean);
+
+  if (configurado !== 'sim') {
+    const hash = sha256Hex(data.complemento || '');
+    sheet.getRange(encontrado.linha, 4).setValue(hash);
+    sheet.getRange(encontrado.linha, 5).setValue('sim');
+    sheet.getRange(encontrado.linha, 8).setValue(new Date().toLocaleString('pt-BR'));
+    return resposta('ok', { primeiroAcesso: true, nome: data.nome, cargo: cargo, telas: telas });
+  }
+
+  const hashEnviado = sha256Hex(data.complemento || '');
+  if (hashEnviado !== hashSalvo) {
+    return resposta('error', { message: 'Complemento incorreto.' });
+  }
+  sheet.getRange(encontrado.linha, 8).setValue(new Date().toLocaleString('pt-BR'));
+  return resposta('ok', { primeiroAcesso: false, nome: data.nome, cargo: cargo, telas: telas });
+}
+
+function resetComplementoLideranca(ss, data) {
+  const sheet = garantirAcessosLideranca(ss);
+  const encontrado = encontrarLinhaAcessoLideranca(sheet, data.nome);
+  if (!encontrado) return resposta('error', { message: 'Usuário não encontrado.' });
+
+  const pinSalvo = encontrado.dados[2];
+  if (!pinSalvo || String(data.pin).trim() !== String(pinSalvo).trim()) {
+    return resposta('error', { message: 'PIN incorreto.' });
+  }
+
+  const hash = sha256Hex(data.novoComplemento || '');
+  sheet.getRange(encontrado.linha, 4).setValue(hash);
+  sheet.getRange(encontrado.linha, 5).setValue('sim');
+  sheet.getRange(encontrado.linha, 8).setValue(new Date().toLocaleString('pt-BR'));
   return resposta('ok', {});
 }
 
