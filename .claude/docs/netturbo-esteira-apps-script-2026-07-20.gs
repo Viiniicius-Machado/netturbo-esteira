@@ -502,21 +502,6 @@ function desfazerDespacho(ss, data) {
 const ABA_ACESSOS = 'ACESSOS_TECNICOS';
 const HEADERS_ACESSOS = ['Empresa','Técnico','PIN','Complemento Hash','Configurado','Timestamp Configuração'];
 
-// Mesma lista de empresas/técnicos usada nos formulários HTML —
-// mantida aqui também pra já criar as linhas de acesso automaticamente.
-const TECH_MAP_BACKEND = {
-  "NETTURBO": ["Leonardo da Cruz Egidio","Weslley Rodrigues Pinto","Reginaldo Venâncio da Silva","Nicolas Lima de Almeida","Warley Aparecido de Paula","Marco Rodrigo dos Santos","Micael Oliveira dos Santos","Tiago Soares da Silva Calado","Alex Conceição Dias","Renildo Lourenço Ribeiro","Welyton Salgado Silva","Carlos Daniel Freitas da Silva","Francisco Stênio Marinho Da Silva","Luiz Guilherme Dias Teodoro","Weslley Pereira Soares","Tatiane Pricila Pessoa Gonçalves"],
-  "OLIVEIRA": ["Evaneis Silva Oliveira"],
-  "PV": ["Petterson Valentim Barreto"],
-  "QUALITY": ["Jurandy Luis da Silva Filho","Guilherme dos Santos Reis","Wesley Henrique da Silva Rios"],
-  "SOLUTEC": ["Lielder Rogers Miranda","Marcio Aparecido Santiago"],
-  "VAL": ["Guilherme de Jesus Arruda","Djalma Aparecido Inocêncio","Marcos Mendes Merino","Altimayer de Araújo Lima","Robson Rodrigues Santos","Felipe Martins Santos Silva","Jonathan Henrique Honorato","Diego Eduardo de Souza Basso"],
-  "SOUZA TELECOM": ["Klheyton Barbosa de Souza","Eduardo Alves Abrantes","Marcos Vinicius Alves Ribeiro de Araujo","Iuri Faria Guidorizzi","Keyvington Cristiano Guimarães"],
-  "FUSION TELECOM": ["Rhikelmy Soares Macedo","Rogerio Soares Macedo"],
-  "EFM TELECOM": ["Edson Fernando de Moraes","Edson Fernando de Moraes Junior"],
-  "DOIS IRMÃOS": ["Ezequias Lima Dos Santos"]
-};
-
 // Empresas em que UM técnico centraliza toda a LPU da equipe. A atividade
 // continua contando pro técnico que atendeu (MTTR/IRR/resumo pessoal); só a
 // etapa de LPU (preencher / NF / financeiro) é roteada para o responsável abaixo.
@@ -536,22 +521,15 @@ function sha256Hex(str) {
   return bytes.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
 }
 
-// Garante que a aba de acessos existe e já tem uma linha por técnico
-// (PIN começa vazio — o Vinicius preenche direto na planilha).
+// A aba já foi criada e semeada manualmente uma vez a partir de
+// TECH_MAP_BACKEND — daqui pra frente é só garantir que ela existe, sem
+// reinserir linha nenhuma sozinho. Antes, esta função recriava toda linha de
+// TECH_MAP_BACKEND que não estivesse presente, então apagar um técnico na
+// planilha não tinha efeito: ele reaparecia sozinho na próxima consulta
+// (mesmo bug corrigido em ACESSOS_LIDERANCA — ver comentário lá). Adicionar/
+// remover técnico agora é só editar a linha direto na planilha.
 function garantirAcessos(ss) {
-  const sheet = garantirAba(ss, ABA_ACESSOS, HEADERS_ACESSOS, '#1a1a1a', '#5aa9e6');
-  const existentes = sheet.getLastRow() > 1
-    ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues().map(r => r[0] + '|' + r[1])
-    : [];
-  Object.keys(TECH_MAP_BACKEND).forEach(empresa => {
-    TECH_MAP_BACKEND[empresa].forEach(tecnico => {
-      const chave = empresa + '|' + tecnico;
-      if (existentes.indexOf(chave) === -1) {
-        sheet.appendRow([empresa, tecnico, '', '', 'não', '']);
-      }
-    });
-  });
-  return sheet;
+  return garantirAba(ss, ABA_ACESSOS, HEADERS_ACESSOS, '#1a1a1a', '#5aa9e6');
 }
 
 // Lê a aba ACESSOS_TECNICOS ao vivo e monta { EMPRESA: [tecnico1, tecnico2, ...] }.
