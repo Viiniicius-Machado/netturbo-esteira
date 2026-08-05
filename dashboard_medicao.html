@@ -44,6 +44,9 @@
     .card-body{padding:.9rem 1rem}
 
     .metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1rem}
+    .metric-row-3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+    .metric-row-3 .total-box{padding:1rem .8rem}
+    .metric-row-3 .total-valor{font-size:1.9rem}
     .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
 
     .total-box{text-align:center;padding:1.5rem 1rem}
@@ -61,6 +64,21 @@
     .rank-bar-fill{height:100%;background:var(--accent);border-radius:3px}
     .rank-valor{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.85rem;color:var(--accent);white-space:nowrap}
     .rank-ticket{font-size:.68rem;color:var(--text-muted);margin-top:.15rem}
+
+    .planovoo-legend{display:flex;gap:1.2rem;margin-bottom:.6rem;font-size:.68rem;color:var(--text-dim)}
+    .planovoo-legend span{display:inline-flex;align-items:center;gap:.35rem}
+    .legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+    .planovoo-svg{width:100%;height:230px;display:block;overflow:visible}
+    .planovoo-vazio{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+
+    .capex-table{width:100%;border-collapse:collapse;font-size:.72rem}
+    .capex-table th{text-align:left;padding:.5rem .6rem;color:#050505;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em}
+    .capex-table td{padding:.45rem .6rem;border-bottom:1px solid var(--border)}
+    .capex-table td.valor{text-align:right;font-family:'Rajdhani',sans-serif;font-weight:700;white-space:nowrap}
+    .capex-table tr.total-row td{font-weight:700;color:var(--text);background:var(--surface2);border-top:2px solid var(--border-hi)}
+    .capex-table th.neutral{background:var(--surface2);color:var(--text-muted)}
+    .tipo-capex{color:var(--accent);font-weight:700;font-size:.65rem;text-transform:uppercase}
+    .tipo-opex{color:var(--amber);font-weight:700;font-size:.65rem;text-transform:uppercase}
   </style>
 </head>
 <body>
@@ -87,28 +105,51 @@
     <button class="btn btn-outline" onclick="carregarDashboardMedicao()">↻ Atualizar</button>
   </div>
 
+  <div class="metric-row metric-row-3">
+    <div class="card">
+      <div class="card-body total-box">
+        <div class="total-label">Total Aprovado e Lançado da LPU no Mês</div>
+        <div class="total-valor" id="totalGeral">R$ 0,00</div>
+        <div class="total-sub">Soma de tudo que já passou pela Medição (aprovado, pago ou não)</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Mão de Obra Terceiras<small>Soma de valor + qtd. de atividades</small></div>
+      <div class="card-body"><div id="rankEmpresas"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Gasto por Semana</div>
+      <div class="card-body"><div id="rankSemanas"></div></div>
+    </div>
+  </div>
+
   <div class="card">
-    <div class="card-body total-box">
-      <div class="total-label">Total Aprovado e Lançado da LPU no Mês</div>
-      <div class="total-valor" id="totalGeral">R$ 0,00</div>
-      <div class="total-sub">Soma de tudo que já passou pela Medição (aprovado, pago ou não)</div>
+    <div class="card-header">Plano de Voo — CAPEX x OPEX<small>Retrospectiva mensal (últimos 6 meses aprovados)</small></div>
+    <div class="card-body">
+      <div class="planovoo-legend">
+        <span><span class="legend-dot" style="background:var(--accent)"></span>CAPEX</span>
+        <span><span class="legend-dot" style="background:var(--amber)"></span>OPEX</span>
+      </div>
+      <div id="planoVooChart"></div>
+
+      <div style="margin-top:1.2rem">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:.8rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:.6rem">Saldo Atual e Projeção por Conta Contábil</div>
+        <div id="saldoProjecaoTabela"></div>
+      </div>
     </div>
   </div>
 
   <div class="metric-row">
     <div class="card">
-      <div class="card-header">Mão de Obra Terceiras<small>Soma de valor + qtd. de atividades</small></div>
-      <div class="card-body"><div id="rankEmpresas"></div></div>
+      <div class="card-header">Cadastros GEOGRID no Mês<small>Total + quem concluiu</small></div>
+      <div class="card-body"><div id="rankGeogrid"></div></div>
     </div>
     <div class="card">
-      <div class="card-header">Descrição Contábil<small>Detalhamento por centro de custo</small></div>
-      <div class="card-body"><div id="rankDescricao"></div></div>
+      <div class="card-header">Controle de Material<small>Atividades pendentes/baixadas + quem deu baixa</small></div>
+      <div class="card-body"><div id="rankMaterial"></div></div>
     </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">Gasto por Semana</div>
-    <div class="card-body"><div id="rankSemanas"></div></div>
   </div>
 
 </main>
@@ -121,7 +162,25 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUl
 // ("Tudo aprovado, pago ou não").
 const STATUS_APROVADO = ['APROVADO_AGUARDANDO_NF', 'PAGO'];
 
+// Mapa fixo Descrição Contábil → CAPEX/OPEX, a partir das imagens de referência
+// (BI da Netturbo). As 2 contas com código "0008" duplicado/fora do padrão
+// ("Melhoria de REDE" e "Consultoria de Regularização") entram como OPEX por
+// ora — decisão do usuário até ele revisar os códigos certos.
+const CAPEX_OPEX_POR_CONTA = {
+  '3.1.1.2.05.0005 - Serviços de Instalação CLIENTE - IMPLANTAÇÃO': 'CAPEX',
+  '3.1.1.2.05.0007 - Serviços de Instalação REDE - CONSTRUÇÃO DE REDE': 'CAPEX',
+  '3.1.1.2.05.0101 - Serviços Preventivos': 'OPEX',
+  '3.1.1.2.05.0008 - Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)': 'OPEX',
+  '3.1.1.2.05.0103 - Serviços de Melhoria REDE - REPARO PROGRAMADO DE REDE': 'OPEX',
+  '3.1.1.2.05.0006 - Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)': 'OPEX',
+  '3.1.1.2.05.0102 - Serviços de Retirada': 'OPEX',
+  '3.1.1.2.05.0008 - Serviços de Melhoria de REDE': 'OPEX',
+  '3.1.1.2.05.0008 - Consultoria de Regularização': 'OPEX'
+};
+
 let TODOS_ITENS = [];
+let GEOGRID_ITENS = [];
+let CONTROLE_MATERIAL_ITENS = [];
 
 function iniciarApp(){
   document.getElementById('app').style.display = 'block';
@@ -141,9 +200,15 @@ function campoLpu(a, campo){ return a[pfxLpu(a) + campo]; }
 
 async function carregarDashboardMedicao(){
   try{
-    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_LPU_MEDICAO');
-    const result = await resp.json();
-    TODOS_ITENS = result.itens || [];
+    const [respLpu, respGeogrid, respMaterial] = await Promise.all([
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_LPU_MEDICAO'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_GEOGRID'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_CONTROLE_MATERIAL')
+    ]);
+    const [resultLpu, resultGeogrid, resultMaterial] = await Promise.all([respLpu.json(), respGeogrid.json(), respMaterial.json()]);
+    TODOS_ITENS = resultLpu.itens || [];
+    GEOGRID_ITENS = resultGeogrid.itens || [];
+    CONTROLE_MATERIAL_ITENS = resultMaterial.itens || [];
     renderDashboardMedicao();
   }catch(err){
     console.error(err);
@@ -191,13 +256,6 @@ function renderDashboardMedicao(){
   });
   renderRankingValor('rankEmpresas', porEmpresa, qtdPorEmpresa);
 
-  const porDescricao = {};
-  itens.forEach(a => {
-    const desc = campoLpu(a,'Descrição Contábil') || 'Não informado';
-    porDescricao[desc] = (porDescricao[desc]||0) + Number(campoLpu(a,'Total')||0);
-  });
-  renderRankingValor('rankDescricao', porDescricao);
-
   const porSemana = {};
   itens.forEach(a => {
     const sem = semanaDoMes(campoLpu(a,'Timestamp Preenchimento'));
@@ -205,6 +263,260 @@ function renderDashboardMedicao(){
     porSemana[chave] = (porSemana[chave]||0) + Number(campoLpu(a,'Total')||0);
   });
   renderRankingSemanas('rankSemanas', porSemana);
+
+  renderPlanoVoo();
+  renderSaldoProjecaoTabela();
+  renderGeogridResumo(mes);
+  renderMaterialResumo(mes);
+}
+
+// Extrai "AAAA-MM" de um timestamp "dd/mm/aaaa, HH:MM:SS" (mesmo padrão usado
+// em toda a planilha, via new Date().toLocaleString('pt-BR')).
+function mesDoTimestamp(ts){
+  const s = String(ts||'').trim();
+  if(!s) return '';
+  // CONTROLE_GEOGRID grava 'Timestamp Registro' como Date puro (não
+  // toLocaleString('pt-BR') como o resto do backend), então volta em ISO
+  // ("2026-07-26T22:21:24.000Z") — trata esse formato antes de cair no padrão.
+  const isoMatch = s.match(/^(\d{4})-(\d{2})-\d{2}T/);
+  if(isoMatch) return isoMatch[1] + '-' + isoMatch[2];
+  const dataParte = s.split(',')[0].trim();
+  const partes = dataParte.split('/');
+  return partes.length === 3 ? (partes[2] + '-' + partes[1]) : '';
+}
+
+// ── Saldo Atual e Projeção por Conta Contábil — acumulado real (hoje/semana/
+// mês/ano, sempre a partir da data de hoje, independente do mês do filtro) +
+// projeção do próximo mês (média dos últimos 3 meses com dado daquela conta).
+// Mesmo desenho de tabela do CAPEX/OPEX acima, só que combinando as duas
+// listas numa única tabela (coluna Tipo mostra CAPEX/OPEX de cada linha).
+function acumularSaldoPorConta(){
+  const porConta = {};
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const seteDiasAtras = new Date(hoje); seteDiasAtras.setDate(hoje.getDate()-6);
+  const anoAtual = hoje.getFullYear(), mesAtual = hoje.getMonth()+1;
+
+  TODOS_ITENS.forEach(a => {
+    const statusCol = a.tipoLpu === 'apoio' ? 'Status LPU Apoio' : 'Status LPU';
+    if(STATUS_APROVADO.indexOf(a[statusCol]) === -1) return;
+    const desc = campoLpu(a,'Descrição Contábil') || '';
+    if(!CAPEX_OPEX_POR_CONTA[desc]) return;
+    const dataParte = String(campoLpu(a,'Timestamp Preenchimento')||'').split(',')[0].trim();
+    const partes = dataParte.split('/');
+    if(partes.length !== 3) return;
+    const dia = parseInt(partes[0],10), mes = parseInt(partes[1],10), ano = parseInt(partes[2],10);
+    if(!dia || !mes || !ano) return;
+    const dataItem = new Date(ano, mes-1, dia);
+    const valor = Number(campoLpu(a,'Total')||0);
+
+    if(!porConta[desc]) porConta[desc] = { hoje:0, semana:0, mes:0, ano:0, porMes:{} };
+    const reg = porConta[desc];
+    if(dataItem.getTime() === hoje.getTime()) reg.hoje += valor;
+    if(dataItem >= seteDiasAtras && dataItem <= hoje) reg.semana += valor;
+    if(ano === anoAtual && mes === mesAtual) reg.mes += valor;
+    if(ano === anoAtual) reg.ano += valor;
+    const chaveMes = ano + '-' + String(mes).padStart(2,'0');
+    reg.porMes[chaveMes] = (reg.porMes[chaveMes]||0) + valor;
+  });
+  return porConta;
+}
+
+// Projeção = média dos 3 meses mais recentes com dado daquela conta (pedido
+// do usuário) — estimativa de quanto essa conta deve fechar no próximo mês.
+function projecaoMedia3Meses(porMes){
+  const meses = Object.keys(porMes).sort().slice(-3);
+  if(!meses.length) return 0;
+  return meses.reduce((s,m) => s + porMes[m], 0) / meses.length;
+}
+
+function renderSaldoProjecaoTabela(){
+  const porConta = acumularSaldoPorConta();
+  const contas = Object.keys(CAPEX_OPEX_POR_CONTA).filter(c => porConta[c]);
+  const el = document.getElementById('saldoProjecaoTabela');
+  if(!contas.length){ el.innerHTML = '<div class="empty-msg">Sem dados aprovados ainda.</div>'; return; }
+
+  const linhas = contas.map(c => ({ conta:c, tipo: CAPEX_OPEX_POR_CONTA[c], ...porConta[c], proj: projecaoMedia3Meses(porConta[c].porMes) }))
+    .sort((a,b) => a.tipo === b.tipo ? 0 : (a.tipo === 'CAPEX' ? -1 : 1)); // CAPEX primeiro, depois OPEX
+
+  // Linhas de total (Mês) por tipo — é a soma que antes vinha nas tabelas
+  // CAPEX/OPEX separadas; mantém essa visão sem duplicar a tabela inteira.
+  const totalCapexMes = linhas.filter(l=>l.tipo==='CAPEX').reduce((s,l)=>s+l.mes,0);
+  const totalOpexMes = linhas.filter(l=>l.tipo==='OPEX').reduce((s,l)=>s+l.mes,0);
+
+  el.innerHTML = `<div style="overflow-x:auto"><table class="capex-table">
+    <thead><tr>
+      <th class="neutral">Conta Contábil</th><th class="neutral">Tipo</th><th class="neutral">Hoje</th><th class="neutral">Semana</th><th class="neutral">Mês</th><th class="neutral">Ano</th><th class="neutral">Projeção (próx. mês)</th>
+    </tr></thead>
+    <tbody>
+      ${linhas.map(l => `<tr>
+        <td>${l.conta}</td>
+        <td><span class="${l.tipo==='CAPEX'?'tipo-capex':'tipo-opex'}">${l.tipo}</span></td>
+        <td class="valor">${fmtMoeda(l.hoje)}</td>
+        <td class="valor">${fmtMoeda(l.semana)}</td>
+        <td class="valor">${fmtMoeda(l.mes)}</td>
+        <td class="valor">${fmtMoeda(l.ano)}</td>
+        <td class="valor">${fmtMoeda(l.proj)}</td>
+      </tr>`).join('')}
+      <tr class="total-row"><td colspan="4">Total CAPEX no mês</td><td class="valor" colspan="3">${fmtMoeda(totalCapexMes)}</td></tr>
+      <tr class="total-row"><td colspan="4">Total OPEX no mês</td><td class="valor" colspan="3">${fmtMoeda(totalOpexMes)}</td></tr>
+    </tbody>
+  </table></div>`;
+}
+
+// ── Plano de Voo — retrospectiva mensal CAPEX/OPEX (últimos 6 meses com dado
+// aprovado), independente do mês selecionado no filtro — precisa ver a
+// evolução, não um mês isolado.
+function calcularSeriesPlanoVoo(){
+  const porMes = {};
+  TODOS_ITENS.forEach(a => {
+    const statusCol = a.tipoLpu === 'apoio' ? 'Status LPU Apoio' : 'Status LPU';
+    if(STATUS_APROVADO.indexOf(a[statusCol]) === -1) return;
+    const mes = mesDoTimestamp(campoLpu(a,'Timestamp Preenchimento'));
+    if(!mes) return;
+    const desc = campoLpu(a,'Descrição Contábil') || '';
+    const bucket = CAPEX_OPEX_POR_CONTA[desc];
+    if(!bucket) return;
+    if(!porMes[mes]) porMes[mes] = { CAPEX:0, OPEX:0, contas:{} };
+    const valor = Number(campoLpu(a,'Total')||0);
+    porMes[mes][bucket] += valor;
+    porMes[mes].contas[desc] = (porMes[mes].contas[desc]||0) + valor;
+  });
+  const meses = Object.keys(porMes).sort().slice(-6);
+  return meses.map(m => ({ mes:m, capex: porMes[m].CAPEX, opex: porMes[m].OPEX, contas: porMes[m].contas }));
+}
+
+// Paleta pras linhas individuais por Conta Contábil — cores distintas do
+// verde/âmbar já usados pro CAPEX/OPEX agregado (pedido do usuário: manter as
+// linhas agregadas e acrescentar uma linha por conta).
+const CORES_CONTAS = ['#4fc3f7','#ab47bc','#ff7043','#26a69a','#ec407a','#7e57c2','#9ccc65','#5c6bc0','#8d6e63'];
+function corConta(idx){ return CORES_CONTAS[idx % CORES_CONTAS.length]; }
+
+const NOMES_MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function rotuloMes(m){
+  const [ano,mes] = m.split('-');
+  return NOMES_MESES[parseInt(mes,10)-1] + '/' + ano.slice(2);
+}
+
+// Suaviza os pontos com Catmull-Rom → Bézier (curva suave tipo "área" do
+// print de referência, sem depender de nenhuma lib de gráfico).
+function caminhoSuave(pontos){
+  if(pontos.length < 2) return '';
+  let d = `M ${pontos[0][0]},${pontos[0][1]}`;
+  for(let i=0; i<pontos.length-1; i++){
+    const p0 = pontos[i-1] || pontos[i];
+    const p1 = pontos[i];
+    const p2 = pontos[i+1];
+    const p3 = pontos[i+2] || p2;
+    const c1x = p1[0] + (p2[0]-p0[0])/6;
+    const c1y = p1[1] + (p2[1]-p0[1])/6;
+    const c2x = p2[0] - (p3[0]-p1[0])/6;
+    const c2y = p2[1] - (p3[1]-p1[1])/6;
+    d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+
+function renderPlanoVoo(){
+  const cont = document.getElementById('planoVooChart');
+  const serie = calcularSeriesPlanoVoo();
+  if(!serie.length){ cont.innerHTML = '<div class="planovoo-vazio">Sem dados aprovados suficientes ainda.</div>'; return; }
+
+  // Uma linha fina por Conta Contábil, junto das duas linhas agregadas (CAPEX/
+  // OPEX) que já existiam — pedido do usuário pra ver a tendência de cada
+  // conta, não só o agregado.
+  const contasPresentes = [...new Set(serie.flatMap(s => Object.keys(s.contas)))];
+
+  const W = 800, H = 230, padL = 10, padR = 10, padT = 34, padB = 30;
+  const max = Math.max(1, ...serie.map(s=>Math.max(s.capex,s.opex)));
+  const passo = serie.length > 1 ? (W-padL-padR)/(serie.length-1) : 0;
+  const x = i => padL + passo*i;
+  const y = v => H - padB - (v/max)*(H-padT-padB);
+
+  const ptsCapex = serie.map((s,i) => [x(i), y(s.capex)]);
+  const ptsOpex = serie.map((s,i) => [x(i), y(s.opex)]);
+
+  const rotulos = serie.map((s,i) => `<text x="${x(i)}" y="${H-8}" font-size="11" fill="var(--text-muted)" text-anchor="middle">${rotuloMes(s.mes)}</text>`).join('');
+  const valoresCapex = serie.map((s,i) => `<text x="${x(i)}" y="${y(s.capex)-10}" font-size="10" fill="var(--accent)" text-anchor="middle">${fmtMoeda(s.capex)}</text>`).join('');
+  const valoresOpex = serie.map((s,i) => `<text x="${x(i)}" y="${y(s.opex)-10}" font-size="10" fill="var(--amber)" text-anchor="middle">${fmtMoeda(s.opex)}</text>`).join('');
+  const pontosCapex = ptsCapex.map(([px,py]) => `<circle cx="${px}" cy="${py}" r="3" fill="var(--accent)"/>`).join('');
+  const pontosOpex = ptsOpex.map(([px,py]) => `<circle cx="${px}" cy="${py}" r="3" fill="var(--amber)"/>`).join('');
+
+  // Linhas por conta: sem rótulo de valor em cada ponto (com 9 contas possíveis
+  // ficaria ilegível) — só a linha + um pontinho, a legenda abaixo identifica
+  // cada cor.
+  const linhasContas = contasPresentes.map((conta, idx) => {
+    const cor = corConta(idx);
+    const pts = serie.map((s,i) => [x(i), y(s.contas[conta]||0)]);
+    const pontos = pts.map(([px,py]) => `<circle cx="${px}" cy="${py}" r="2.3" fill="${cor}"/>`).join('');
+    return `<path d="${caminhoSuave(pts)}" fill="none" stroke="${cor}" stroke-width="1.5" stroke-dasharray="4 2" opacity=".85"/>${pontos}`;
+  }).join('');
+
+  const legendaContas = contasPresentes.length ? `<div class="planovoo-legend" style="margin-top:.6rem;flex-wrap:wrap">
+    ${contasPresentes.map((conta,idx) => `<span><span class="legend-dot" style="background:${corConta(idx)}"></span>${conta}</span>`).join('')}
+  </div>` : '';
+
+  cont.innerHTML = `<svg class="planovoo-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    ${linhasContas}
+    <path d="${caminhoSuave(ptsCapex)}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+    <path d="${caminhoSuave(ptsOpex)}" fill="none" stroke="var(--amber)" stroke-width="2.5"/>
+    ${pontosCapex}${pontosOpex}${valoresCapex}${valoresOpex}${rotulos}
+  </svg>${legendaContas}`;
+}
+
+// ── GEOGRID — quantos cadastros no mês (por 'Timestamp Registro') + ranking
+// de quem concluiu (campo 'Concluído Por', só preenchido quando a sala
+// técnica já replicou a fusão — ver concluirGeogrid no backend).
+function renderGeogridResumo(mes){
+  const doMes = GEOGRID_ITENS.filter(g => mesDoTimestamp(g['Timestamp Registro']) === mes);
+  const pendentes = doMes.filter(g => g['Status'] !== 'CONCLUIDO').length;
+  const concluidos = doMes.filter(g => g['Status'] === 'CONCLUIDO').length;
+  const porPessoa = {};
+  doMes.forEach(g => {
+    const quem = g['Concluído Por'];
+    if(!quem) return;
+    porPessoa[quem] = (porPessoa[quem]||0) + 1;
+  });
+  const el = document.getElementById('rankGeogrid');
+  const resumo = `<div class="total-sub" style="margin-bottom:.6rem">Pendentes: <b style="color:var(--amber)">${pendentes}</b> · Concluídos: <b style="color:var(--green)">${concluidos}</b></div>`;
+  el.innerHTML = resumo + renderContagemHtml(porPessoa);
+}
+
+// ── Controle de Material — atividades pendentes/baixadas no mês (agrupando
+// o ledger por 'ID Atividade', igual controle_material.html) + ranking de
+// quem deu baixa.
+function renderMaterialResumo(mes){
+  const grupos = {};
+  CONTROLE_MATERIAL_ITENS.forEach(item => {
+    if(mesDoTimestamp(item['Timestamp Registro']) !== mes) return;
+    const chave = item['ID Atividade'];
+    if(!grupos[chave]) grupos[chave] = { status:'BAIXADO', baixadoPor:'' };
+    if(item['Status Baixa'] !== 'BAIXADO') grupos[chave].status = 'PENDENTE';
+    if(item['Baixado Por']) grupos[chave].baixadoPor = item['Baixado Por'];
+  });
+  const valores = Object.values(grupos);
+  const pendentes = valores.filter(g=>g.status==='PENDENTE').length;
+  const baixadas = valores.filter(g=>g.status==='BAIXADO').length;
+  const porPessoa = {};
+  valores.forEach(g => { if(g.baixadoPor) porPessoa[g.baixadoPor] = (porPessoa[g.baixadoPor]||0) + 1; });
+
+  const el = document.getElementById('rankMaterial');
+  const resumo = `<div class="total-sub" style="margin-bottom:.6rem">Pendentes: <b style="color:var(--amber)">${pendentes}</b> · Baixadas: <b style="color:var(--green)">${baixadas}</b></div>`;
+  el.innerHTML = resumo + renderContagemHtml(porPessoa);
+}
+
+// Barra horizontal por contagem (não R$) — mesmo visual de renderRankingValor,
+// só que o número à direita é a quantidade, não moeda.
+function renderContagemHtml(mapaContagem){
+  const entradas = Object.entries(mapaContagem).sort((a,b) => b[1]-a[1]);
+  if(!entradas.length) return '<div class="empty-msg">Sem dados neste mês.</div>';
+  const max = entradas[0][1] || 1;
+  return entradas.map(([nome,qtd]) => `
+    <div class="rank-item">
+      <div class="rank-main">
+        <div class="rank-nome"><span>${nome}</span><span class="rank-valor">${qtd}</span></div>
+        <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${Math.max(2, qtd/max*100)}%"></div></div>
+      </div>
+    </div>`).join('');
 }
 
 // Barra horizontal de valor, maior pro menor. Quando `qtdMap` é passado, mostra

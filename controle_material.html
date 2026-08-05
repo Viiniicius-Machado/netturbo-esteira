@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Controle de Material · Netturbo Esteira</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    :root{
+      --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
+      --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+      --border:#252525;--border-hi:#353535;
+      --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+      --red:#e53935;--amber:#ffa000;--green:#8bc34a;--purple:#ab47bc;
+      --radius:6px;--radius-lg:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+    .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+    .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+    .topbar-spacer{flex:1}
+
+    .page-actions{max-width:1500px;margin:0 auto;display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;padding:.9rem 1.2rem 0}
+    main{max-width:1500px;margin:0 auto;padding:1.3rem 1.2rem 0}
+
+    .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.1rem}
+    .toolbar input[type="month"],.toolbar select{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem}
+    .btn{padding:.6rem 1.1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.82rem}
+    .btn-accent{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
+    .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+    .btn-green{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
+    .btn-sm{padding:.4rem .7rem;font-size:.68rem}
+
+    /* Filtro por setor (Tipo de Solicitação) — mesmo desenho de pill usado na
+       Esteira de Despacho (index.html). */
+    .tipo-tabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
+    .tipo-tab{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
+    .tipo-tab.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
+    .tipo-tab-count{background:rgba(0,0,0,.25);border-radius:10px;padding:.05rem .45rem;font-size:.68rem}
+    .tipo-tab.active .tipo-tab-count{background:rgba(168,201,60,.25)}
+
+    .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;margin-bottom:1.1rem}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .8rem}
+    .stat-value{font-family:'Rajdhani',sans-serif;font-size:1.6rem;font-weight:700;color:var(--text);line-height:1.1}
+    .stat-label{font-size:.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem}
+    .stat-card.stat-accent{border-top-color:var(--amber)}
+    .stat-card.stat-accent .stat-value{color:var(--amber)}
+    .stat-card.stat-ok{border-top-color:var(--green)}
+    .stat-card.stat-ok .stat-value{color:var(--green)}
+
+    .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
+    table{width:100%;border-collapse:collapse;font-size:.75rem}
+    thead th{text-align:left;padding:.6rem .7rem;color:var(--text-muted);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2);white-space:nowrap}
+    tbody td{padding:.5rem .7rem;border-bottom:1px solid var(--border);vertical-align:top}
+    tbody tr:hover{background:var(--surface2)}
+    .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+
+    .protocolo-cel{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent)}
+    .etiqueta-cel{font-size:.65rem;color:var(--text-dim)}
+    .item-linha{font-size:.68rem;color:var(--text-dim);line-height:1.5}
+    .item-linha b{color:var(--text)}
+    .badge-tipo{font-size:.58rem;font-weight:700;padding:.05rem .35rem;border-radius:4px;margin-right:.3rem}
+    .badge-tipo.ins{background:rgba(168,201,60,.12);color:var(--accent)}
+    .badge-tipo.atn{background:rgba(255,160,0,.12);color:var(--amber)}
+    .status-pill{font-size:.62rem;font-weight:700;padding:.2rem .55rem;border-radius:20px;white-space:nowrap}
+    .status-pill.pendente{background:rgba(255,160,0,.12);color:var(--amber);border:1px solid rgba(255,160,0,.3)}
+    .status-pill.baixado{background:rgba(139,195,74,.12);color:var(--green);border:1px solid rgba(139,195,74,.3)}
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Controle de Material</div>
+    <div class="topbar-sub">INS/ATN · Consumo em Campo e Baixa</div>
+  </div>
+  <div class="topbar-spacer"></div>
+</header>
+
+<div class="page-actions">
+  <a href="painel.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Painel</a>
+</div>
+
+<main id="app" style="display:none">
+
+  <div class="toolbar">
+    <input type="month" id="mesFiltro" onchange="renderTabela()"/>
+    <select id="statusFiltro" onchange="renderTabela()">
+      <option value="">Todos os status</option>
+      <option value="PENDENTE">Pendente</option>
+      <option value="BAIXADO">Baixado</option>
+    </select>
+    <button class="btn btn-outline" onclick="carregarControleMaterial()">↻ Atualizar</button>
+    <button class="btn btn-green" onclick="exportarExcel()">Exportar Excel</button>
+  </div>
+
+  <div class="tipo-tabs" id="tiposMaterialTabs">
+    <button type="button" class="tipo-tab active" data-tipo="TODOS" onclick="selecionarFiltroMaterial('TODOS')">Todos <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Manutenção" onclick="selecionarFiltroMaterial('Manutenção')">Manutenção <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Preventiva" onclick="selecionarFiltroMaterial('Preventiva')">Preventiva <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Transmissão" onclick="selecionarFiltroMaterial('Transmissão')">Transmissão <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Implantação" onclick="selecionarFiltroMaterial('Implantação')">Implantação <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="GTD" onclick="selecionarFiltroMaterial('GTD')">GTD <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Pós Vendas" onclick="selecionarFiltroMaterial('Pós Vendas')">Pós Vendas <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Medição" onclick="selecionarFiltroMaterial('Medição')">Medição <span class="tipo-tab-count">0</span></button>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card stat-accent">
+      <div class="stat-value" id="statPendentes">0</div>
+      <div class="stat-label">Atividades Pendentes</div>
+    </div>
+    <div class="stat-card stat-ok">
+      <div class="stat-value" id="statBaixadas">0</div>
+      <div class="stat-label">Atividades Baixadas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statItens">0</div>
+      <div class="stat-label">Itens Registrados</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Data</th><th>Protocolo</th><th>Cliente</th><th>Técnico</th><th>Empresa</th>
+        <th>Itens</th><th>Status</th><th>Baixado Por</th><th></th>
+      </tr></thead>
+      <tbody id="tbodyMaterial"></tbody>
+    </table>
+    <div class="empty-msg" id="msgVazio" style="display:none">Nenhum registro neste período.</div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+
+let TODOS_ITENS = [];
+let toastTimer;
+
+// CONTROLE_MATERIAL_USO não guarda 'Tipo de Solicitação' — só existe na
+// ESTEIRA. Pra filtrar por setor aqui, busca a ESTEIRA em paralelo e monta um
+// mapa 'ID Atividade' → Tipo de Solicitação (mesmo padrão de geogrid.html).
+let MAPA_TIPO_POR_ATIVIDADE = {};
+let FILTRO_TIPO_MATERIAL = 'TODOS';
+window.selecionarFiltroMaterial = function(tipo){
+  FILTRO_TIPO_MATERIAL = tipo;
+  document.querySelectorAll('#tiposMaterialTabs .tipo-tab').forEach(b=>b.classList.toggle('active', b.dataset.tipo===tipo));
+  renderTabela();
+};
+function passaFiltroTipoMaterial(idAtividade){
+  if(FILTRO_TIPO_MATERIAL === 'TODOS') return true;
+  return MAPA_TIPO_POR_ATIVIDADE[idAtividade] === FILTRO_TIPO_MATERIAL;
+}
+
+// Mostra, em cada aba, quantas ATIVIDADES (não linhas de item) daquele setor
+// existem no total — visão rápida de onde está concentrado o volume.
+function atualizarContagensTabsMaterial(){
+  const grupos = agruparPorAtividade(TODOS_ITENS);
+  document.querySelectorAll('#tiposMaterialTabs .tipo-tab').forEach(btn => {
+    const tipo = btn.dataset.tipo;
+    const badge = btn.querySelector('.tipo-tab-count');
+    if(!badge) return;
+    badge.textContent = tipo === 'TODOS'
+      ? grupos.length
+      : grupos.filter(g => MAPA_TIPO_POR_ATIVIDADE[g.idAtividade] === tipo).length;
+  });
+}
+
+// Só quem tem Cargo = OEM (sala técnica, mesma regra de geogrid.html) vê o
+// botão de dar baixa — evita que qualquer pessoa da liderança encerre o
+// consumo sem ser quem de fato confere o material.
+function ehOem(){
+  const usuario = NetturboAuth.usuario();
+  return !!usuario && String(usuario.cargo||'').trim().toLowerCase() === 'oem';
+}
+
+function iniciarApp(){
+  document.getElementById('app').style.display = 'block';
+  const hoje = new Date();
+  document.getElementById('mesFiltro').value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0');
+  carregarControleMaterial();
+  if(!window._ctrlMatAutoRefresh){
+    window._ctrlMatAutoRefresh = setInterval(carregarControleMaterial, 30000);
+  }
+}
+
+async function carregarControleMaterial(){
+  // As duas buscas são independentes de propósito (Promise.allSettled, não
+  // Promise.all) — a ESTEIRA é a planilha mestre, bem maior/mais lenta que o
+  // ledger de material; se ela falhar ou demorar, a tabela de material não
+  // pode travar por causa disso. Se a ESTEIRA falhar, o filtro por setor só
+  // fica temporariamente sem efeito (mapa vazio), mas a tabela continua.
+  const [resMaterial, resEsteira] = await Promise.allSettled([
+    fetch(APPS_SCRIPT_URL + '?acao=LISTAR_CONTROLE_MATERIAL').then(r=>r.json()),
+    fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA').then(r=>r.json())
+  ]);
+
+  if(resMaterial.status === 'fulfilled'){
+    TODOS_ITENS = resMaterial.value.itens || [];
+  } else {
+    console.error('Erro ao carregar LISTAR_CONTROLE_MATERIAL:', resMaterial.reason);
+    showToast('Erro ao carregar os dados de material.');
+  }
+
+  if(resEsteira.status === 'fulfilled'){
+    MAPA_TIPO_POR_ATIVIDADE = {};
+    (resEsteira.value.atividades || []).forEach(a => { MAPA_TIPO_POR_ATIVIDADE[a['ID Atividade']] = a['Tipo de Solicitação']; });
+  } else {
+    console.error('Erro ao carregar LISTAR_ESTEIRA (filtro por setor fica sem efeito):', resEsteira.reason);
+  }
+
+  renderTabela();
+}
+window.carregarControleMaterial = carregarControleMaterial;
+
+// "Timestamp Registro" vem como "dd/mm/aaaa, HH:MM:SS" (toLocaleString('pt-BR'),
+// mesmo padrão usado em todo o resto do backend).
+function mesDoRegistro(item){
+  const ts = String(item['Timestamp Registro']||'');
+  const dataParte = ts.split(',')[0].trim();
+  const partes = dataParte.split('/');
+  if(partes.length !== 3) return '';
+  return partes[2] + '-' + partes[1];
+}
+
+// Agrupa o ledger (uma linha por item de material) em uma linha por
+// ATIVIDADE — é nesse nível que a baixa acontece (decisão do usuário: baixa
+// é da atividade inteira, não item a item).
+function agruparPorAtividade(itens){
+  const grupos = {};
+  itens.forEach(item => {
+    const chave = item['ID Atividade'];
+    if(!grupos[chave]){
+      grupos[chave] = {
+        idAtividade: chave,
+        protocolo: item['Protocolo']||'—',
+        etiqueta: item['Etiqueta']||'',
+        cliente: item['Cliente']||'—',
+        tecnico: item['Técnico']||'—',
+        empresa: item['Empresa']||'',
+        timestamp: item['Timestamp Registro']||'',
+        mes: mesDoRegistro(item),
+        itens: [],
+        status: 'BAIXADO',
+        baixadoPor: item['Baixado Por']||''
+      };
+    }
+    const g = grupos[chave];
+    g.itens.push(item);
+    if(item['Status Baixa'] !== 'BAIXADO') g.status = 'PENDENTE';
+    if(item['Baixado Por']) g.baixadoPor = item['Baixado Por'];
+  });
+  return Object.values(grupos).sort((a,b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+}
+
+function renderTabela(){
+  atualizarContagensTabsMaterial();
+  const mes = document.getElementById('mesFiltro').value;
+  const statusF = document.getElementById('statusFiltro').value;
+  const grupos = agruparPorAtividade(TODOS_ITENS).filter(g => {
+    if(mes && g.mes !== mes) return false;
+    if(statusF && g.status !== statusF) return false;
+    if(!passaFiltroTipoMaterial(g.idAtividade)) return false;
+    return true;
+  });
+
+  document.getElementById('statPendentes').textContent = grupos.filter(g=>g.status==='PENDENTE').length;
+  document.getElementById('statBaixadas').textContent = grupos.filter(g=>g.status==='BAIXADO').length;
+  document.getElementById('statItens').textContent = grupos.reduce((s,g)=>s+g.itens.length,0);
+
+  const tbody = document.getElementById('tbodyMaterial');
+  const oem = ehOem();
+
+  if(!grupos.length){
+    tbody.innerHTML = '';
+    document.getElementById('msgVazio').style.display = 'block';
+    return;
+  }
+  document.getElementById('msgVazio').style.display = 'none';
+
+  tbody.innerHTML = grupos.map(g => {
+    const itensHtml = g.itens.map(it => `
+      <div class="item-linha"><span class="badge-tipo ${it.Tipo==='ATN'?'atn':'ins'}">${it.Tipo}</span><b>${it['Descrição']}</b> · Qtd: ${it['Quantidade']}${it['Seriais'] ? ' · SN: '+it['Seriais'] : ''}</div>
+    `).join('');
+    const botaoBaixa = g.status === 'PENDENTE' && oem
+      ? `<button class="btn btn-green btn-sm" onclick="darBaixa('${g.idAtividade}')">Dar Baixa</button>`
+      : '';
+    return `<tr>
+      <td>${String(g.timestamp).split(',')[0]||'—'}</td>
+      <td><div class="protocolo-cel">${g.protocolo}</div>${g.etiqueta ? `<div class="etiqueta-cel">Etiqueta: ${g.etiqueta}</div>` : ''}</td>
+      <td>${g.cliente}</td>
+      <td>${g.tecnico}</td>
+      <td>${g.empresa}</td>
+      <td>${itensHtml}</td>
+      <td><span class="status-pill ${g.status==='PENDENTE'?'pendente':'baixado'}">${g.status==='PENDENTE'?'Pendente':'Baixado'}</span></td>
+      <td>${g.baixadoPor||'—'}</td>
+      <td>${botaoBaixa}</td>
+    </tr>`;
+  }).join('');
+}
+
+window.darBaixa = async function(idAtividade){
+  const usuario = NetturboAuth.usuario();
+  if(!confirm('Confirma a baixa de todo o material dessa atividade?')) return;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'DAR_BAIXA_MATERIAL', idAtividade, baixadoPor: usuario.nome })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message||'Erro ao dar baixa.'); return; }
+    showToast(`Baixa registrada — ${result.atualizadas} item(ns).`);
+    carregarControleMaterial();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o servidor.');
+  }
+};
+
+window.exportarExcel = function(){
+  const mes = document.getElementById('mesFiltro').value;
+  const statusF = document.getElementById('statusFiltro').value;
+  const linhas = TODOS_ITENS.filter(item => {
+    if(mes && mesDoRegistro(item) !== mes) return false;
+    if(statusF && item['Status Baixa'] !== statusF) return false;
+    if(!passaFiltroTipoMaterial(item['ID Atividade'])) return false;
+    return true;
+  }).map(item => ({
+    'Data': String(item['Timestamp Registro']||'').split(',')[0],
+    'Protocolo': item['Protocolo']||'',
+    'Etiqueta': item['Etiqueta']||'',
+    'Cliente': item['Cliente']||'',
+    'Técnico': item['Técnico']||'',
+    'Empresa': item['Empresa']||'',
+    'Tipo': item['Tipo']||'',
+    'Código': item['Código']||'',
+    'Descrição': item['Descrição']||'',
+    'Quantidade': item['Quantidade']||0,
+    'Seriais': item['Seriais']||'',
+    'Status Baixa': item['Status Baixa']||'',
+    'Baixado Por': item['Baixado Por']||'',
+    'Timestamp Baixa': item['Timestamp Baixa']||''
+  }));
+  if(!linhas.length){ showToast('Nenhum dado pra exportar nesse período.'); return; }
+  const ws = XLSX.utils.json_to_sheet(linhas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Controle Material');
+  XLSX.writeFile(wb, `Controle_Material_${mes||'geral'}.xlsx`);
+};
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:999;white-space:nowrap';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.style.display='none'; }, 3200);
+}
+
+NetturboAuth.proteger({ tela:'Controle de Material', aoEntrar: iniciarApp });
+</script>
+</body>
+</html>

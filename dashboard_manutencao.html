@@ -236,10 +236,6 @@
           <label>Valor do mês (R$)</label>
           <input type="number" id="inputValorOrcamento" min="0" step="0.01" placeholder="Ex: 100000"/>
         </div>
-        <div class="campo">
-          <label>Registrado por</label>
-          <input type="text" id="inputRegistradoPorOrcamento" placeholder="Seu nome"/>
-        </div>
         <button class="btn btn-accent" onclick="registrarOrcamento()">Registrar valor do mês</button>
       </div>
     </div>
@@ -305,6 +301,11 @@
           <div class="metric-big" id="mIRR">–</div>
           <div class="metric-sub" id="mIRRGapTexto"></div>
           <div class="metric-hint">Toque para ver os clientes com atendimento repetido</div>
+        </div>
+        <div class="metric-card" id="cardAcompanhamentoResumo" style="display:none">
+          <div class="metric-title">Acompanhamento / Fiscalização no Mês</div>
+          <div class="metric-big" id="mAcompanhamentoTotal">–</div>
+          <div class="metric-sub" id="mAcompanhamentoDetalhe"></div>
         </div>
       </div>
     </div>
@@ -655,14 +656,17 @@ window.abrirDetalheSaldo = function(){
   document.getElementById('detalheOverlay').classList.add('open');
 };
 
+// "Registrado por" não é mais um campo de texto livre — vem direto do login
+// individual por PIN (auth.js), já que quem está logado é a própria pessoa
+// que está registrando (pedido do usuário, depois da migração pra login
+// individual em todas as telas de liderança).
 window.registrarOrcamento = async function(){
   const mes = document.getElementById('mesFiltro').value;
   const categoria = document.getElementById('selCategoriaOrcamento').value;
   const valor = document.getElementById('inputValorOrcamento').value;
-  const registradoPor = document.getElementById('inputRegistradoPorOrcamento').value.trim();
+  const registradoPor = NetturboAuth.usuario().nome;
   if(!mes){ alert('Selecione o mês no filtro antes de registrar.'); return; }
   if(valor === '' || Number(valor) < 0){ alert('Informe um valor válido.'); return; }
-  if(!registradoPor){ alert('Informe quem está registrando.'); return; }
 
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
@@ -970,6 +974,12 @@ function gapContagem(dentro, fora, metaPct){
 window.selecionarFiltroTipo = function(tipo){
   FILTRO_TIPO_ATIVO = tipo;
   document.querySelectorAll('#tipoTabs .tipo-tab').forEach(b=>b.classList.toggle('active', b.dataset.tipo===tipo));
+  // Acompanhamento/Fiscalização é frente da CPFL (fora do nosso controle) — IRR
+  // (que mede reincidência de ROMPIMENTO) não se aplica aqui, então troca o card
+  // por uma contagem do segmento (Preventiva/Cia Energia/Improdutiva).
+  const ehAcompanhamento = tipo === 'ACOMPANHAMENTO / FISCALIZAÇÃO';
+  document.getElementById('cardIRR').style.display = ehAcompanhamento ? 'none' : '';
+  document.getElementById('cardAcompanhamentoResumo').style.display = ehAcompanhamento ? '' : 'none';
   renderBlocoEficiencia();
 };
 
@@ -1031,6 +1041,15 @@ function renderBlocoEficiencia(){
   const diffTMC = tmcMedioMin!==null ? tmcMedioMin - META_TMC_MIN : null;
   document.getElementById('mTMCGapTempo').textContent = diffTMC===null ? 'Sem dados' :
     (diffTMC<=0 ? `${fmtMin(Math.abs(diffTMC))} abaixo da meta` : `+${fmtMin(diffTMC)} acima da meta`);
+
+  if(FILTRO_TIPO_ATIVO === 'ACOMPANHAMENTO / FISCALIZAÇÃO'){
+    const preventiva = dados.filter(a=>a['Categoria 3']==='Preventiva').length;
+    const ciaEnergia = dados.filter(a=>a['Categoria 3']==='Acompanhamento Cia Energia').length;
+    const improdutiva = dados.filter(a=>a['Categoria 2']==='Improdutiva Acompanhamento / Fiscalização').length;
+    document.getElementById('mAcompanhamentoTotal').textContent = dados.length;
+    document.getElementById('mAcompanhamentoDetalhe').textContent =
+      `Preventiva: ${preventiva} · Acompanhamento Cia Energia: ${ciaEnergia} · Improdutiva: ${improdutiva}`;
+  }
 }
 
 // ── DETALHE DE INDICADOR (clique no card MTTR/MTTD/TMC) ─────────

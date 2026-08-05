@@ -38,6 +38,14 @@
     .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.1rem}
     .toolbar select{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem;min-width:220px}
 
+    /* Filtro por setor (Tipo de Solicitação) — mesmo desenho de pill usado na
+       Esteira de Despacho (index.html), pra manter a mesma linguagem visual. */
+    .tipo-tabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
+    .tipo-tab{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
+    .tipo-tab.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
+    .tipo-tab-count{background:rgba(0,0,0,.25);border-radius:10px;padding:.05rem .45rem;font-size:.68rem}
+    .tipo-tab.active .tipo-tab-count{background:rgba(168,201,60,.25)}
+
     .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
     .card-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.5rem}
     .card-header .contagem{background:var(--surface3);border:1px solid var(--border-hi);border-radius:20px;padding:.1rem .55rem;font-size:.68rem;color:var(--text-dim);margin-left:auto}
@@ -111,6 +119,17 @@
     <button class="btn btn-outline" onclick="carregarGeogrid()">↻ Atualizar</button>
   </div>
 
+  <div class="tipo-tabs" id="tiposGeogridTabs">
+    <button type="button" class="tipo-tab active" data-tipo="TODOS" onclick="selecionarFiltroGeogrid('TODOS')">Todos <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Manutenção" onclick="selecionarFiltroGeogrid('Manutenção')">Manutenção <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Preventiva" onclick="selecionarFiltroGeogrid('Preventiva')">Preventiva <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Transmissão" onclick="selecionarFiltroGeogrid('Transmissão')">Transmissão <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Implantação" onclick="selecionarFiltroGeogrid('Implantação')">Implantação <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="GTD" onclick="selecionarFiltroGeogrid('GTD')">GTD <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Pós Vendas" onclick="selecionarFiltroGeogrid('Pós Vendas')">Pós Vendas <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Medição" onclick="selecionarFiltroGeogrid('Medição')">Medição <span class="tipo-tab-count">0</span></button>
+  </div>
+
   <div class="card" id="cardValidacaoLider">
     <div class="card-header" style="cursor:pointer" onclick="toggleSecaoGeogrid('validacaoLider')">Aguardando validação do líder<span class="contagem" id="countValidacaoLider">0</span>
       <button class="btn btn-outline" id="btnToggleValidacaoLider" style="padding:.2rem .55rem;font-size:.72rem;margin-left:.5rem" onclick="event.stopPropagation();toggleSecaoGeogrid('validacaoLider')">▲</button>
@@ -140,6 +159,36 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 
 let TODOS_ITENS = [];
+
+// CONTROLE_GEOGRID não guarda 'Tipo de Solicitação' — só existe na ESTEIRA
+// (ver HEADERS_GEOGRID no backend). Pra filtrar por setor aqui, busca a
+// ESTEIRA em paralelo e monta um mapa 'ID Atividade' → Tipo de Solicitação,
+// consultado item a item na hora de filtrar (mesmo padrão de filtro por tipo
+// já usado na Esteira de Despacho, index.html).
+let MAPA_TIPO_POR_ATIVIDADE = {};
+let FILTRO_TIPO_GEOGRID = 'TODOS';
+window.selecionarFiltroGeogrid = function(tipo){
+  FILTRO_TIPO_GEOGRID = tipo;
+  document.querySelectorAll('#tiposGeogridTabs .tipo-tab').forEach(b=>b.classList.toggle('active', b.dataset.tipo===tipo));
+  renderGeogrid();
+};
+function passaFiltroTipoGeogrid(item){
+  if(FILTRO_TIPO_GEOGRID === 'TODOS') return true;
+  return MAPA_TIPO_POR_ATIVIDADE[item['ID Atividade']] === FILTRO_TIPO_GEOGRID;
+}
+
+// Mostra, em cada aba, quantos itens (de qualquer status) daquele setor
+// existem no total — visão rápida de onde está concentrado o volume.
+function atualizarContagensTabsGeogrid(){
+  document.querySelectorAll('#tiposGeogridTabs .tipo-tab').forEach(btn => {
+    const tipo = btn.dataset.tipo;
+    const badge = btn.querySelector('.tipo-tab-count');
+    if(!badge) return;
+    badge.textContent = tipo === 'TODOS'
+      ? TODOS_ITENS.length
+      : TODOS_ITENS.filter(i => MAPA_TIPO_POR_ATIVIDADE[i['ID Atividade']] === tipo).length;
+  });
+}
 
 // Quais cards (por rowIndex) o usuário deixou expandidos — sobrevive a um
 // re-render (ex.: clicar "Editar" chama renderValidacaoLider() de novo) pra não
@@ -185,15 +234,30 @@ function iniciarApp(){
 }
 
 async function carregarGeogrid(){
-  try{
-    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_GEOGRID');
-    const result = await resp.json();
-    TODOS_ITENS = result.itens || [];
-    renderGeogrid();
-  }catch(err){
-    console.error(err);
+  // Buscas independentes de propósito (Promise.allSettled) — a ESTEIRA é a
+  // planilha mestre, bem maior/mais lenta que o GEOGRID; se ela falhar ou
+  // demorar, a fila do GEOGRID não pode travar por causa disso. Se a ESTEIRA
+  // falhar, o filtro por setor só fica temporariamente sem efeito.
+  const [resGeogrid, resEsteira] = await Promise.allSettled([
+    fetch(APPS_SCRIPT_URL + '?acao=LISTAR_GEOGRID').then(r=>r.json()),
+    fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA').then(r=>r.json())
+  ]);
+
+  if(resGeogrid.status === 'fulfilled'){
+    TODOS_ITENS = resGeogrid.value.itens || [];
+  } else {
+    console.error('Erro ao carregar LISTAR_GEOGRID:', resGeogrid.reason);
     showToast('Erro ao carregar a fila.');
   }
+
+  if(resEsteira.status === 'fulfilled'){
+    MAPA_TIPO_POR_ATIVIDADE = {};
+    (resEsteira.value.atividades || []).forEach(a => { MAPA_TIPO_POR_ATIVIDADE[a['ID Atividade']] = a['Tipo de Solicitação']; });
+  } else {
+    console.error('Erro ao carregar LISTAR_ESTEIRA (filtro por setor fica sem efeito):', resEsteira.reason);
+  }
+
+  renderGeogrid();
 }
 window.carregarGeogrid = carregarGeogrid;
 
@@ -746,7 +810,7 @@ function renderValidacaoLider(){
     return;
   }
   cardLider.style.display = '';
-  const itens = TODOS_ITENS.filter(i => i['Status'] === 'AGUARDANDO_VALIDACAO_LIDER' || i['Status'] === 'RECUSADO');
+  const itens = TODOS_ITENS.filter(i => (i['Status'] === 'AGUARDANDO_VALIDACAO_LIDER' || i['Status'] === 'RECUSADO') && passaFiltroTipoGeogrid(i));
   document.getElementById('countValidacaoLider').textContent = itens.length;
   const el = document.getElementById('listaValidacaoLider');
   el.innerHTML = itens.length ? itens.map(item => {
@@ -796,9 +860,10 @@ function renderValidacaoLider(){
 }
 
 function renderGeogrid(){
+  atualizarContagensTabsGeogrid();
   renderValidacaoLider();
-  const pendentes = TODOS_ITENS.filter(i => i['Status'] === 'PENDENTE');
-  const concluidos = TODOS_ITENS.filter(i => i['Status'] === 'CONCLUIDO')
+  const pendentes = TODOS_ITENS.filter(i => i['Status'] === 'PENDENTE' && passaFiltroTipoGeogrid(i));
+  const concluidos = TODOS_ITENS.filter(i => i['Status'] === 'CONCLUIDO' && passaFiltroTipoGeogrid(i))
     .sort((a,b) => String(b['Timestamp Conclusão']||'').localeCompare(String(a['Timestamp Conclusão']||'')));
 
   document.getElementById('countPendentes').textContent = pendentes.length;

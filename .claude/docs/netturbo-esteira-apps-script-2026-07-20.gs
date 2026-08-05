@@ -86,7 +86,14 @@ const HEADERS_ESTEIRA = [
   // QUALQUER Tipo de Solicitação (inclusive os que não mostram o editor de fusão,
   // como GTD/Implantação/Pós Vendas/Medição). Dispara um cadastro simples no
   // GEOGRID (sem diagrama) — ver registrarGeogridCeoSemFusao.
-  'Nomenclatura Cabo CEO A','Nomenclatura Cabo CEO B'
+  'Nomenclatura Cabo CEO A','Nomenclatura Cabo CEO B',
+  // ── Etiqueta/ID do chamado, separada do Cliente ──
+  // Antes só existia como regra de fallback (virava Protocolo O&M quando este
+  // vinha vazio da mensagem do NOC — ver parseMascara/LABEL_PATTERNS no
+  // index.html). Esse fallback continua existindo, mas agora a Etiqueta também
+  // é seu próprio campo, preenchido no despacho e exibido junto do Cliente na
+  // esteira (pedido do usuário — hoje o ID "sumia" dentro do Protocolo O&M).
+  'Etiqueta'
 ];
 
 function garantirAba(ss, nome, headers, corFundo, corTexto) {
@@ -164,6 +171,8 @@ function doPost(e) {
     if (acao === 'APROVAR_GEOGRID_LIDER') return aprovarGeogridLider(ss, data);
     if (acao === 'LOGIN_LIDERANCA')      return loginLideranca(ss, data);
     if (acao === 'RESET_COMPLEMENTO_LIDERANCA') return resetComplementoLideranca(ss, data);
+    if (acao === 'SALVAR_CONTROLE_MATERIAL') return salvarControleMaterial(ss, data);
+    if (acao === 'DAR_BAIXA_MATERIAL')    return darBaixaMaterial(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -190,6 +199,8 @@ function doGet(e) {
   if (params.acao === 'LISTAR_DISPONIBILIDADE') return listarDisponibilidade(ss);
   if (params.acao === 'LISTAR_GEOGRID') return listarGeogrid(ss);
   if (params.acao === 'LISTAR_USUARIOS_LIDERANCA') return listarUsuariosLideranca(ss);
+  if (params.acao === 'LISTAR_CATALOGO_MATERIAIS') return listarCatalogoMateriais(ss);
+  if (params.acao === 'LISTAR_CONTROLE_MATERIAL') return listarControleMaterial(ss);
   return resposta('ok', { sistema: 'Netturbo Esteira de Despacho' });
 }
 
@@ -292,6 +303,7 @@ function criarAtividade(ss, data) {
   sheet.getRange(row, idx('Prazo Limite'), 1, 1).setNumberFormat('@STRING@');
   sheet.getRange(row, idx('Prazo Limite')).setValue(prazoLimite);
   sheet.getRange(row, idx('Conta Contábil')).setValue(data.contaContabil || '');
+  sheet.getRange(row, idx('Etiqueta')).setValue(data.etiqueta || '');
 
   return resposta('ok', { id: id });
 }
@@ -2130,6 +2142,137 @@ function registrarAssinaturaLpu(ss, data) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  CONTROLE DE MATERIAL — catálogo de patrimônios/insumos (INS/ATN) +
+//  ledger de consumo em campo, com baixa feita pela sala técnica (OEM).
+//  Duas abas:
+//  - CATALOGO_MATERIAIS: lista de referência (Tipo/Código/Descrição),
+//    editável direto na planilha pelo Vinicius (mesmo modelo do
+//    ACESSOS_TECNICOS — adicionar/remover material é só editar a linha,
+//    sem precisar mexer em código). Populada uma vez a partir da
+//    planilha MELHORIAS DE REDE.xlsx (523 INS + 341 ATN + 3 OUTROS,
+//    estes últimos classificados como ATN por serem patrimônio/ativo).
+//  - CONTROLE_MATERIAL_USO: ledger append-only (nunca sobrescreve, cada
+//    uso é uma linha nova, mesmo padrão de ORCAMENTOS_MENSAIS) — um
+//    técnico pode gerar várias linhas numa mesma atividade (uma por
+//    item de material). A baixa é por ATIVIDADE inteira (não por linha),
+//    decisão do usuário — marca todas as linhas daquele 'ID Atividade'
+//    de uma vez.
+// ══════════════════════════════════════════════════════════════
+const ABA_CATALOGO_MATERIAIS = 'CATALOGO_MATERIAIS';
+const HEADERS_CATALOGO_MATERIAIS = ['Tipo', 'Código', 'Descrição'];
+
+function garantirCatalogoMateriais(ss) {
+  return garantirAba(ss, ABA_CATALOGO_MATERIAIS, HEADERS_CATALOGO_MATERIAIS, '#1a1a1a', '#ffa000');
+}
+
+function listarCatalogoMateriais(ss) {
+  const sheet = garantirCatalogoMateriais(ss);
+  if (sheet.getLastRow() < 2) return resposta('ok', { itens: [] });
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS_CATALOGO_MATERIAIS.length).getValues();
+  const itens = data
+    .filter(row => row[1]) // só linhas com Código preenchido
+    .map(row => ({ tipo: row[0], codigo: row[1], descricao: row[2] }));
+  return resposta('ok', { itens: itens });
+}
+
+const ABA_CONTROLE_MATERIAL = 'CONTROLE_MATERIAL_USO';
+const HEADERS_CONTROLE_MATERIAL = [
+  'ID Registro', 'ID Atividade', 'Protocolo', 'Etiqueta', 'Cliente', 'Técnico', 'Empresa',
+  'Timestamp Registro', 'Tipo', 'Código', 'Descrição', 'Quantidade', 'Seriais',
+  'Status Baixa', 'Baixado Por', 'Timestamp Baixa'
+];
+
+function garantirControleMaterial(ss) {
+  return garantirAba(ss, ABA_CONTROLE_MATERIAL, HEADERS_CONTROLE_MATERIAL, '#1a1a1a', '#ffa000');
+}
+
+// Chamado junto do SALVAR_OCORRENCIA (RFO do técnico) — não substitui aquela
+// ação, roda em paralelo. `data.itens` é a lista estruturada montada no
+// card de material de tecnico.html: [{tipo, codigo, descricao, quantidade,
+// seriais:[...]}]. Seriais só vem preenchido quando tipo === 'ATN' (um
+// serial por unidade de quantidade — decisão do usuário).
+function salvarControleMaterial(ss, data) {
+  if (!data.idAtividade) return resposta('error', { message: 'idAtividade ausente' });
+  const itens = data.itens || [];
+  if (!itens.length) return resposta('ok', { gravados: 0 });
+
+  const sheet = garantirControleMaterial(ss);
+  const agora = new Date().toLocaleString('pt-BR');
+  const linhaBase = sheet.getLastRow() + 1;
+
+  const linhas = itens.map(item => ([
+    gerarId(),
+    data.idAtividade,
+    data.protocolo || '',
+    data.etiqueta || '',
+    data.cliente || '',
+    data.tecnico || '',
+    data.empresa || '',
+    agora,
+    item.tipo || '',
+    item.codigo || '',
+    item.descricao || '',
+    Number(item.quantidade) || 0,
+    (item.seriais || []).join(' · '),
+    'PENDENTE',
+    '',
+    ''
+  ]));
+
+  const range = sheet.getRange(linhaBase, 1, linhas.length, HEADERS_CONTROLE_MATERIAL.length);
+  range.setNumberFormat('@STRING@'); // evita autoconversão de código/serial numérico
+  range.setValues(linhas);
+
+  return resposta('ok', { gravados: linhas.length });
+}
+
+function listarControleMaterial(ss) {
+  const sheet = garantirControleMaterial(ss);
+  if (sheet.getLastRow() < 2) return resposta('ok', { itens: [] });
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS_CONTROLE_MATERIAL.length).getValues();
+  const itens = data.map((row, i) => {
+    const obj = { rowIndex: i + 2 };
+    HEADERS_CONTROLE_MATERIAL.forEach((h, j) => obj[h] = row[j]);
+    return obj;
+  });
+  return resposta('ok', { itens: itens });
+}
+
+// Baixa por ATIVIDADE inteira (decisão do usuário) — marca todas as linhas
+// daquele 'ID Atividade' como BAIXADO de uma vez, igual concluirGeogrid/
+// aprovarGeogridLider já fazem: o nome de quem deu baixa vem explícito do
+// front-end (sessão OEM logada via NetturboAuth), o backend só exige que
+// venha preenchido.
+function darBaixaMaterial(ss, data) {
+  if (!data.idAtividade) return resposta('error', { message: 'idAtividade ausente' });
+  if (!data.baixadoPor) return resposta('error', { message: 'Informe quem está dando baixa.' });
+
+  const sheet = garantirControleMaterial(ss);
+  if (sheet.getLastRow() < 2) return resposta('ok', { atualizadas: 0 });
+
+  const idxIdAtividade = HEADERS_CONTROLE_MATERIAL.indexOf('ID Atividade');
+  const idxStatus = HEADERS_CONTROLE_MATERIAL.indexOf('Status Baixa') + 1;
+  const idxBaixadoPor = HEADERS_CONTROLE_MATERIAL.indexOf('Baixado Por') + 1;
+  const idxTimestampBaixa = HEADERS_CONTROLE_MATERIAL.indexOf('Timestamp Baixa') + 1;
+
+  const data2d = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS_CONTROLE_MATERIAL.length).getValues();
+  const agora = new Date().toLocaleString('pt-BR');
+  let atualizadas = 0;
+
+  data2d.forEach((row, i) => {
+    if (String(row[idxIdAtividade]) !== String(data.idAtividade)) return;
+    const rowIndex = i + 2;
+    sheet.getRange(rowIndex, idxStatus).setValue('BAIXADO');
+    sheet.getRange(rowIndex, idxBaixadoPor).setValue(data.baixadoPor);
+    sheet.getRange(rowIndex, idxTimestampBaixa, 1, 1).setNumberFormat('@STRING@');
+    sheet.getRange(rowIndex, idxTimestampBaixa).setValue(agora);
+    atualizadas++;
+  });
+
+  return resposta('ok', { atualizadas: atualizadas });
+}
+
+// ══════════════════════════════════════════════════════════════
 //  BACKFILL — roda UMA VEZ pra recalcular MTTR/MTTD de tudo que já
 //  está VALIDADA na planilha, usando a fórmula nova.
 //  Como rodar: selecione esta função no dropdown "Selecionar função"
@@ -2223,7 +2366,7 @@ function adicionarColunasNovas() {
     'Anexo Despacho URL','Anexo Despacho Nome','Mensagem Despacho','Link Medição','Anexos Despacho',
     'Tipo Cabo Fusionado','Fusionou Todas','Cor com Cor','Fusão Pareamento','Quantidade CEO Trabalhadas',
     'Tipo de Solicitação','Categoria 1','Categoria 2','Categoria 3','Categoria 4','SLA Horas','Prazo Limite',
-    'Conta Contábil','Nomenclatura Cabo CEO A','Nomenclatura Cabo CEO B'
+    'Conta Contábil','Nomenclatura Cabo CEO A','Nomenclatura Cabo CEO B','Etiqueta'
   ];
   novos.forEach(h => {
     if (headerRow.indexOf(h) === -1) {

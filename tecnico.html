@@ -81,13 +81,17 @@
     .toggle-btn{flex:1;padding:.55rem;border-radius:var(--radius);border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);font-size:.8rem;font-weight:600;cursor:pointer;text-align:center}
     .toggle-btn.on-yes{background:rgba(139,195,74,.12);border-color:var(--green);color:var(--green)}
     .toggle-btn.on-no{background:rgba(229,57,53,.08);border-color:var(--red);color:var(--red)}
-    .mat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.5rem;margin-top:.5rem}
-    .mat-item{display:flex;flex-direction:column;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.5rem;align-items:center;gap:.3rem}
-    .mat-item span{font-size:.62rem;font-weight:600;text-align:center;color:var(--text-dim);line-height:1.25}
-    .mat-item input{width:100%;text-align:center;padding:.35rem;font-size:.85rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text)}
-    .mat-extra-row{display:flex;gap:.4rem;margin-top:.5rem}
-    .mat-extra-row input{flex:1;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.4rem .5rem}
-    .mat-extra-row button{width:38px;background:var(--accent-dark);color:#fff;border:none;border-radius:var(--radius);font-size:1.1rem;cursor:pointer}
+    .mat-busca{margin-top:.5rem}
+    .mat-busca input{width:100%;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.55rem .7rem;font-size:.85rem}
+    .mat-busca-dica{font-size:.68rem;color:var(--text-muted);padding:.5rem 0}
+    .mat-selecao{margin-top:.5rem;display:flex;flex-direction:column;gap:.4rem}
+    .mat-selecao-desc{font-size:.75rem;color:var(--text-dim)}
+    .mat-selecao input{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);padding:.5rem .7rem;font-size:.85rem}
+    .mat-lista-itens{margin-top:.6rem;display:flex;flex-direction:column;gap:.35rem}
+    .mat-item-linha{display:flex;align-items:center;gap:.5rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.45rem .6rem}
+    .mat-item-tipo{font-size:.62rem;font-weight:700;color:var(--accent);background:rgba(168,201,60,.12);border-radius:4px;padding:.15rem .4rem;flex-shrink:0}
+    .mat-item-desc{font-size:.72rem;color:var(--text-dim);flex:1;min-width:0}
+    .mat-item-remover{background:transparent;border:none;color:var(--red);font-size:1.2rem;cursor:pointer;line-height:1;padding:0 .3rem}
 
     .ceo-options{display:flex;flex-direction:column;gap:.4rem}
     .ceo-opt{padding:.55rem .75rem;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);font-size:.78rem;cursor:pointer;color:var(--text-dim)}
@@ -665,9 +669,8 @@ const MATRIZ_SLA = [
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva OEM",cat4:"",sla:4},
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Terceiro (DER/Cia Elétrica)",cat4:"",sla:4},
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Validação",cat4:"",sla:4},
-  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Acompanhamento Troca de Poste",cat4:"",sla:8},
-  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Acompanhamento Conjunta",cat4:"",sla:8},
-  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Acompamento Fiscalização",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Acompanhamento Cia Energia",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Preventiva",cat4:"",sla:8},
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Fiscalização de Rede",cat4:"",sla:8},
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Chamado Improcedente",cat4:"",sla:8},
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Cliente",cat4:"",sla:8},
@@ -836,6 +839,7 @@ const MATRIZ_SLA = [
   {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF - STAR LEO",cat3:"Novo Produto",cat4:"",sla:4},
   {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF - STAR LEO",cat3:"Upgrade",cat4:"",sla:4},
   {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF - STAR LEO",cat3:"Downgrade",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"Vistoria PPI",cat2:"",cat3:"",cat4:"",sla:24},
   {tipo:"Preventiva",cat1:"Preventiva de Rede",cat2:"Preventiva Rede (Externa)",cat3:"",cat4:"",sla:8},
   {tipo:"Preventiva",cat1:"Preventiva de Rede",cat2:"Preventiva Rede (Pós Massiva)",cat3:"",cat4:"",sla:8},
   {tipo:"Preventiva",cat1:"Preventiva de Rede",cat2:"Preventiva Rede (Corretiva Cliente)",cat3:"",cat4:"",sla:8},
@@ -855,9 +859,7 @@ const MATRIZ_SLA = [
   {tipo:"Medição",cat1:"Retirada Equipamento",cat2:"Retirada Realizada",cat3:"",cat4:"",sla:24},
   {tipo:"Medição",cat1:"Retirada Equipamento",cat2:"Retirada Não Realizada",cat3:"",cat4:"",sla:24},
   {tipo:"Medição",cat1:"Retirada Equipamento",cat2:"Retirada Pendente",cat3:"",cat4:"",sla:24},
-  {tipo:"Medição",cat1:"Vistoria",cat2:"PPI",cat3:"",cat4:"",sla:24},
-  {tipo:"Medição",cat1:"Vistoria",cat2:"Inspeção de Qualidade",cat3:"",cat4:"",sla:24},
-  {tipo:"Medição",cat1:"Vistoria",cat2:"Fiscalização de Campo",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Regularização de rede",cat2:"",cat3:"",cat4:"",sla:24},
   {tipo:"Implantação",cat1:"Lançamento Externo",cat2:"Lançamento Diurno",cat3:"",cat4:"",sla:48},
   {tipo:"Implantação",cat1:"Lançamento Externo",cat2:"Lançamento Noturno",cat3:"",cat4:"",sla:48},
   {tipo:"Implantação",cat1:"Lançamento Externo",cat2:"Lançamento Subterrâneo",cat3:"",cat4:"",sla:48},
@@ -1194,7 +1196,10 @@ function restaurarRascunho(rowIndex){
 
   if(draft.materiais){
     MATERIAIS_STATE[rowIndex] = draft.materiais;
-    if(draft.materiais.usaMat === true) document.getElementById('mat-sim-'+rowIndex)?.classList.add('on-yes');
+    if(draft.materiais.usaMat === true){
+      document.getElementById('mat-sim-'+rowIndex)?.classList.add('on-yes');
+      garantirCatalogoMateriais().then(()=>renderListaMateriais(rowIndex));
+    }
     if(draft.materiais.usaMat === false) document.getElementById('mat-nao-'+rowIndex)?.classList.add('on-no');
     renderListaMateriais(rowIndex);
   }
@@ -1388,6 +1393,7 @@ window.salvarECopiarApoio = async function(rowIndex){
   }
 
   const a = ATIVIDADES_CACHE.find(x=>x.rowIndex === rowIndex) || {};
+  enviarControleMaterial(a['ID Atividade'], a['Protocolo O&M']||a['Protocolo NOC']||'', a['Etiqueta']||'', a['Cliente']||'', a['Técnico Apoio']||'', a['Empresa Apoio']||'', montarItensMateriaisPayload(rowIndex));
   let t = '*MEU REGISTRO — EQUIPE DE APOIO*\n';
   t += '_Uso pessoal — não substitui o RFO oficial do titular_\n\n';
   t += 'CLIENTE: ' + (a['Cliente']||'—') + '\n';
@@ -1635,51 +1641,197 @@ function gpsWidget(rowIndex, key, valorSalvo){
     </div>`;
 }
 
-// ── MATERIAIS (mesma lista fixa do RFO Técnico) ─────────────────
-const MAT_FIBRA = ['CABO 12F','CABO 4F','CABO 24F','CABO 72F','ALÇA VERMELHA','MINI FISC','PLAQUETA NTT','FIO DE ESPINAR','FISC 48FO','EMENDA DROP 12F (PASTEL)'];
-let MATERIAIS_STATE = {}; // rowIndex -> { usaMat: true/false/null, itens: [{n,q,livre}] }
+// ── CONTROLE DE MATERIAL (INS/ATN, busca no catálogo) ───────────
+// Substitui a antiga grade fixa de 10 materiais de fibra: agora o técnico
+// escolhe INS (insumo — só quantidade) ou ATN (patrimônio — quantidade +
+// 1 serial por unidade) e busca no catálogo real (aba CATALOGO_MATERIAIS,
+// ~870 itens vindos de MELHORIAS DE REDE.xlsx). O resultado vira uma lista
+// estruturada por atividade, enviada em paralelo ao SALVAR_OCORRENCIA via
+// SALVAR_CONTROLE_MATERIAL (ver solicitarValidacao/salvarECopiarApoio) —
+// é o que alimenta a tela de baixa do OEM (controle_material.html).
+let CATALOGO_MATERIAIS_CACHE = null; // null = ainda não buscou; [] = buscou e veio vazio
+let MATERIAIS_STATE = {}; // rowIndex -> { usaMat, categoriaAtiva, busca, selecionado, itens:[{tipo,codigo,descricao,quantidade,seriais}] }
+
+async function garantirCatalogoMateriais(){
+  if(CATALOGO_MATERIAIS_CACHE) return CATALOGO_MATERIAIS_CACHE;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_CATALOGO_MATERIAIS');
+    const result = await resp.json();
+    CATALOGO_MATERIAIS_CACHE = result.itens || [];
+  }catch(err){
+    console.error(err);
+    CATALOGO_MATERIAIS_CACHE = [];
+  }
+  return CATALOGO_MATERIAIS_CACHE;
+}
 
 window.setMaterialTecnico = function(rowIndex, sim){
   document.getElementById('mat-sim-'+rowIndex).classList.toggle('on-yes', sim);
   document.getElementById('mat-nao-'+rowIndex).classList.toggle('on-no', !sim);
   if(!MATERIAIS_STATE[rowIndex] || MATERIAIS_STATE[rowIndex].usaMat !== sim){
-    MATERIAIS_STATE[rowIndex] = { usaMat: sim, itens: sim ? MAT_FIBRA.map(m=>({n:m,q:'',livre:false})) : [] };
+    MATERIAIS_STATE[rowIndex] = { usaMat: sim, categoriaAtiva: null, busca: '', selecionado: null, itens: (MATERIAIS_STATE[rowIndex]||{}).itens || [] };
   }
+  if(sim) garantirCatalogoMateriais().then(()=>renderListaMateriais(rowIndex));
   renderListaMateriais(rowIndex);
 };
+
+window.selecionarCategoriaMaterial = function(rowIndex, tipo){
+  const st = MATERIAIS_STATE[rowIndex];
+  st.categoriaAtiva = st.categoriaAtiva === tipo ? null : tipo;
+  st.busca = '';
+  st.selecionado = null;
+  renderListaMateriais(rowIndex);
+};
+
+window.buscarMaterial = function(rowIndex, texto){
+  MATERIAIS_STATE[rowIndex].busca = texto;
+  renderResultadosMaterial(rowIndex);
+};
+
+window.escolherResultadoMaterial = function(rowIndex, tipo, codigo){
+  const item = (CATALOGO_MATERIAIS_CACHE||[]).find(i=>i.tipo===tipo && i.codigo===codigo);
+  if(!item) return;
+  MATERIAIS_STATE[rowIndex].selecionado = { tipo: item.tipo, codigo: item.codigo, descricao: item.descricao, quantidade: '', seriais: [] };
+  renderListaMateriais(rowIndex);
+};
+
+window.cancelarSelecaoMaterial = function(rowIndex){
+  MATERIAIS_STATE[rowIndex].selecionado = null;
+  renderListaMateriais(rowIndex);
+};
+
+// INS só atualiza o estado (sem re-render — nada mais na tela depende da
+// quantidade). ATN precisa recriar os campos de serial quando a quantidade
+// muda, então essa parte só reage em onchange (perde o foco a cada tecla se
+// fosse oninput) — ver o input de quantidade em renderListaMateriais.
+window.atualizarQtdSelecionado = function(rowIndex, val){
+  MATERIAIS_STATE[rowIndex].selecionado.quantidade = val;
+};
+
+window.atualizarQtdSelecionadoAtn = function(rowIndex, val){
+  const sel = MATERIAIS_STATE[rowIndex].selecionado;
+  sel.quantidade = val;
+  const n = Math.max(0, Number(val)||0);
+  const atuais = sel.seriais;
+  sel.seriais = Array.from({length:n}, (_,i)=>atuais[i]||'');
+  renderListaMateriais(rowIndex);
+};
+
+window.atualizarSerialSelecionado = function(rowIndex, idx, val){
+  MATERIAIS_STATE[rowIndex].selecionado.seriais[idx] = val;
+};
+
+window.confirmarAdicaoMaterial = function(rowIndex){
+  const sel = MATERIAIS_STATE[rowIndex].selecionado;
+  const qtd = Number(sel.quantidade);
+  if(!qtd || qtd <= 0){ showToast('Informe a quantidade.'); return; }
+  if(sel.tipo === 'ATN' && sel.seriais.some(s=>!String(s||'').trim())){
+    showToast('Informe o serial de cada unidade.'); return;
+  }
+  MATERIAIS_STATE[rowIndex].itens.push({ tipo: sel.tipo, codigo: sel.codigo, descricao: sel.descricao, quantidade: qtd, seriais: sel.seriais.slice() });
+  MATERIAIS_STATE[rowIndex].selecionado = null;
+  MATERIAIS_STATE[rowIndex].busca = '';
+  renderListaMateriais(rowIndex);
+};
+
+window.removerItemMaterial = function(rowIndex, idx){
+  MATERIAIS_STATE[rowIndex].itens.splice(idx, 1);
+  renderListaMateriais(rowIndex);
+};
+
+function renderResultadosMaterial(rowIndex){
+  const el = document.getElementById('mat-resultados-'+rowIndex);
+  if(!el) return;
+  const st = MATERIAIS_STATE[rowIndex];
+  const termo = st.busca.trim().toLowerCase();
+  if(termo.length < 2){ el.innerHTML = '<div class="mat-busca-dica">Digite pelo menos 2 letras pra buscar...</div>'; return; }
+  const todos = (CATALOGO_MATERIAIS_CACHE||[]).filter(i=>i.tipo===st.categoriaAtiva &&
+    (i.codigo.toLowerCase().includes(termo) || i.descricao.toLowerCase().includes(termo)));
+  if(!todos.length){ el.innerHTML = '<div class="mat-busca-dica">Nada encontrado.</div>'; return; }
+  const mostrar = todos.slice(0, 20);
+  el.innerHTML = mostrar.map(i=>
+    `<div class="causa-item" onclick="escolherResultadoMaterial(${rowIndex},'${i.tipo}','${i.codigo}')">${i.descricao} <span style="opacity:.6">(${i.codigo})</span></div>`
+  ).join('') + (todos.length > mostrar.length ? `<div class="mat-busca-dica">+${todos.length-mostrar.length} outros — refine a busca</div>` : '');
+}
 
 function renderListaMateriais(rowIndex){
   const cont = document.getElementById('listamat-'+rowIndex);
   const estado = MATERIAIS_STATE[rowIndex];
   if(!cont || !estado || !estado.usaMat){ if(cont) cont.innerHTML=''; return; }
 
-  cont.innerHTML = `<div class="mat-grid">${estado.itens.map((m,idx)=>
-    m.livre
-      ? `<div class="mat-item"><input type="text" placeholder="Material" value="${m.n}" oninput="atualizarMatLivre(${rowIndex},${idx},this.value)"/><input type="number" placeholder="Qtd" min="0" value="${m.q}" oninput="atualizarMatQtd(${rowIndex},${idx},this.value)"/></div>`
-      : `<div class="mat-item"><span>${m.n}</span><input type="number" placeholder="0" min="0" value="${m.q}" oninput="atualizarMatQtd(${rowIndex},${idx},this.value)"/></div>`
-  ).join('')}</div>
-  <div class="mat-extra-row">
-    <input type="text" id="matextra-n-${rowIndex}" placeholder="Outro material..."/>
-    <input type="number" id="matextra-q-${rowIndex}" placeholder="Qtd" min="0" style="max-width:70px"/>
-    <button type="button" onclick="adicionarMatExtra(${rowIndex})">+</button>
-  </div>`;
+  const itensHtml = estado.itens.length ? `<div class="mat-lista-itens">${estado.itens.map((it,idx)=>`
+    <div class="mat-item-linha">
+      <span class="mat-item-tipo">${it.tipo}</span>
+      <span class="mat-item-desc">${it.descricao} · Qtd: ${it.quantidade}${it.seriais.length?' · SN: '+it.seriais.join(', '):''}</span>
+      <button type="button" class="mat-item-remover" onclick="removerItemMaterial(${rowIndex},${idx})">×</button>
+    </div>`).join('')}</div>` : '';
+
+  let painelBusca = '';
+  if(estado.categoriaAtiva){
+    const sel = estado.selecionado;
+    if(sel){
+      const seriaisHtml = sel.tipo === 'ATN' ? sel.seriais.map((s,idx)=>
+        `<input type="text" placeholder="Serial ${idx+1}" value="${s}" oninput="atualizarSerialSelecionado(${rowIndex},${idx},this.value)"/>`
+      ).join('') : '';
+      const qtdHandler = sel.tipo === 'ATN'
+        ? `oninput="atualizarQtdSelecionado(${rowIndex},this.value)" onchange="atualizarQtdSelecionadoAtn(${rowIndex},this.value)"`
+        : `oninput="atualizarQtdSelecionado(${rowIndex},this.value)"`;
+      painelBusca = `<div class="mat-selecao">
+        <div class="mat-selecao-desc">${sel.descricao} <span style="opacity:.6">(${sel.codigo})</span></div>
+        <input type="number" min="1" placeholder="Quantidade" value="${sel.quantidade}" ${qtdHandler}/>
+        ${seriaisHtml}
+        <div style="display:flex;gap:.4rem">
+          <button type="button" class="btn-acao btn-validar" style="flex:1" onclick="confirmarAdicaoMaterial(${rowIndex})">Adicionar</button>
+          <button type="button" class="btn-acao" style="background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)" onclick="cancelarSelecaoMaterial(${rowIndex})">Cancelar</button>
+        </div>
+      </div>`;
+    } else {
+      painelBusca = `<div class="mat-busca">
+        <input type="text" placeholder="Buscar ${estado.categoriaAtiva}..." value="${estado.busca}" oninput="buscarMaterial(${rowIndex},this.value)"/>
+        <div id="mat-resultados-${rowIndex}"></div>
+      </div>`;
+    }
+  }
+
+  cont.innerHTML = `
+    <div class="toggle-row" style="margin-top:.5rem">
+      <button type="button" class="toggle-btn ${estado.categoriaAtiva==='INS'?'on-yes':''}" onclick="selecionarCategoriaMaterial(${rowIndex},'INS')">INS (insumo)</button>
+      <button type="button" class="toggle-btn ${estado.categoriaAtiva==='ATN'?'on-yes':''}" onclick="selecionarCategoriaMaterial(${rowIndex},'ATN')">ATN (patrimônio)</button>
+    </div>
+    ${painelBusca}
+    ${itensHtml}`;
+
+  if(estado.categoriaAtiva && !estado.selecionado) renderResultadosMaterial(rowIndex);
 }
 
-window.atualizarMatQtd = function(rowIndex, idx, val){ MATERIAIS_STATE[rowIndex].itens[idx].q = val; };
-window.atualizarMatLivre = function(rowIndex, idx, val){ MATERIAIS_STATE[rowIndex].itens[idx].n = val; };
-window.adicionarMatExtra = function(rowIndex){
-  const nome = document.getElementById('matextra-n-'+rowIndex).value.trim();
-  const qtd = document.getElementById('matextra-q-'+rowIndex).value;
-  if(!nome){ showToast('Informe o nome do material.'); return; }
-  MATERIAIS_STATE[rowIndex].itens.push({ n:nome, q:qtd||'1', livre:true });
-  renderListaMateriais(rowIndex);
-};
-
+// Texto livre pra exibição/compatibilidade (dashboards e validação do líder
+// ainda leem a coluna 'Materiais' como string) — a lista estruturada de
+// verdade vai por SALVAR_CONTROLE_MATERIAL, ver montarItensMateriaisPayload.
 function montarStringMateriais(rowIndex){
   const estado = MATERIAIS_STATE[rowIndex];
   if(!estado || estado.usaMat !== true) return 'Não houve';
-  const lista = estado.itens.filter(m=>m.n && Number(m.q)>0).map(m=>m.n+': '+m.q);
+  const lista = estado.itens.map(it => `${it.tipo} ${it.descricao}: ${it.quantidade}${it.seriais.length?' (SN: '+it.seriais.join(', ')+')':''}`);
   return lista.length ? lista.join(' · ') : 'Nenhum item informado';
+}
+
+function montarItensMateriaisPayload(rowIndex){
+  const estado = MATERIAIS_STATE[rowIndex];
+  if(!estado || estado.usaMat !== true || !estado.itens.length) return [];
+  return estado.itens.map(it => ({ tipo: it.tipo, codigo: it.codigo, descricao: it.descricao, quantidade: it.quantidade, seriais: it.seriais }));
+}
+
+// Dispara em paralelo ao SALVAR_OCORRENCIA/SALVAR_MATERIAIS_APOIO — não bloqueia
+// o fluxo principal se falhar (o RFO em si já foi salvo), só loga no console.
+async function enviarControleMaterial(idAtividade, protocolo, etiqueta, cliente, tecnico, empresa, itens){
+  if(!itens.length) return;
+  try{
+    await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'SALVAR_CONTROLE_MATERIAL', idAtividade, protocolo, etiqueta, cliente, tecnico, empresa, itens })
+    });
+  }catch(err){
+    console.error('Erro ao salvar controle de material:', err);
+  }
 }
 
 window.selecionarTipo = function(rowIndex, tipo){
@@ -2474,6 +2626,10 @@ window.solicitarValidacao = async function(rowIndex){
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao salvar.')); return; }
+
+    if(!isMedicao){
+      enviarControleMaterial(atividadeAtual['ID Atividade'], atividadeAtual['Protocolo O&M']||atividadeAtual['Protocolo NOC']||'', atividadeAtual['Etiqueta']||'', atividadeAtual['Cliente']||'', atividadeAtual['Técnico']||'', atividadeAtual['Empresa']||'', montarItensMateriaisPayload(rowIndex));
+    }
 
     copiarRelatorioWhats(rowIndex, { tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, quantidadeCeo, diagramas: diagramasSerializados });
     limparRascunho(rowIndex);

@@ -68,11 +68,14 @@
     /* Filtro por Tipo de Solicitação da Esteira de Atividades — mesmo padrão de
        abas já usado nos dashboards (dashboard_gestao.html/dashboard_manutencao.html). */
     .tipo-tabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.8rem}
-    .tipo-tab{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+    .tipo-tab{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
     .tipo-tab.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
+    .tipo-tab-count{background:rgba(0,0,0,.25);border-radius:10px;padding:.05rem .45rem;font-size:.68rem}
+    .tipo-tab.active .tipo-tab-count{background:rgba(168,201,60,.25)}
     .btn-col-toggle{padding:.1rem .45rem;font-size:.62rem;margin-left:auto}
     .atv-card{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.7rem .8rem;margin-bottom:.6rem}
     .atv-card .protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.85rem}
+    .atv-card .etiqueta{font-family:'Rajdhani',sans-serif;font-weight:600;color:var(--text-dim);font-size:.72rem;letter-spacing:.03em}
     .atv-card .cliente{font-size:.78rem;margin-top:.15rem}
     .atv-card .meta{font-size:.68rem;color:var(--text-muted);margin-top:.3rem;line-height:1.5}
     .edit-label{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:.15rem}
@@ -164,6 +167,7 @@
         <div class="field-grid">
           <div class="field"><label>Motivo</label><input id="f_motivo"/></div>
           <div class="field"><label>Cliente</label><input id="f_cliente"/></div>
+          <div class="field"><label>Etiqueta / ID</label><input id="f_etiqueta"/></div>
           <div class="field full"><label>Endereço</label><input id="f_endereco"/></div>
           <div class="field"><label>GPS (link)</label><input id="f_gps"/></div>
           <div class="field"><label>Data (NOC)</label><input id="f_dataNoc"/></div>
@@ -229,14 +233,14 @@
     </div>
     <div class="card-body">
       <div class="tipo-tabs" id="tiposEsteiraTabs">
-        <button type="button" class="tipo-tab active" data-tipo="TODOS" onclick="selecionarFiltroEsteira('TODOS')">Todos</button>
-        <button type="button" class="tipo-tab" data-tipo="Manutenção" onclick="selecionarFiltroEsteira('Manutenção')">Manutenção</button>
-        <button type="button" class="tipo-tab" data-tipo="Preventiva" onclick="selecionarFiltroEsteira('Preventiva')">Preventiva</button>
-        <button type="button" class="tipo-tab" data-tipo="Transmissão" onclick="selecionarFiltroEsteira('Transmissão')">Transmissão</button>
-        <button type="button" class="tipo-tab" data-tipo="Implantação" onclick="selecionarFiltroEsteira('Implantação')">Implantação</button>
-        <button type="button" class="tipo-tab" data-tipo="GTD" onclick="selecionarFiltroEsteira('GTD')">GTD</button>
-        <button type="button" class="tipo-tab" data-tipo="Pós Vendas" onclick="selecionarFiltroEsteira('Pós Vendas')">Pós Vendas</button>
-        <button type="button" class="tipo-tab" data-tipo="Medição" onclick="selecionarFiltroEsteira('Medição')">Medição</button>
+        <button type="button" class="tipo-tab active" data-tipo="TODOS" onclick="selecionarFiltroEsteira('TODOS')">Todos <span class="tipo-tab-count">0</span></button>
+        <button type="button" class="tipo-tab" data-tipo="Manutenção" onclick="selecionarFiltroEsteira('Manutenção')">Manutenção <span class="tipo-tab-count">0</span></button>
+        <button type="button" class="tipo-tab" data-tipo="Preventiva" onclick="selecionarFiltroEsteira('Preventiva')">Preventiva <span class="tipo-tab-count">0</span></button>
+        <button type="button" class="tipo-tab" data-tipo="Transmissão" onclick="selecionarFiltroEsteira('Transmissão')">Transmissão <span class="tipo-tab-count">0</span></button>
+        <button type="button" class="tipo-tab" data-tipo="Implantação" onclick="selecionarFiltroEsteira('Implantação')">Implantação <span class="tipo-tab-count">0</span></button>
+        <button type="button" class="tipo-tab" data-tipo="GTD" onclick="selecionarFiltroEsteira('GTD')">GTD <span class="tipo-tab-count">0</span></button>
+        <button type="button" class="tipo-tab" data-tipo="Pós Vendas" onclick="selecionarFiltroEsteira('Pós Vendas')">Pós Vendas <span class="tipo-tab-count">0</span></button>
+        <button type="button" class="tipo-tab" data-tipo="Medição" onclick="selecionarFiltroEsteira('Medição')">Medição <span class="tipo-tab-count">0</span></button>
       </div>
       <div class="board" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
         <div>
@@ -313,9 +317,8 @@ const MATRIZ_SLA = [
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva OEM",cat4:"",sla:4},
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Terceiro (DER/Cia Elétrica)",cat4:"",sla:4},
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Rompimento",cat3:"Improdutiva Validação",cat4:"",sla:4},
-  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Acompanhamento Troca de Poste",cat4:"",sla:8},
-  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Acompanhamento Conjunta",cat4:"",sla:8},
-  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Acompamento Fiscalização",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Acompanhamento Cia Energia",cat4:"",sla:8},
+  {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Preventiva",cat4:"",sla:8},
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Acompanhamento / Fiscalização",cat3:"Fiscalização de Rede",cat4:"",sla:8},
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Chamado Improcedente",cat4:"",sla:8},
   {tipo:"Manutenção",cat1:"Manutenção - Rede Externa",cat2:"Improdutiva Acompanhamento / Fiscalização",cat3:"Improdutiva Cliente",cat4:"",sla:8},
@@ -484,6 +487,7 @@ const MATRIZ_SLA = [
   {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF - STAR LEO",cat3:"Novo Produto",cat4:"",sla:4},
   {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF - STAR LEO",cat3:"Upgrade",cat4:"",sla:4},
   {tipo:"GTD",cat1:"GTD -Ativação - O&M",cat2:"REDE RF - STAR LEO",cat3:"Downgrade",cat4:"",sla:4},
+  {tipo:"GTD",cat1:"Vistoria PPI",cat2:"",cat3:"",cat4:"",sla:24},
   {tipo:"Preventiva",cat1:"Preventiva de Rede",cat2:"Preventiva Rede (Externa)",cat3:"",cat4:"",sla:8},
   {tipo:"Preventiva",cat1:"Preventiva de Rede",cat2:"Preventiva Rede (Pós Massiva)",cat3:"",cat4:"",sla:8},
   {tipo:"Preventiva",cat1:"Preventiva de Rede",cat2:"Preventiva Rede (Corretiva Cliente)",cat3:"",cat4:"",sla:8},
@@ -503,9 +507,7 @@ const MATRIZ_SLA = [
   {tipo:"Medição",cat1:"Retirada Equipamento",cat2:"Retirada Realizada",cat3:"",cat4:"",sla:24},
   {tipo:"Medição",cat1:"Retirada Equipamento",cat2:"Retirada Não Realizada",cat3:"",cat4:"",sla:24},
   {tipo:"Medição",cat1:"Retirada Equipamento",cat2:"Retirada Pendente",cat3:"",cat4:"",sla:24},
-  {tipo:"Medição",cat1:"Vistoria",cat2:"PPI",cat3:"",cat4:"",sla:24},
-  {tipo:"Medição",cat1:"Vistoria",cat2:"Inspeção de Qualidade",cat3:"",cat4:"",sla:24},
-  {tipo:"Medição",cat1:"Vistoria",cat2:"Fiscalização de Campo",cat3:"",cat4:"",sla:24},
+  {tipo:"Medição",cat1:"Regularização de rede",cat2:"",cat3:"",cat4:"",sla:24},
   {tipo:"Implantação",cat1:"Lançamento Externo",cat2:"Lançamento Diurno",cat3:"",cat4:"",sla:48},
   {tipo:"Implantação",cat1:"Lançamento Externo",cat2:"Lançamento Noturno",cat3:"",cat4:"",sla:48},
   {tipo:"Implantação",cat1:"Lançamento Externo",cat2:"Lançamento Subterrâneo",cat3:"",cat4:"",sla:48},
@@ -894,6 +896,7 @@ function processarMascara(){
 
   document.getElementById('f_motivo').value = campos.motivo;
   document.getElementById('f_cliente').value = campos.cliente;
+  document.getElementById('f_etiqueta').value = campos.etiqueta;
   document.getElementById('f_endereco').value = campos.endereco;
   document.getElementById('f_gps').value = campos.gps;
   document.getElementById('f_dataNoc').value = campos.dataNoc;
@@ -927,6 +930,7 @@ async function confirmarAtividade(){
     acao: 'CRIAR_ATIVIDADE',
     motivo:        document.getElementById('f_motivo').value.trim(),
     cliente:       document.getElementById('f_cliente').value.trim(),
+    etiqueta:      document.getElementById('f_etiqueta').value.trim(),
     endereco:      document.getElementById('f_endereco').value.trim(),
     gps:           document.getElementById('f_gps').value.trim(),
     dataNoc:       document.getElementById('f_dataNoc').value.trim(),
@@ -1106,6 +1110,20 @@ window.selecionarFiltroEsteira = function(tipo){
   renderEsteira();
 };
 
+// Mostra, em cada aba, quantas atividades (de qualquer status/coluna) daquele
+// setor existem no total — mesma visão de contagem já usada em geogrid.html
+// e controle_material.html.
+function atualizarContagensTabsEsteira(){
+  document.querySelectorAll('#tiposEsteiraTabs .tipo-tab').forEach(btn => {
+    const tipo = btn.dataset.tipo;
+    const badge = btn.querySelector('.tipo-tab-count');
+    if(!badge) return;
+    badge.textContent = tipo === 'TODOS'
+      ? ATIVIDADES.length
+      : ATIVIDADES.filter(a => a['Tipo de Solicitação'] === tipo).length;
+  });
+};
+
 // Minimizar/expandir TODO o conteúdo de uma coluna de uma vez (diferente do
 // collapse individual de cada card) — útil pra focar numa coluna só quando as
 // outras já foram tratadas. Estado fica só no botão/div (não é redesenhado por
@@ -1122,6 +1140,7 @@ window.toggleColunaEsteira = function(coluna){
 };
 
 function renderEsteira(){
+  atualizarContagensTabsEsteira();
   const porTipoEsteira = a => FILTRO_TIPO_ESTEIRA === 'TODOS' || a['Tipo de Solicitação'] === FILTRO_TIPO_ESTEIRA;
   const aguardando = ATIVIDADES.filter(a => a['Status'] === 'AGUARDANDO_DESPACHO' && porTipoEsteira(a));
   const emAndamento = ATIVIDADES.filter(a => ['DESPACHADA','INICIADA','EM_CAMPO','NAO_VALIDADA'].includes(a['Status']) && porTipoEsteira(a));
@@ -1151,6 +1170,7 @@ function renderEsteira(){
     <details class="atv-card status-aguardando">
       <summary>
         <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
+        ${a['Etiqueta'] ? `<div class="etiqueta">Etiqueta: ${a['Etiqueta']}</div>` : ''}
         <div class="cliente">${a['Cliente']||'—'}</div>
         ${blocoPrazoLimite(a)}
         ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
@@ -1194,6 +1214,7 @@ function renderEsteira(){
     <details class="atv-card status-despachada">
       <summary>
         <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
+        ${a['Etiqueta'] ? `<div class="etiqueta">Etiqueta: ${a['Etiqueta']}</div>` : ''}
         <div class="cliente">${a['Cliente']||'—'}</div>
         <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br><b>${statusComHorario(a)}</b></div>
         ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
@@ -1224,6 +1245,7 @@ function renderEsteira(){
     <details class="atv-card" style="border-left:3px solid #ab47bc">
       <summary>
         <div class="protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${a['Tipo de Solicitação'] ? ` · ${a['Tipo de Solicitação'].toUpperCase()}` : ''}</div>
+        ${a['Etiqueta'] ? `<div class="etiqueta">Etiqueta: ${a['Etiqueta']}</div>` : ''}
         <div class="cliente">${a['Cliente']||'—'}</div>
         <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}${a['CEO'] ? ` · CEO: ${formatarCEO(a['CEO'])}` : ''}</div>
         ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}

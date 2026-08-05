@@ -227,10 +227,6 @@
           <label>Valor do mês (R$)</label>
           <input type="number" id="inputValorOrcamento" min="0" step="0.01" placeholder="Ex: 100000"/>
         </div>
-        <div class="campo">
-          <label>Registrado por</label>
-          <input type="text" id="inputRegistradoPorOrcamento" placeholder="Seu nome"/>
-        </div>
         <button class="btn btn-accent" onclick="registrarOrcamento()">Registrar valor do mês</button>
       </div>
     </div>
@@ -628,15 +624,18 @@ function renderBudget(mes){
   }).join('');
 }
 
+// "Registrado por" não é mais um campo de texto livre — vem direto do login
+// individual por PIN (auth.js), já que quem está logado é a própria pessoa
+// que está registrando (pedido do usuário, depois da migração pra login
+// individual em todas as telas de liderança).
 window.registrarOrcamento = async function(){
   const mes = document.getElementById('mesFiltro').value;
   const categoria = document.getElementById('selContaContabilOrcamento').value;
   const valor = document.getElementById('inputValorOrcamento').value;
-  const registradoPor = document.getElementById('inputRegistradoPorOrcamento').value.trim();
+  const registradoPor = NetturboAuth.usuario().nome;
   if(!mes){ alert('Selecione o mês no filtro antes de registrar.'); return; }
   if(!categoria){ alert('Selecione a Conta Contábil antes de registrar.'); return; }
   if(valor === '' || Number(valor) < 0){ alert('Informe um valor válido.'); return; }
-  if(!registradoPor){ alert('Informe quem está registrando.'); return; }
 
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
