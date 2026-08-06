@@ -159,7 +159,7 @@ function iniciarApp(){
 let _ultimaChaveRenderAprov = null;
 async function carregarAprovacao(){
   try{
-    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA&apenasAbertas=true');
     const result = await resp.json();
     const atividades = result.atividades || [];
     const chave = JSON.stringify(atividades);

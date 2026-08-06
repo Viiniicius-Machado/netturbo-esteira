@@ -208,13 +208,12 @@ function iniciarApp(){
 
 async function carregarMapaTipoAtividade(){
   try{
-    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_MAPA_TIPO_ATIVIDADE');
     const result = await resp.json();
-    MAPA_TIPO_POR_ATIVIDADE = {};
-    (result.atividades || []).forEach(a => { MAPA_TIPO_POR_ATIVIDADE[a['ID Atividade']] = a['Tipo de Solicitação']; });
+    MAPA_TIPO_POR_ATIVIDADE = result.mapa || {};
     renderTabela();
   }catch(err){
-    console.error('Erro ao carregar LISTAR_ESTEIRA (filtro por setor fica sem efeito):', err);
+    console.error('Erro ao carregar LISTAR_MAPA_TIPO_ATIVIDADE (filtro por setor fica sem efeito):', err);
   }
 }
 window.carregarMapaTipoAtividade = carregarMapaTipoAtividade;

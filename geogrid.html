@@ -234,13 +234,13 @@ function iniciarApp(){
 }
 
 async function carregarGeogrid(){
-  // Buscas independentes de propósito (Promise.allSettled) — a ESTEIRA é a
-  // planilha mestre, bem maior/mais lenta que o GEOGRID; se ela falhar ou
-  // demorar, a fila do GEOGRID não pode travar por causa disso. Se a ESTEIRA
-  // falhar, o filtro por setor só fica temporariamente sem efeito.
-  const [resGeogrid, resEsteira] = await Promise.allSettled([
+  // Buscas independentes de propósito (Promise.allSettled) — o mapa tipo-por-
+  // atividade é só pro filtro por setor; se ele falhar ou demorar, a fila do
+  // GEOGRID não pode travar por causa disso, só fica temporariamente sem efeito
+  // o filtro por setor.
+  const [resGeogrid, resMapa] = await Promise.allSettled([
     fetch(APPS_SCRIPT_URL + '?acao=LISTAR_GEOGRID').then(r=>r.json()),
-    fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA').then(r=>r.json())
+    fetch(APPS_SCRIPT_URL + '?acao=LISTAR_MAPA_TIPO_ATIVIDADE').then(r=>r.json())
   ]);
 
   if(resGeogrid.status === 'fulfilled'){
@@ -250,11 +250,10 @@ async function carregarGeogrid(){
     showToast('Erro ao carregar a fila.');
   }
 
-  if(resEsteira.status === 'fulfilled'){
-    MAPA_TIPO_POR_ATIVIDADE = {};
-    (resEsteira.value.atividades || []).forEach(a => { MAPA_TIPO_POR_ATIVIDADE[a['ID Atividade']] = a['Tipo de Solicitação']; });
+  if(resMapa.status === 'fulfilled'){
+    MAPA_TIPO_POR_ATIVIDADE = resMapa.value.mapa || {};
   } else {
-    console.error('Erro ao carregar LISTAR_ESTEIRA (filtro por setor fica sem efeito):', resEsteira.reason);
+    console.error('Erro ao carregar LISTAR_MAPA_TIPO_ATIVIDADE (filtro por setor fica sem efeito):', resMapa.reason);
   }
 
   renderGeogrid();

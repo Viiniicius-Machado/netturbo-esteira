@@ -1006,7 +1006,7 @@ let _ultimaChaveRenderEsteira = null;
 async function carregarEsteira(){
   const minhaSeq = ++CARGA_ESTEIRA_SEQ;
   try{
-    const respEsteira = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
+    const respEsteira = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA&apenasAbertas=true');
     const resultEsteira = await respEsteira.json();
     if(minhaSeq !== CARGA_ESTEIRA_SEQ) return; // uma chamada mais nova já respondeu antes desta — descarta
     const atividades = resultEsteira.atividades || [];

@@ -313,7 +313,8 @@ function doPost(e) {
 function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const params = e && e.parameter ? e.parameter : {};
-  if (params.acao === 'LISTAR_ESTEIRA') return listarEsteira(ss);
+  if (params.acao === 'LISTAR_ESTEIRA') return listarEsteira(ss, params);
+  if (params.acao === 'LISTAR_MAPA_TIPO_ATIVIDADE') return listarMapaTipoAtividade(ss);
   if (params.acao === 'LISTAR_TECNICOS') return listarTecnicos(ss);
   if (params.acao === 'LISTAR_ATIVIDADES_TECNICO') return listarAtividadesTecnico(ss, params);
   if (params.acao === 'RESUMO_DIARIO_TECNICO') return resumoDiarioTecnico(ss, params);
@@ -2005,20 +2006,69 @@ function listarLpuMedicao(ss) {
   return resposta('ok', { itens: itens });
 }
 
-function listarEsteira(ss) {
+// "Aberta" = ainda relevante pra index.html (fila de despacho) ou aprovacao_lpu.html
+// (fila de aprovação + pendentes de preenchimento) — as duas únicas telas que usam
+// apenasAbertas. Uma atividade some daqui assim que passa dessas etapas (ex.: LPU
+// AGUARDANDO_MEDICAO em diante já não aparece em nenhuma das duas, então nem entra
+// no conjunto "aberto" — quem cuida disso é medicao.html, com endpoint próprio).
+const STATUS_ESTEIRA_ABERTOS = ['AGUARDANDO_DESPACHO','DESPACHADA','INICIADA','EM_CAMPO','NAO_VALIDADA','AGUARDANDO_VALIDACAO'];
+const STATUS_LPU_ABERTOS = ['PENDENTE_PREENCHIMENTO','AGUARDANDO_APROVADOR'];
+
+function atividadeEstaAberta(a) {
+  return STATUS_ESTEIRA_ABERTOS.indexOf(a['Status']) !== -1
+    || STATUS_LPU_ABERTOS.indexOf(a['Status LPU']) !== -1
+    || STATUS_LPU_ABERTOS.indexOf(a['Status LPU Apoio']) !== -1;
+}
+
+// Filtros (apenasAbertas/apenasHoje) são aditivos e opcionais — sem eles, devolve
+// o histórico inteiro igual sempre foi (compatibilidade com quem ainda não manda
+// o parâmetro: os dashboards por frente e o IRR de dashboard_manutencao.html
+// precisam mesmo do histórico completo, não filtram por aqui). Filtro roda DEPOIS
+// do .map, então rowIndex já reflete a posição real na planilha antes de filtrar —
+// continua batendo com a linha de verdade pras ações de escrita (DESPACHAR/VALIDAR/...).
+function listarEsteira(ss, params) {
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet || sheet.getLastRow() < 2) return resposta('ok', { atividades: [] });
 
   const data = sheet.getDataRange().getValues();
   data.shift(); // remove cabeçalho
-  const atividades = data.map((row, i) => {
+  let atividades = data.map((row, i) => {
     const obj = { rowIndex: i + 2 };
     HEADERS_ESTEIRA.forEach((h, j) => {
       obj[h] = (h === 'Data NOC') ? fmtTextoLivre(row[j]) : row[j];
     });
     return obj;
   });
+
+  if (params && params.apenasAbertas === 'true') {
+    atividades = atividades.filter(atividadeEstaAberta);
+  }
+  if (params && params.apenasHoje === 'true') {
+    const hojeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    atividades = atividades.filter(a => {
+      const d = a['Timestamp Recebido'];
+      if (!(d instanceof Date)) return false;
+      return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd') === hojeStr;
+    });
+  }
+
   return resposta('ok', { atividades: atividades });
+}
+
+// Só pra geogrid.html/controle_material.html montarem o mapa ID Atividade → Tipo de
+// Solicitação (usado pro filtro por setor) — essas telas nunca precisaram das ~90
+// colunas inteiras de LISTAR_ESTEIRA pra isso, só dessas 2, de qualquer atividade
+// (mapa não pode ser filtrado por status/data — material/GEOGRID referenciam
+// atividade de qualquer idade).
+function listarMapaTipoAtividade(ss) {
+  const sheet = ss.getSheetByName(ABA_ESTEIRA);
+  if (!sheet || sheet.getLastRow() < 2) return resposta('ok', { mapa: {} });
+  const idxId = HEADERS_ESTEIRA.indexOf('ID Atividade');
+  const idxTipo = HEADERS_ESTEIRA.indexOf('Tipo de Solicitação');
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS_ESTEIRA.length).getValues();
+  const mapa = {};
+  data.forEach(row => { if (row[idxId]) mapa[row[idxId]] = row[idxTipo]; });
+  return resposta('ok', { mapa: mapa });
 }
 
 // ── ORÇAMENTOS MENSAIS (budget de terceiros, editável mês a mês pela tela —

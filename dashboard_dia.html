@@ -306,7 +306,7 @@ function blocoPrazoTile(a){
 let _ultimaChaveRenderDia = null;
 async function carregarTudo(){
   try{
-    const rEsteira = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
+    const rEsteira = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA&apenasHoje=true');
     const dEsteira = await rEsteira.json();
     const atividades = dEsteira.atividades || [];
     const chave = JSON.stringify(atividades) + '|' + Math.floor(Date.now()/60000);
