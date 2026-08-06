@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Dashboard do Dia · Netturbo Esteira</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="auth.js"></script>
+  <style>
+    :root{
+      --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
+      --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+      --border:#252525;--border-hi:#353535;
+      --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+      --red:#e53935;--amber:#ffa000;--green:#8bc34a;
+      --radius:6px;--radius-lg:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+    .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+    .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+    .topbar-spacer{flex:1}
+
+    .page-actions{max-width:1500px;margin:0 auto;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.9rem 1.2rem 0}
+    main{max-width:1500px;margin:0 auto;padding:1.1rem 1.2rem 0}
+
+    .btn{padding:.55rem 1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.78rem}
+    .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
+    .card-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+    .card-body{padding:.85rem .9rem}
+
+    .data-banner{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:.05em;text-transform:uppercase;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:.65rem 1rem;margin-bottom:.9rem;text-align:center}
+
+    .tipo-tabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.4rem}
+    .tipo-tab{padding:.4rem .85rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.03em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
+    .tipo-tab svg{width:14px;height:14px;flex-shrink:0}
+    .tipo-tab.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
+    .tipo-tab-count{background:rgba(0,0,0,.25);border-radius:10px;padding:.05rem .4rem;font-size:.65rem}
+    .tipo-tab.active .tipo-tab-count{background:rgba(168,201,60,.25)}
+
+    .legenda-status{display:flex;flex-wrap:wrap;gap:1rem;font-size:.66rem;color:var(--text-muted);margin-bottom:1rem}
+    .legenda-status span{display:inline-flex;align-items:center;gap:.35rem}
+    .legenda-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+    .dia-layout{display:grid;grid-template-columns:290px 1fr;gap:1rem;align-items:start}
+    @media(max-width:980px){.dia-layout{grid-template-columns:1fr}}
+
+    .donut-wrap{position:relative;width:170px;height:170px;margin:.2rem auto .3rem}
+    .donut-svg{width:100%;height:100%;transform:rotate(-90deg)}
+    .donut-track{fill:none;stroke:var(--surface2);stroke-width:14}
+    .donut-fill{fill:none;stroke-width:14}
+    .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .donut-total{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.7rem;color:var(--text);line-height:1}
+    .donut-total-label{font-size:.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem}
+    .donut-legend{display:flex;flex-direction:column;gap:.4rem;margin-top:.6rem}
+    .donut-legend-item{display:flex;align-items:center;gap:.5rem;font-size:.72rem;color:var(--text-dim)}
+    .donut-legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .donut-legend-qtd{margin-left:auto;font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--text)}
+
+    .bars-wrap{display:flex;align-items:flex-end;gap:.35rem;min-height:175px;padding-top:.5rem}
+    .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0}
+    .bar-value{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.8rem;color:var(--text);margin-bottom:.25rem}
+    .bar-fill{width:100%;max-width:24px;border-radius:4px 4px 0 0}
+    .bar-label{font-size:.52rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.01em;margin-top:.35rem;text-align:center;line-height:1.25}
+
+    .dia-board{display:flex;gap:.8rem;overflow-x:auto;padding-bottom:.5rem;align-items:flex-start}
+    .dia-board.single{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+    .dia-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);flex:1 0 270px;min-width:270px;max-width:320px;display:flex;flex-direction:column;max-height:calc(100vh - 300px)}
+    .dia-board.single .dia-col{max-width:none;flex:none;max-height:none}
+    .dia-col-header{display:flex;align-items:center;gap:.5rem;padding:.6rem .8rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.8rem;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);flex-shrink:0}
+    .dia-col-header svg{width:16px;height:16px;flex-shrink:0}
+    .dia-col-count{margin-left:auto;background:rgba(168,201,60,.15);color:var(--accent);border-radius:10px;padding:.1rem .5rem;font-size:.7rem}
+    .dia-col-body{padding:.6rem;overflow-y:auto;display:flex;flex-direction:column;gap:.55rem}
+
+    .atv-tile{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.55rem .65rem}
+    .atv-tile-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.4rem}
+    .atv-protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.78rem}
+    .atv-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:.25rem}
+    .dot-wait{background:var(--amber)}
+    .dot-go{background:var(--green)}
+    .dot-ok{background:var(--accent)}
+    .dot-bad{background:var(--red)}
+    .atv-cliente{font-size:.76rem;font-weight:600;margin-top:.25rem}
+    .atv-servico{font-size:.66rem;color:var(--text-dim);margin-top:.1rem}
+    .atv-equipe{font-size:.64rem;color:var(--text-muted);margin-top:.3rem}
+    .atv-tempos{display:grid;grid-template-columns:1fr 1fr;gap:.2rem .5rem;margin-top:.4rem;font-size:.6rem;color:var(--text-muted)}
+    .atv-tempos b{color:var(--text-dim);font-family:monospace;font-weight:600}
+    .atv-status{margin-top:.4rem;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+
+    .empty-msg{padding:1.4rem 0;text-align:center;color:var(--text-muted);font-size:.74rem}
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Dashboard do Dia</div>
+    <div class="topbar-sub">Acompanhamento de Atividades · M.O</div>
+  </div>
+  <div class="topbar-spacer"></div>
+</header>
+
+<div class="page-actions">
+  <a href="painel.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Painel</a>
+  <button class="btn btn-outline" onclick="carregarTudo()">↻ Atualizar</button>
+  <span style="font-size:.66rem;color:var(--text-muted);font-family:monospace" id="ultimaAtualizacao"></span>
+</div>
+
+<main id="app" style="display:none">
+
+  <div class="data-banner" id="dataBanner"></div>
+
+  <div class="tipo-tabs" id="segmentoTabs">
+    <button type="button" class="tipo-tab" data-tipo="TODOS" onclick="selecionarSegmento('TODOS')">Todos <span class="tipo-tab-count" id="cnt-TODOS">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Manutenção" onclick="selecionarSegmento('Manutenção')"><span data-icon="Manutenção"></span>Manutenção <span class="tipo-tab-count" id="cnt-0">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Preventiva" onclick="selecionarSegmento('Preventiva')"><span data-icon="Preventiva"></span>Preventiva <span class="tipo-tab-count" id="cnt-1">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Transmissão" onclick="selecionarSegmento('Transmissão')"><span data-icon="Transmissão"></span>Transmissão <span class="tipo-tab-count" id="cnt-2">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Implantação" onclick="selecionarSegmento('Implantação')"><span data-icon="Implantação"></span>Implantação <span class="tipo-tab-count" id="cnt-3">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="GTD" onclick="selecionarSegmento('GTD')"><span data-icon="GTD"></span>GTD <span class="tipo-tab-count" id="cnt-4">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Pós Vendas" onclick="selecionarSegmento('Pós Vendas')"><span data-icon="Pós Vendas"></span>Pós Vendas <span class="tipo-tab-count" id="cnt-5">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Medição" onclick="selecionarSegmento('Medição')"><span data-icon="Medição"></span>Medição <span class="tipo-tab-count" id="cnt-6">0</span></button>
+  </div>
+
+  <div class="legenda-status">
+    <span><span class="legenda-dot" style="background:var(--amber)"></span>Aguardando</span>
+    <span><span class="legenda-dot" style="background:var(--green)"></span>Em execução (deslocando/em campo)</span>
+    <span><span class="legenda-dot" style="background:var(--accent)"></span>Finalizado</span>
+    <span><span class="legenda-dot" style="background:var(--red)"></span>Devolvido p/ técnico</span>
+  </div>
+
+  <div class="dia-layout">
+    <aside>
+      <div class="card">
+        <div class="card-header">Status de M.O — O&amp;M</div>
+        <div class="card-body">
+          <div class="donut-wrap">
+            <svg class="donut-svg" viewBox="0 0 100 100">
+              <circle class="donut-track" cx="50" cy="50" r="40"/>
+              <circle class="donut-fill" id="donut-ativ" cx="50" cy="50" r="40"/>
+              <circle class="donut-fill" id="donut-ocioso" cx="50" cy="50" r="40"/>
+              <circle class="donut-fill" id="donut-treinamento" cx="50" cy="50" r="40"/>
+              <circle class="donut-fill" id="donut-ferias" cx="50" cy="50" r="40"/>
+              <circle class="donut-fill" id="donut-indisponivel" cx="50" cy="50" r="40"/>
+            </svg>
+            <div class="donut-center">
+              <div class="donut-total" id="donutTotal">0</div>
+              <div class="donut-total-label">total</div>
+            </div>
+          </div>
+          <div class="donut-legend" id="donutLegend"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Resumo de Status — Atividades do Dia</div>
+        <div class="card-body">
+          <div class="bars-wrap" id="barsWrap"></div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="dia-board" id="diaBoard"></section>
+  </div>
+
+</main>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+
+const TIPOS = ['Manutenção','Preventiva','Transmissão','Implantação','GTD','Pós Vendas','Medição'];
+
+// Ícones simples (estilo feather, stroke, sem lib externa) — um por Tipo de Solicitação,
+// reaproveitados nas abas de Segmento e no cabeçalho de cada coluna do quadro.
+const ICONE_TIPO = {
+  'Manutenção': '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
+  'Preventiva': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  'Transmissão': '<circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-8.49a6 6 0 0 0 0 8.49M19.07 4.93a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/>',
+  'Implantação': '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/>',
+  'GTD': '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="16" y2="15"/>',
+  'Pós Vendas': '<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>',
+  'Medição': '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'
+};
+document.querySelectorAll('[data-icon]').forEach(el=>{
+  const tipo = el.dataset.icon;
+  el.outerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONE_TIPO[tipo]||''}</svg>`;
+});
+
+// Sequência ordinal (estágio do atendimento — mesma lógica de cor de "Plano de Voo"
+// em dashboard_medicao.html: um hue só, clareando/escurecendo conforme a etapa avança).
+// "Devolvido" fica fora da sequência — é uma exceção (volta pro técnico), não um estágio.
+const PIPELINE = [
+  { status:'AGUARDANDO_DESPACHO', label:'Aguard. Despacho', cor:'#565f38' },
+  { status:'DESPACHADA', label:'Aguard. Início', cor:'#6b7a34' },
+  { status:'INICIADA', label:'Em Deslocam.', cor:'#82962f' },
+  { status:'EM_CAMPO', label:'Em Campo', cor:'#98b02e' },
+  { status:'AGUARDANDO_VALIDACAO', label:'Aguard. Validação', cor:'#a0c136' },
+  { status:'VALIDADA', label:'Finalizado', cor:'#a8c93c' },
+  { status:'NAO_VALIDADA', label:'Devolvido', cor:'#ffa000' }
+];
+
+const STATUS_INFO = {
+  AGUARDANDO_DESPACHO: { label:'Aguardando Despacho', dot:'dot-wait' },
+  DESPACHADA: { label:'Aguardando Início', dot:'dot-wait' },
+  INICIADA: { label:'Em Deslocamento', dot:'dot-go' },
+  EM_CAMPO: { label:'Em Campo', dot:'dot-go' },
+  AGUARDANDO_VALIDACAO: { label:'Aguardando Validação', dot:'dot-wait' },
+  NAO_VALIDADA: { label:'Devolvido p/ Técnico', dot:'dot-bad' },
+  VALIDADA: { label:'Finalizado', dot:'dot-ok' }
+};
+
+// Mesma definição de "em atividade" já usada na Esteira de Despacho (index.html) —
+// DESPACHADA/INICIADA/EM_CAMPO/NAO_VALIDADA. AGUARDANDO_VALIDACAO fica de fora:
+// o técnico já concluiu em campo, só falta o NOC validar.
+const STATUS_EM_ANDAMENTO = ['DESPACHADA','INICIADA','EM_CAMPO','NAO_VALIDADA'];
+
+const DONUT_SEGMENTOS = [
+  { key:'ativ', label:'Em Atividade', cor:'#199e70' },
+  { key:'ocioso', label:'Ocioso', cor:'#3987e5' },
+  { key:'treinamento', label:'Treinamento', cor:'#9085e9' },
+  { key:'ferias', label:'Férias', cor:'#c98500' },
+  { key:'indisponivel', label:'Indisponível', cor:'#e66767' }
+];
+
+let ATIVIDADES = [];
+let TECH_MAP = {};
+let PERIODOS = [];
+let SEGMENTO_ATUAL = localStorage.getItem('netturbo_dia_segmento') || 'TODOS';
+
+// Mesma função de dashboard_manutencao.html — aceita Date puro (Timestamp Recebido,
+// serializado como Date pelo Apps Script) ou string "dd/mm/yyyy, HH:MM:SS" (Timestamp
+// Despacho/Validação, gravados com @STRING@ forçado).
+function parseDataAmpla(val){
+  if(!val) return null;
+  if(val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  // Regex primeiro: "dd/mm/yyyy" (formato gravado em Timestamp Despacho/Validação) é
+  // ambíguo pro construtor nativo Date() quando o dia é ≤12 (ele lê como mm/dd/yyyy
+  // americano sem erro nenhum) — só cai no new Date(val) quando não é esse formato
+  // (Timestamp Recebido chega como Date/ISO puro, sem essa ambiguidade).
+  const m = String(val).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2})?:?(\d{2})?/);
+  if(m){
+    const d = new Date(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]||0), Number(m[5]||0));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const iso = new Date(val);
+  return isNaN(iso.getTime()) ? null : iso;
+}
+
+function hojeStr(){
+  const h = new Date();
+  return h.getFullYear() + '-' + String(h.getMonth()+1).padStart(2,'0') + '-' + String(h.getDate()).padStart(2,'0');
+}
+
+function mesmoDia(d, hoje){
+  return d.getFullYear()===hoje.getFullYear() && d.getMonth()===hoje.getMonth() && d.getDate()===hoje.getDate();
+}
+
+function horaDe(date){
+  if(!date) return '';
+  return String(date.getHours()).padStart(2,'0') + ':' + String(date.getMinutes()).padStart(2,'0');
+}
+
+async function carregarTudo(){
+  try{
+    const [rEsteira, rDisp, rTec] = await Promise.all([
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS')
+    ]);
+    const [dEsteira, dDisp, dTec] = await Promise.all([rEsteira.json(), rDisp.json(), rTec.json()]);
+    ATIVIDADES = dEsteira.atividades || [];
+    PERIODOS = dDisp.periodos || [];
+    TECH_MAP = dTec.empresas || {};
+    renderTudo();
+    document.getElementById('ultimaAtualizacao').textContent = 'Atualizado às ' + horaDe(new Date());
+  }catch(err){
+    console.error('Erro ao carregar Dashboard do Dia:', err);
+  }
+}
+window.carregarTudo = carregarTudo;
+
+function atividadesDeHoje(){
+  const hoje = new Date();
+  return ATIVIDADES.filter(a => {
+    const d = parseDataAmpla(a['Timestamp Recebido']);
+    return d && mesmoDia(d, hoje);
+  });
+}
+
+function servicoAtividade(a){
+  const cats = [a['Categoria 1'], a['Categoria 2'], a['Categoria 3'], a['Categoria 4']]
+    .filter(c => c && String(c).trim());
+  return cats.length ? cats.join(' / ') : (a['Motivo'] || '—');
+}
+
+function equipeDe(a){
+  let txt = (a['Empresa'] || a['Técnico']) ? `${a['Empresa']||'—'} · ${a['Técnico']||'—'}` : 'Aguardando definição de equipe';
+  if(a['Técnico Apoio']) txt += ` <br>Apoio: ${a['Empresa Apoio']||''} · ${a['Técnico Apoio']}`;
+  return txt;
+}
+
+function statusInfoDe(a){
+  const base = STATUS_INFO[a['Status']] || { label: a['Status'] || '—', dot:'dot-wait' };
+  let extra = '';
+  if(a['Status']==='INICIADA' && a['Hora Início']) extra = ' desde ' + a['Hora Início'];
+  if(a['Status']==='EM_CAMPO' && a['Hora Chegada']) extra = ' desde ' + a['Hora Chegada'];
+  return { label: base.label + extra, dot: base.dot };
+}
+
+function corDoDot(dot){
+  if(dot==='dot-wait') return 'var(--amber)';
+  if(dot==='dot-go') return 'var(--green)';
+  if(dot==='dot-bad') return 'var(--red)';
+  return 'var(--accent)';
+}
+
+function ultimaDataDe(a){
+  const opcoes = [a['Timestamp Validação'], a['Timestamp Despacho'], a['Timestamp Recebido']];
+  for(const o of opcoes){ const d = parseDataAmpla(o); if(d) return d.getTime(); }
+  return 0;
+}
+
+function renderTile(a){
+  const st = statusInfoDe(a);
+  const protocolo = a['Protocolo O&M'] || a['Protocolo NOC'] || '—';
+  const despachoData = parseDataAmpla(a['Timestamp Despacho']);
+  return `
+    <div class="atv-tile">
+      <div class="atv-tile-top">
+        <div class="atv-protocolo">${protocolo}${a['Etiqueta'] ? ' · '+a['Etiqueta'] : ''}</div>
+        <div class="atv-dot ${st.dot}" title="${st.label}"></div>
+      </div>
+      <div class="atv-cliente">${a['Cliente']||'—'}</div>
+      <div class="atv-servico">${servicoAtividade(a)}</div>
+      <div class="atv-equipe">${equipeDe(a)}</div>
+      <div class="atv-tempos">
+        <div>Despacho: <b>${despachoData ? horaDe(despachoData) : '—'}</b></div>
+        <div>Aceite: <b>${a['Hora Início']||'—'}</b></div>
+        <div>Cheg. Prev.: <b>${a['Previsão Chegada']||'—'}</b></div>
+        <div>Cheg. Real: <b>${a['Hora Chegada']||'—'}</b></div>
+      </div>
+      <div class="atv-status" style="color:${corDoDot(st.dot)}">${st.label}</div>
+    </div>`;
+}
+
+function atualizarTabsAtivas(){
+  document.querySelectorAll('#segmentoTabs .tipo-tab').forEach(b => b.classList.toggle('active', b.dataset.tipo===SEGMENTO_ATUAL));
+}
+
+window.selecionarSegmento = function(tipo){
+  SEGMENTO_ATUAL = tipo;
+  localStorage.setItem('netturbo_dia_segmento', tipo);
+  atualizarTabsAtivas();
+  renderBoard(atividadesDeHoje());
+};
+
+function renderBoard(hoje){
+  document.getElementById('cnt-TODOS').textContent = hoje.length;
+  TIPOS.forEach((tipo, i) => {
+    const el = document.getElementById('cnt-'+i);
+    if(el) el.textContent = hoje.filter(a => a['Tipo de Solicitação']===tipo).length;
+  });
+
+  const tiposVisiveis = SEGMENTO_ATUAL==='TODOS' ? TIPOS : [SEGMENTO_ATUAL];
+  const board = document.getElementById('diaBoard');
+  board.classList.toggle('single', tiposVisiveis.length===1);
+
+  board.innerHTML = tiposVisiveis.map(tipo => {
+    const lista = hoje.filter(a => a['Tipo de Solicitação']===tipo).sort((a,b) => ultimaDataDe(b)-ultimaDataDe(a));
+    return `
+      <div class="dia-col">
+        <div class="dia-col-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONE_TIPO[tipo]||''}</svg>
+          ${tipo} <span class="dia-col-count">${lista.length}</span>
+        </div>
+        <div class="dia-col-body">
+          ${lista.length ? lista.map(renderTile).join('') : '<div class="empty-msg">Nenhuma atividade hoje.</div>'}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderBars(hoje){
+  const contagens = PIPELINE.map(p => hoje.filter(a => a['Status']===p.status).length);
+  const max = Math.max(1, ...contagens);
+  const wrap = document.getElementById('barsWrap');
+  wrap.innerHTML = PIPELINE.map((p, i) => {
+    const altura = contagens[i] > 0 ? Math.max(4, Math.round((contagens[i]/max)*110)) : 0;
+    return `
+      <div class="bar-col">
+        <div class="bar-value">${contagens[i]}</div>
+        <div class="bar-fill" style="height:${altura}px;background:${p.cor}"></div>
+        <div class="bar-label">${p.label}</div>
+      </div>`;
+  }).join('');
+}
+
+function statusDisponibilidadeHoje(empresa, tecnico){
+  const hoje = hojeStr();
+  const periodo = PERIODOS.find(p => p.empresa===empresa && p.tecnico===tecnico && p.dataInicio<=hoje && hoje<=p.dataFim);
+  return periodo ? periodo.status : null;
+}
+
+function bucketDisponibilidade(status){
+  if(status==='FERIAS') return 'ferias';
+  if(status==='TREINAMENTO') return 'treinamento';
+  if(status) return 'indisponivel'; // INATIVO, SUSPENSAO, ATESTADO, MANUTENCAO_FROTA
+  return null;
+}
+
+function calcularStatusMO(hoje){
+  const ativos = hoje.filter(a => STATUS_EM_ANDAMENTO.includes(a['Status']));
+  const contagem = { ativ:0, ocioso:0, treinamento:0, ferias:0, indisponivel:0 };
+  Object.entries(TECH_MAP).forEach(([empresa, nomes]) => {
+    (nomes||[]).forEach(tecnico => {
+      const bucket = bucketDisponibilidade(statusDisponibilidadeHoje(empresa, tecnico));
+      if(bucket){ contagem[bucket]++; return; }
+      const emAtividade = ativos.some(a =>
+        (a['Empresa']===empresa && a['Técnico']===tecnico) ||
+        (a['Empresa Apoio']===empresa && a['Técnico Apoio']===tecnico));
+      contagem[emAtividade ? 'ativ' : 'ocioso']++;
+    });
+  });
+  return contagem;
+}
+
+function renderDonut(contagem){
+  const total = DONUT_SEGMENTOS.reduce((s, seg) => s + (contagem[seg.key]||0), 0);
+  document.getElementById('donutTotal').textContent = total;
+  const r = 40, c = 2*Math.PI*r;
+  let acumulado = 0;
+  DONUT_SEGMENTOS.forEach(seg => {
+    const valor = contagem[seg.key]||0;
+    const fracao = total ? valor/total : 0;
+    const comprimento = fracao*c;
+    const circle = document.getElementById('donut-'+seg.key);
+    circle.style.strokeDasharray = `${comprimento} ${c-comprimento}`;
+    circle.style.strokeDashoffset = String(-acumulado);
+    circle.style.stroke = seg.cor;
+    acumulado += comprimento;
+  });
+  document.getElementById('donutLegend').innerHTML = DONUT_SEGMENTOS.map(seg => `
+    <div class="donut-legend-item">
+      <span class="donut-legend-dot" style="background:${seg.cor}"></span>
+      ${seg.label}
+      <span class="donut-legend-qtd">${contagem[seg.key]||0}</span>
+    </div>`).join('');
+}
+
+function atualizarBanner(){
+  const dias = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const hoje = new Date();
+  const dataFmt = String(hoje.getDate()).padStart(2,'0') + '/' + String(hoje.getMonth()+1).padStart(2,'0') + '/' + hoje.getFullYear();
+  document.getElementById('dataBanner').textContent = dias[hoje.getDay()] + ' · ' + dataFmt;
+}
+
+function renderTudo(){
+  atualizarBanner();
+  atualizarTabsAtivas();
+  const hoje = atividadesDeHoje();
+  renderBoard(hoje);
+  renderBars(hoje);
+  renderDonut(calcularStatusMO(hoje));
+}
+
+function iniciarApp(){
+  document.getElementById('app').style.display = '';
+  carregarTudo();
+  setInterval(carregarTudo, 20000);
+}
+
+NetturboAuth.proteger({ tela:'Dashboard do Dia', aoEntrar: iniciarApp });
+</script>
+</body>
+</html>

@@ -134,8 +134,9 @@
 
       <!-- CLASSIFICAÇÃO DA SOLICITAÇÃO (matriz oficial do setor) — define o SLA/prazo
            do atendimento. Preencher antes (ou junto) de colar a máscara; Tipo de
-           Solicitação trava depois de despachado, Categoria 1-4 o técnico ainda
-           pode ajustar em campo (ver tecnico.html). -->
+           Solicitação e Categoria 1/2 travam depois de despachado (o técnico nem
+           vê mais esses campos em campo — ver tecnico.html), só a Categoria 3 (e 4,
+           se houver) ainda pode ser ajustada por ele. -->
       <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border-hi)">
         <label style="font-size:.68rem;color:var(--text-muted);display:block;margin-bottom:.4rem">Classificação da Solicitação (define o SLA/prazo do atendimento):</label>
         <div class="field-grid">
@@ -688,14 +689,29 @@ function parseDataAmpla(val){
   return isNaN(d.getTime()) ? null : d;
 }
 
+// Formata uma diferença em ms como "Xd Yh" / "Xh Ymin" / "Xmin" — usado pra
+// mostrar há quanto tempo o Prazo Limite estourou (ver blocoPrazoLimite).
+function formatarDuracao(ms){
+  const min = Math.floor(ms/60000);
+  const h = Math.floor(min/60);
+  const d = Math.floor(h/24);
+  if(d>0) return `${d}d ${h%24}h`;
+  if(h>0) return `${h}h ${min%60}min`;
+  return `${min}min`;
+}
+
 // Mostra o Prazo Limite (SLA calculado na criação, ver criarAtividade no backend)
-// no card — vermelho se já estourou, pra liderança bater o olho e priorizar.
+// no card — vermelho se já estourou, com o tempo de atraso (a esteira recarrega
+// sozinha a cada 15s — ver window._esteiraAutoRefresh — então o atraso vai se
+// atualizando sem precisar de um relógio próprio aqui), pra liderança bater o
+// olho e priorizar.
 function blocoPrazoLimite(a){
   const prazo = a['Prazo Limite'];
   if(!prazo) return '';
   const prazoDate = parseDataAmpla(prazo);
   const estourado = prazoDate && prazoDate.getTime() < Date.now();
-  return `<div style="font-size:.68rem;margin-top:.3rem;color:${estourado?'var(--red)':'var(--accent)'}">⏱ Prazo: ${prazo}${estourado?' — ESTOURADO':''}</div>`;
+  const atraso = estourado ? formatarDuracao(Date.now() - prazoDate.getTime()) : '';
+  return `<div style="font-size:.68rem;margin-top:.3rem;color:${estourado?'var(--red)':'var(--accent)'}">⏱ Prazo: ${prazo}${estourado?` — ESTOURADO há ${atraso}`:''}</div>`;
 }
 
 // Empresas e técnicos (mesma lista já usada no RFO Técnico)
@@ -1110,17 +1126,24 @@ window.selecionarFiltroEsteira = function(tipo){
   renderEsteira();
 };
 
-// Mostra, em cada aba, quantas atividades (de qualquer status/coluna) daquele
-// setor existem no total — mesma visão de contagem já usada em geogrid.html
-// e controle_material.html.
+// Status que aparecem em alguma das 3 colunas da esteira (Aguardando Despacho /
+// Despachadas-Em Campo / Aguardando Validação NOC) — usado pra bater a contagem
+// da aba com o que o líder realmente vê ao clicar nela.
+const STATUS_ESTEIRA_ATIVOS = ['AGUARDANDO_DESPACHO','DESPACHADA','INICIADA','EM_CAMPO','NAO_VALIDADA','AGUARDANDO_VALIDACAO'];
+
+// Mostra, em cada aba, quantas atividades EM ABERTO (mesmos status das 3
+// colunas — listarEsteira devolve o histórico inteiro da planilha, então
+// contar tudo inflava o número muito além do que aparecia ao filtrar) daquele
+// setor existem no momento.
 function atualizarContagensTabsEsteira(){
+  const ativas = ATIVIDADES.filter(a => STATUS_ESTEIRA_ATIVOS.includes(a['Status']));
   document.querySelectorAll('#tiposEsteiraTabs .tipo-tab').forEach(btn => {
     const tipo = btn.dataset.tipo;
     const badge = btn.querySelector('.tipo-tab-count');
     if(!badge) return;
     badge.textContent = tipo === 'TODOS'
-      ? ATIVIDADES.length
-      : ATIVIDADES.filter(a => a['Tipo de Solicitação'] === tipo).length;
+      ? ativas.length
+      : ativas.filter(a => a['Tipo de Solicitação'] === tipo).length;
   });
 };
 
@@ -1217,10 +1240,10 @@ function renderEsteira(){
         ${a['Etiqueta'] ? `<div class="etiqueta">Etiqueta: ${a['Etiqueta']}</div>` : ''}
         <div class="cliente">${a['Cliente']||'—'}</div>
         <div class="meta">${a['Empresa']||''} · ${a['Técnico']||''}<br><b>${statusComHorario(a)}</b></div>
+        ${blocoPrazoLimite(a)}
         ${a['Agendamento']==='Sim' ? '<div class="badge-agendamento">Agendamento</div>' : ''}
       </summary>
       <div class="atv-card-body">
-        ${blocoPrazoLimite(a)}
         ${a['Status']==='INICIADA' && a['Previsão Chegada'] ? `<div class="meta" style="color:var(--accent)">Previsão de chegada: ${a['Previsão Chegada']}</div>` : ''}
         ${a['Técnico Apoio'] ? `<div class="meta" style="color:var(--accent)">Apoio: ${a['Empresa Apoio']} · ${a['Técnico Apoio']}${a['Hora Início Apoio']?' ('+a['Hora Início Apoio']+(a['Hora Chegada Apoio']?' → '+a['Hora Chegada Apoio']:'')+')':''}</div>` : ''}
         <button class="btn" style="width:100%;margin-top:.5rem;padding:.35rem;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-size:.68rem" onclick="desfazerDespacho(${a.rowIndex})">↩ Desfazer Despacho</button>

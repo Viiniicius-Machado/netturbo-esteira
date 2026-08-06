@@ -626,8 +626,13 @@ const TIPOS_CAUSA_LIVRE_OPCIONAL = ['ACOMPANHAMENTO CPFL','PREVENTIVA','IMPLANTA
 
 // ── CLASSIFICAÇÃO POR TIPO DE SOLICITAÇÃO / CATEGORIA (matriz oficial do
 // setor, mesma MATRIZ_SLA embutida em index.html — despacho escolhe Tipo de
-// Solicitação e Categoria 1-4 iniciais; aqui o técnico só ajusta a Categoria,
-// sempre restrito às combinações válidas da matriz). Atividade sem 'Tipo de
+// Solicitação e Categoria 1-4; Categoria 1 e 2 travam depois do despacho
+// (nunca mudam em campo, por isso nem aparecem aqui — ver classCat1/classCat2
+// com display:none em renderFormOcorrenciaNovo/renderFormMedicaoSimples), o
+// técnico só ajusta a Categoria 3 (e 4, se a combinação tiver), sempre
+// restrito às combinações válidas da matriz. CLASSIFICACAO_STATE continua
+// guardando cat1/cat2 normalmente — eles só não ficam visíveis, mas vão
+// junto no envio (ver solicitarValidacao). Atividade sem 'Tipo de
 // Solicitação' preenchido é do modelo antigo e continua usando CONFIG_CAUSAS/
 // TIPOS_CAUSA_LIVRE_OPCIONAL acima, sem nenhuma mudança.
 const MATRIZ_SLA = [
@@ -1487,11 +1492,11 @@ function renderFormOcorrenciaNovo(a){
         <label>Tipo de Solicitação</label>
         <div class="atv-meta" style="font-weight:600">${tipoSolicitacao}</div>
       </div>
-      <div>
+      <div style="display:none">
         <label>Categoria 1</label>
         <div class="causa-grid" id="classCat1-${a.rowIndex}"></div>
       </div>
-      <div>
+      <div style="display:none">
         <label>Categoria 2</label>
         <div class="causa-grid" id="classCat2-${a.rowIndex}"></div>
       </div>
@@ -1551,11 +1556,11 @@ function renderFormMedicaoSimples(a){
         <label>Tipo de Solicitação</label>
         <div class="atv-meta" style="font-weight:600">${tipoSolicitacao}</div>
       </div>
-      <div>
+      <div style="display:none">
         <label>Categoria 1</label>
         <div class="causa-grid" id="classCat1-${a.rowIndex}"></div>
       </div>
-      <div>
+      <div style="display:none">
         <label>Categoria 2</label>
         <div class="causa-grid" id="classCat2-${a.rowIndex}"></div>
       </div>
@@ -2631,7 +2636,7 @@ window.solicitarValidacao = async function(rowIndex){
       enviarControleMaterial(atividadeAtual['ID Atividade'], atividadeAtual['Protocolo O&M']||atividadeAtual['Protocolo NOC']||'', atividadeAtual['Etiqueta']||'', atividadeAtual['Cliente']||'', atividadeAtual['Técnico']||'', atividadeAtual['Empresa']||'', montarItensMateriaisPayload(rowIndex));
     }
 
-    copiarRelatorioWhats(rowIndex, { tipo, causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, quantidadeCeo, diagramas: diagramasSerializados });
+    copiarRelatorioWhats(rowIndex, { tipo, categoria1: categorias ? categorias.categoria1 : '', categoria2: categorias ? categorias.categoria2 : '', causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, quantidadeCeo, diagramas: diagramasSerializados });
     limparRascunho(rowIndex);
     showToast('Enviado e copiado! Cole no grupo do WhatsApp.');
     carregarAtividades();
@@ -2653,6 +2658,12 @@ function copiarRelatorioWhats(rowIndex, campos){
   if(campos.cidadeFalha) t += 'CIDADE: ' + campos.cidadeFalha + '\n';
   t += '\n';
   t += '*OCORRÊNCIA:* ' + campos.tipo + '\n';
+  // Categoria 1/2 não aparecem mais pro técnico escolher (ver classCat1/classCat2
+  // com display:none em renderFormOcorrenciaNovo/renderFormMedicaoSimples — quem
+  // define é o despacho e trava), mas seguem vindo do despacho e precisam continuar
+  // aparecendo no relatório do WhatsApp mesmo assim.
+  if(campos.categoria1) t += '*CATEGORIA 1:* ' + campos.categoria1 + '\n';
+  if(campos.categoria2) t += '*CATEGORIA 2:* ' + campos.categoria2 + '\n';
   if(campos.causa) t += '*CAUSA:* ' + campos.causa + '\n';
   if(ceoLabel) t += '*CEO:* ' + ceoLabel + '\n';
   if(campos.gpsFalha) t += '*LOCAL DA FALHA:* ' + campos.gpsFalha + '\n';
