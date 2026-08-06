@@ -6,7 +6,14 @@
   <meta name="theme-color" content="#0a0a0a"/>
   <title>Dashboard do Dia · Netturbo Esteira</title>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-  <script src="auth.js"></script>
+  <!-- Tela de TV/kiosk: fica ligada o dia todo numa sala, sem ninguém logando nela.
+       Por isso NÃO usa auth.js/NetturboAuth (a sessão de 12h derrubaria a tela pra
+       login sem ninguém ali pra digitar de novo) — e só chama ações de LEITURA
+       (LISTAR_ESTEIRA/LISTAR_DISPONIBILIDADE/LISTAR_TECNICOS), que já não exigem
+       login nenhum no backend mesmo nas outras telas, então isso não abre nada que
+       já não estivesse acessível. Sem interação prevista: nada de scroll manual
+       (rolagem automática cobre o que não cabe, ver iniciarAutoScroll) e fontes
+       maiores que o normal, pensadas pra leitura à distância. -->
   <style>
     :root{
       --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
@@ -17,86 +24,88 @@
       --radius:6px;--radius-lg:10px;
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html{font-size:15px}
+    html{font-size:18px}
     body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
 
-    .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar{position:sticky;top:0;z-index:100;height:64px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
     .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
-    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
-    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
-    .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+    .topbar-logo{height:34px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+    .topbar-sub{font-size:.62rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
     .topbar-spacer{flex:1}
+    .topbar-clock{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.3rem;color:#0a0a0a;letter-spacing:.03em;font-variant-numeric:tabular-nums}
 
-    .page-actions{max-width:1500px;margin:0 auto;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.9rem 1.2rem 0}
-    main{max-width:1500px;margin:0 auto;padding:1.1rem 1.2rem 0}
-
-    .btn{padding:.55rem 1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.78rem}
-    .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
-    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+    main{max-width:1600px;margin:0 auto;padding:1.1rem 1.2rem 0}
 
     .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
-    .card-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+    .card-header{padding:.6rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.92rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
     .card-body{padding:.85rem .9rem}
 
-    .data-banner{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:.05em;text-transform:uppercase;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:.65rem 1rem;margin-bottom:.9rem;text-align:center}
+    .data-banner{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.3rem;letter-spacing:.05em;text-transform:uppercase;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:.65rem 1rem;margin-bottom:.7rem;text-align:center}
+
+    .alerta-atraso{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,#7a1f1f,#c62828);border-radius:var(--radius-lg);padding:.6rem 1rem;margin-bottom:.9rem;text-align:center;box-shadow:0 0 20px rgba(229,57,53,.4)}
 
     .tipo-tabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.4rem}
-    .tipo-tab{padding:.4rem .85rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.03em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
-    .tipo-tab svg{width:14px;height:14px;flex-shrink:0}
+    .tipo-tab{padding:.45rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.85rem;letter-spacing:.03em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
+    .tipo-tab svg{width:15px;height:15px;flex-shrink:0}
     .tipo-tab.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
-    .tipo-tab-count{background:rgba(0,0,0,.25);border-radius:10px;padding:.05rem .4rem;font-size:.65rem}
+    .tipo-tab-count{background:rgba(0,0,0,.25);border-radius:10px;padding:.05rem .45rem;font-size:.72rem}
     .tipo-tab.active .tipo-tab-count{background:rgba(168,201,60,.25)}
 
-    .legenda-status{display:flex;flex-wrap:wrap;gap:1rem;font-size:.66rem;color:var(--text-muted);margin-bottom:1rem}
+    .legenda-status{display:flex;flex-wrap:wrap;gap:1.1rem;font-size:.78rem;color:var(--text-muted);margin-bottom:1rem}
     .legenda-status span{display:inline-flex;align-items:center;gap:.35rem}
-    .legenda-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .legenda-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 
-    .dia-layout{display:grid;grid-template-columns:290px 1fr;gap:1rem;align-items:start}
+    .dia-layout{display:grid;grid-template-columns:300px 1fr;gap:1rem;align-items:start}
     @media(max-width:980px){.dia-layout{grid-template-columns:1fr}}
 
-    .donut-wrap{position:relative;width:170px;height:170px;margin:.2rem auto .3rem}
+    .donut-wrap{position:relative;width:180px;height:180px;margin:.2rem auto .3rem}
     .donut-svg{width:100%;height:100%;transform:rotate(-90deg)}
     .donut-track{fill:none;stroke:var(--surface2);stroke-width:14}
     .donut-fill{fill:none;stroke-width:14}
     .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-    .donut-total{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.7rem;color:var(--text);line-height:1}
-    .donut-total-label{font-size:.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem}
+    .donut-total{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:2.2rem;color:var(--text);line-height:1}
+    .donut-total-label{font-size:.66rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem}
     .donut-legend{display:flex;flex-direction:column;gap:.4rem;margin-top:.6rem}
-    .donut-legend-item{display:flex;align-items:center;gap:.5rem;font-size:.72rem;color:var(--text-dim)}
-    .donut-legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .donut-legend-item{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--text-dim)}
+    .donut-legend-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
     .donut-legend-qtd{margin-left:auto;font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--text)}
 
     .bars-wrap{display:flex;align-items:flex-end;gap:.35rem;min-height:175px;padding-top:.5rem}
     .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0}
-    .bar-value{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.8rem;color:var(--text);margin-bottom:.25rem}
+    .bar-value{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.98rem;color:var(--text);margin-bottom:.25rem}
     .bar-fill{width:100%;max-width:24px;border-radius:4px 4px 0 0}
-    .bar-label{font-size:.52rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.01em;margin-top:.35rem;text-align:center;line-height:1.25}
+    .bar-label{font-size:.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.01em;margin-top:.35rem;text-align:center;line-height:1.25}
 
-    .dia-board{display:flex;gap:.8rem;overflow-x:auto;padding-bottom:.5rem;align-items:flex-start}
-    .dia-board.single{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
-    .dia-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);flex:1 0 270px;min-width:270px;max-width:320px;display:flex;flex-direction:column;max-height:calc(100vh - 300px)}
-    .dia-board.single .dia-col{max-width:none;flex:none;max-height:none}
-    .dia-col-header{display:flex;align-items:center;gap:.5rem;padding:.6rem .8rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.8rem;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);flex-shrink:0}
-    .dia-col-header svg{width:16px;height:16px;flex-shrink:0}
-    .dia-col-count{margin-left:auto;background:rgba(168,201,60,.15);color:var(--accent);border-radius:10px;padding:.1rem .5rem;font-size:.7rem}
-    .dia-col-body{padding:.6rem;overflow-y:auto;display:flex;flex-direction:column;gap:.55rem}
+    /* Sempre grade (nunca linha única com scroll horizontal) — numa tela sem
+       interação, coluna fora da grade é coluna invisível. */
+    .dia-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.9rem;padding-bottom:.5rem}
+    .dia-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);display:flex;flex-direction:column}
+    .dia-col-header{display:flex;align-items:center;gap:.5rem;padding:.65rem .8rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);flex-shrink:0}
+    .dia-col-header svg{width:17px;height:17px;flex-shrink:0}
+    .dia-col-count{margin-left:auto;background:rgba(168,201,60,.15);color:var(--accent);border-radius:10px;padding:.1rem .55rem;font-size:.82rem}
+    /* Sem overflow-y aqui de propósito — o que não coube na coluna continua no
+       fluxo normal da página, e é a rolagem automática (iniciarAutoScroll) que
+       garante que tudo passa na tela mais cedo ou mais tarde. */
+    .dia-col-body{padding:.6rem;display:flex;flex-direction:column;gap:.55rem}
 
-    .atv-tile{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.55rem .65rem}
+    .atv-tile{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .7rem}
     .atv-tile-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.4rem}
-    .atv-protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.78rem}
-    .atv-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:.25rem}
+    .atv-protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.95rem}
+    .atv-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:.25rem}
     .dot-wait{background:var(--amber)}
     .dot-go{background:var(--green)}
     .dot-ok{background:var(--accent)}
     .dot-bad{background:var(--red)}
-    .atv-cliente{font-size:.76rem;font-weight:600;margin-top:.25rem}
-    .atv-servico{font-size:.66rem;color:var(--text-dim);margin-top:.1rem}
-    .atv-equipe{font-size:.64rem;color:var(--text-muted);margin-top:.3rem}
-    .atv-tempos{display:grid;grid-template-columns:1fr 1fr;gap:.2rem .5rem;margin-top:.4rem;font-size:.6rem;color:var(--text-muted)}
+    .atv-cliente{font-size:.92rem;font-weight:600;margin-top:.25rem}
+    .atv-servico{font-size:.78rem;color:var(--text-dim);margin-top:.15rem}
+    .atv-equipe{font-size:.74rem;color:var(--text-muted);margin-top:.35rem}
+    .atv-tempos{display:grid;grid-template-columns:1fr 1fr;gap:.25rem .5rem;margin-top:.45rem;font-size:.7rem;color:var(--text-muted)}
     .atv-tempos b{color:var(--text-dim);font-family:monospace;font-weight:600}
-    .atv-status{margin-top:.4rem;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+    .atv-status{margin-top:.45rem;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+    .atv-prazo{margin-top:.4rem;font-size:.76rem;font-weight:600}
 
-    .empty-msg{padding:1.4rem 0;text-align:center;color:var(--text-muted);font-size:.74rem}
+    .empty-msg{padding:1.4rem 0;text-align:center;color:var(--text-muted);font-size:.85rem}
   </style>
 </head>
 <body>
@@ -109,17 +118,15 @@
     <div class="topbar-sub">Acompanhamento de Atividades · M.O</div>
   </div>
   <div class="topbar-spacer"></div>
+  <!-- Segundos rodando = prova visual de que a tela não travou, já que ninguém
+       fica de frente pra ela conferindo (ver atualizarRelogio). -->
+  <div class="topbar-clock" id="relogio">--:--:--</div>
 </header>
-
-<div class="page-actions">
-  <a href="painel.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Painel</a>
-  <button class="btn btn-outline" onclick="carregarTudo()">↻ Atualizar</button>
-  <span style="font-size:.66rem;color:var(--text-muted);font-family:monospace" id="ultimaAtualizacao"></span>
-</div>
 
 <main id="app" style="display:none">
 
   <div class="data-banner" id="dataBanner"></div>
+  <div class="alerta-atraso" id="alertaAtraso" style="display:none"></div>
 
   <div class="tipo-tabs" id="segmentoTabs">
     <button type="button" class="tipo-tab" data-tipo="TODOS" onclick="selecionarSegmento('TODOS')">Todos <span class="tipo-tab-count" id="cnt-TODOS">0</span></button>
@@ -270,6 +277,27 @@ function horaDe(date){
   return String(date.getHours()).padStart(2,'0') + ':' + String(date.getMinutes()).padStart(2,'0');
 }
 
+// Mesmo par de funções de index.html/tecnico.html (formatarDuracao + bloco de
+// Prazo Limite) — mostra o SLA no card e, se já estourou, há quanto tempo.
+function formatarDuracao(ms){
+  const min = Math.floor(ms/60000);
+  const h = Math.floor(min/60);
+  const d = Math.floor(h/24);
+  if(d>0) return `${d}d ${h%24}h`;
+  if(h>0) return `${h}h ${min%60}min`;
+  return `${min}min`;
+}
+
+function blocoPrazoTile(a){
+  if(a['Status']==='VALIDADA') return ''; // já concluído, prazo deixou de ser urgência
+  const prazo = a['Prazo Limite'];
+  if(!prazo) return '';
+  const prazoDate = parseDataAmpla(prazo);
+  const estourado = prazoDate && prazoDate.getTime() < Date.now();
+  const atraso = estourado ? formatarDuracao(Date.now() - prazoDate.getTime()) : '';
+  return `<div class="atv-prazo" style="color:${estourado?'var(--red)':'var(--accent)'}">⏱ ${prazo}${estourado?` — ESTOURADO há ${atraso}`:''}</div>`;
+}
+
 async function carregarTudo(){
   try{
     const [rEsteira, rDisp, rTec] = await Promise.all([
@@ -282,7 +310,6 @@ async function carregarTudo(){
     PERIODOS = dDisp.periodos || [];
     TECH_MAP = dTec.empresas || {};
     renderTudo();
-    document.getElementById('ultimaAtualizacao').textContent = 'Atualizado às ' + horaDe(new Date());
   }catch(err){
     console.error('Erro ao carregar Dashboard do Dia:', err);
   }
@@ -343,6 +370,7 @@ function renderTile(a){
       <div class="atv-cliente">${a['Cliente']||'—'}</div>
       <div class="atv-servico">${servicoAtividade(a)}</div>
       <div class="atv-equipe">${equipeDe(a)}</div>
+      ${blocoPrazoTile(a)}
       <div class="atv-tempos">
         <div>Despacho: <b>${despachoData ? horaDe(despachoData) : '—'}</b></div>
         <div>Aceite: <b>${a['Hora Início']||'—'}</b></div>
@@ -364,6 +392,26 @@ window.selecionarSegmento = function(tipo){
   renderBoard(atividadesDeHoje());
 };
 
+// Conta quantas atividades de hoje, ainda em aberto, já passaram do Prazo
+// Limite — vira a faixa vermelha em destaque logo abaixo da data (ver
+// atualizarAlertaAtraso), o alerta de maior prioridade pra quem só bate o
+// olho na tela de longe.
+function contarAtrasados(hoje){
+  return hoje.filter(a => {
+    if(a['Status']==='VALIDADA') return false;
+    const prazoDate = parseDataAmpla(a['Prazo Limite']);
+    return prazoDate && prazoDate.getTime() < Date.now();
+  }).length;
+}
+
+function atualizarAlertaAtraso(hoje){
+  const n = contarAtrasados(hoje);
+  const el = document.getElementById('alertaAtraso');
+  if(!n){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.textContent = `⚠ ${n} ${n===1?'ATIVIDADE ESTOURADA':'ATIVIDADES ESTOURADAS'} NO PRAZO`;
+}
+
 function renderBoard(hoje){
   document.getElementById('cnt-TODOS').textContent = hoje.length;
   TIPOS.forEach((tipo, i) => {
@@ -373,7 +421,6 @@ function renderBoard(hoje){
 
   const tiposVisiveis = SEGMENTO_ATUAL==='TODOS' ? TIPOS : [SEGMENTO_ATUAL];
   const board = document.getElementById('diaBoard');
-  board.classList.toggle('single', tiposVisiveis.length===1);
 
   board.innerHTML = tiposVisiveis.map(tipo => {
     const lista = hoje.filter(a => a['Tipo de Solicitação']===tipo).sort((a,b) => ultimaDataDe(b)-ultimaDataDe(a));
@@ -464,6 +511,15 @@ function atualizarBanner(){
   document.getElementById('dataBanner').textContent = dias[hoje.getDay()] + ' · ' + dataFmt;
 }
 
+// Relógio com segundos correndo no topbar — é o jeito mais simples de alguém
+// que só olha a tela de longe (sem "Atualizado às HH:MM" pequeno num canto)
+// perceber na hora se ela travou: os segundos param de andar.
+function atualizarRelogio(){
+  const agora = new Date();
+  const el = document.getElementById('relogio');
+  if(el) el.textContent = [agora.getHours(), agora.getMinutes(), agora.getSeconds()].map(n => String(n).padStart(2,'0')).join(':');
+}
+
 function renderTudo(){
   atualizarBanner();
   atualizarTabsAtivas();
@@ -471,15 +527,50 @@ function renderTudo(){
   renderBoard(hoje);
   renderBars(hoje);
   renderDonut(calcularStatusMO(hoje));
+  atualizarAlertaAtraso(hoje);
+}
+
+// Rolagem automática da página inteira — sem isso, qualquer conteúdo que não
+// coubesse na tela ficaria escondido pra sempre (ninguém vai rolar manualmente
+// numa TV). Desce devagar, pausa embaixo, volta pro topo (suave), pausa em
+// cima, repete. Não faz nada se o conteúdo já cabe inteiro na tela.
+function iniciarAutoScroll(){
+  const VELOCIDADE_PX = 0.6;   // por tick de 30ms ≈ 20px/s
+  const PAUSA_MS = 4000;
+  let estado = 'descendo';     // descendo | pausado-fim | indo-topo | pausado-topo
+  let pausaAte = 0;
+
+  setInterval(() => {
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    if(max <= 4) return; // cabe tudo na tela, nada a fazer
+
+    if(estado==='pausado-fim' || estado==='pausado-topo'){
+      if(Date.now() < pausaAte) return;
+      estado = estado==='pausado-fim' ? 'indo-topo' : 'descendo';
+      if(estado==='indo-topo') window.scrollTo({ top:0, behavior:'smooth' });
+      return;
+    }
+    if(estado==='indo-topo'){
+      if(window.scrollY <= 2){ estado='pausado-topo'; pausaAte = Date.now()+PAUSA_MS; }
+      return;
+    }
+    // descendo
+    if(window.scrollY >= max - 2){ estado='pausado-fim'; pausaAte = Date.now()+PAUSA_MS; return; }
+    window.scrollBy(0, VELOCIDADE_PX);
+  }, 30);
 }
 
 function iniciarApp(){
   document.getElementById('app').style.display = '';
   carregarTudo();
   setInterval(carregarTudo, 20000);
+  atualizarRelogio();
+  setInterval(atualizarRelogio, 1000);
+  iniciarAutoScroll();
 }
 
-NetturboAuth.proteger({ tela:'Dashboard do Dia', aoEntrar: iniciarApp });
+// Tela de TV/kiosk — sem login, ver comentário no <head> sobre o motivo.
+iniciarApp();
 </script>
 </body>
 </html>
