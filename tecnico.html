@@ -320,6 +320,10 @@ let TECH_MAP = {}; // preenchido ao vivo pelo backend — ver carregarTecnicos()
 
 let TECNICO_LOGADO = '';
 let EMPRESA_LOGADA = '';
+// Token de sessão emitido pelo backend no LOGIN_TECNICO — toda ação de
+// escrita manda isso no corpo pra o backend verificar quem está de fato
+// logado, em vez de confiar só no nome/empresa que a tela informa.
+let TECNICO_TOKEN = '';
 
 function popularEmpresas(){
   const opts = '<option value="">Selecione...</option>' + Object.keys(TECH_MAP).map(e=>`<option value="${e}">${e}</option>`).join('');
@@ -390,8 +394,10 @@ async function fazerLogin(){
 
     TECNICO_LOGADO = tecnico;
     EMPRESA_LOGADA = empresa;
+    TECNICO_TOKEN = result.token || '';
     sessionStorage.setItem('esteira_tecnico_logado', tecnico);
     sessionStorage.setItem('esteira_empresa_logada', empresa);
+    sessionStorage.setItem('esteira_tecnico_token', TECNICO_TOKEN);
     document.getElementById('login-overlay').style.display = 'none';
     document.getElementById('headerApp').style.display = 'flex';
     document.getElementById('pageActions').style.display = 'flex';
@@ -417,6 +423,7 @@ window.fazerLogin = fazerLogin;
   if(salvo && salvoEmpresa){
     TECNICO_LOGADO = salvo;
     EMPRESA_LOGADA = salvoEmpresa;
+    TECNICO_TOKEN = sessionStorage.getItem('esteira_tecnico_token') || '';
     document.getElementById('login-overlay').style.display = 'none';
     document.getElementById('headerApp').style.display = 'flex';
     document.getElementById('pageActions').style.display = 'flex';
@@ -1375,7 +1382,7 @@ window.decidirLpuApoio = async function(rowIndex, temCobranca){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'DECIDIR_LPU_APOIO', rowIndex, temCobranca })
+      body: JSON.stringify({ acao:'DECIDIR_LPU_APOIO', sessionToken: TECNICO_TOKEN, rowIndex, temCobranca })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao registrar a decisão.'); return; }
@@ -1395,7 +1402,7 @@ window.salvarECopiarApoio = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'SALVAR_MATERIAIS_APOIO', rowIndex, materiaisApoio: materiais })
+      body: JSON.stringify({ acao:'SALVAR_MATERIAIS_APOIO', sessionToken: TECNICO_TOKEN, rowIndex, materiaisApoio: materiais })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao salvar.')); return; }
@@ -1840,7 +1847,7 @@ async function enviarControleMaterial(idAtividade, protocolo, etiqueta, cliente,
   try{
     await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'SALVAR_CONTROLE_MATERIAL', idAtividade, protocolo, etiqueta, cliente, tecnico, empresa, itens })
+      body: JSON.stringify({ acao:'SALVAR_CONTROLE_MATERIAL', sessionToken: TECNICO_TOKEN, idAtividade, protocolo, etiqueta, cliente, tecnico, empresa, itens })
     });
   }catch(err){
     console.error('Erro ao salvar controle de material:', err);
@@ -2629,7 +2636,7 @@ window.solicitarValidacao = async function(rowIndex){
   }));
   const fusaoPareamento = diagramasSerializados.length ? JSON.stringify(diagramasSerializados) : '';
 
-  const payloadBase = { acao:'SALVAR_OCORRENCIA', rowIndex, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, nomenclaturaCeoA, nomenclaturaCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, fusaoPareamento, quantidadeCeo };
+  const payloadBase = { acao:'SALVAR_OCORRENCIA', sessionToken: TECNICO_TOKEN, rowIndex, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, nomenclaturaCeoA, nomenclaturaCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, fusaoPareamento, quantidadeCeo };
   const payload = usaModeloNovo ? { ...payloadBase, ...categorias } : { ...payloadBase, ocorrencia: tipo, causa };
 
   try{
@@ -2711,7 +2718,7 @@ window.marcarAcao = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'MARCAR_INICIO_CHEGADA', rowIndex })
+      body: JSON.stringify({ acao:'MARCAR_INICIO_CHEGADA', sessionToken: TECNICO_TOKEN, rowIndex })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao registrar.')); return; }
@@ -2730,7 +2737,7 @@ window.informarPrevisao = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'INFORMAR_PREVISAO_CHEGADA', rowIndex, previsao })
+      body: JSON.stringify({ acao:'INFORMAR_PREVISAO_CHEGADA', sessionToken: TECNICO_TOKEN, rowIndex, previsao })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao salvar.')); return; }
@@ -2746,7 +2753,7 @@ window.marcarAcaoApoio = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'MARCAR_INICIO_CHEGADA_APOIO', rowIndex })
+      body: JSON.stringify({ acao:'MARCAR_INICIO_CHEGADA_APOIO', sessionToken: TECNICO_TOKEN, rowIndex })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast('' + (result.message||'Erro ao registrar.')); return; }

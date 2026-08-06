@@ -340,6 +340,11 @@ window.fazerLogin = async function(){
     EMPRESA_LOGADA = empresa;
     sessionStorage.setItem('esteira_tecnico_logado', tecnico);
     sessionStorage.setItem('esteira_empresa_logada', empresa);
+    // Esta tela não chama nenhuma ação de escrita própria, mas salva o token
+    // aqui do mesmo jeito — é a mesma sessão compartilhada com tecnico.html/
+    // PREENCHIMENTO_LPU.html/fechamento_lpu.html (ver comentário lá), então se
+    // o técnico logar primeiro por aqui, as outras telas já encontram o token.
+    sessionStorage.setItem('esteira_tecnico_token', result.token || '');
     liberarApp(tecnico);
   }catch(err){
     console.error(err);

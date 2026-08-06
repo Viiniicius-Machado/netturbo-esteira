@@ -132,6 +132,135 @@ function fmtTextoLivre(val) {
   return String(val);
 }
 
+// ══════════════════════════════════════════════════════════════
+//  AUTENTICAÇÃO DE SESSÃO — Fase 1 (aditiva/tolerante, 2026-08-06): toda ação
+//  de escrita passa a resolver "quem fez" a partir de um token de sessão
+//  (emitido no login), em vez de confiar cegamente no nome que o cliente
+//  manda no corpo da requisição. Enquanto EXIGIR_SESSAO=false, requisição
+//  sem token ainda funciona (cai pro nome que o cliente mandou, igual sempre
+//  foi) — é assim que telas ainda não atualizadas pra mandar o token
+//  continuam funcionando. Fase 2 = trocar só essa linha pra `true` e
+//  reimplantar: aí toda ação passa a EXIGIR um token válido.
+// ══════════════════════════════════════════════════════════════
+const EXIGIR_SESSAO = false;
+
+const ABA_SESSOES = 'SESSOES_ATIVAS';
+const HEADERS_SESSOES = ['Token','Nome','Cargo','Tipo','Empresa','Tecnico','Telas','Criado Em','Expira Em'];
+
+function garantirSessoes(ss) {
+  return garantirAba(ss, ABA_SESSOES, HEADERS_SESSOES, '#1a1a1a', '#5aa9e6');
+}
+
+// Log de auditoria — append-only, sobrevive mesmo quando a própria ação
+// exclui a linha original (ex.: EXCLUIR_ATIVIDADE) e por isso não teria
+// onde gravar "quem fez" numa coluna própria da planilha.
+const ABA_LOG_ACOES = 'LOG_ACOES';
+const HEADERS_LOG_ACOES = ['Timestamp','Ação','Nome','Cargo','Tipo Sessão','Detalhe'];
+
+function garantirLogAcoes(ss) {
+  return garantirAba(ss, ABA_LOG_ACOES, HEADERS_LOG_ACOES, '#1a1a1a', '#888888');
+}
+
+function registrarLog(ss, acao, nome, cargo, tipoSessao, detalhe) {
+  try {
+    const sheet = garantirLogAcoes(ss);
+    sheet.appendRow([new Date().toLocaleString('pt-BR'), acao, nome || '', cargo || '', tipoSessao || '', detalhe || '']);
+  } catch (e) { /* log nunca pode derrubar a ação principal */ }
+}
+
+// Remove sessões já expiradas — chamado ao criar uma sessão nova, pra
+// SESSOES_ATIVAS não crescer sem limite (não precisa de gatilho por tempo).
+function purgarSessoesExpiradas(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  const data = sheet.getRange(2, 1, lastRow - 1, HEADERS_SESSOES.length).getValues();
+  const agora = Date.now();
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (Number(data[i][8]) < agora) sheet.deleteRow(i + 2);
+  }
+}
+
+function criarSessao(ss, info, validadeMs) {
+  const sheet = garantirSessoes(ss);
+  purgarSessoesExpiradas(sheet);
+  const token = Utilities.getUuid();
+  const expiraEm = Date.now() + validadeMs;
+  sheet.appendRow([
+    token, info.nome || '', info.cargo || '', info.tipo, info.empresa || '', info.tecnico || '',
+    (info.telas || []).join(','), new Date().toLocaleString('pt-BR'), String(expiraEm)
+  ]);
+  return token;
+}
+
+function validarSessao(ss, token, tipoEsperado) {
+  if (!token) return null;
+  const sheet = garantirSessoes(ss);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  const data = sheet.getRange(2, 1, lastRow - 1, HEADERS_SESSOES.length).getValues();
+  for (let i = 0; i < data.length; i++) {
+    if (data[i][0] !== token) continue;
+    if (Number(data[i][8]) < Date.now()) return null; // expirada
+    if (tipoEsperado && data[i][3] !== tipoEsperado) return null; // tipo errado (ex.: token de técnico numa ação de liderança)
+    return {
+      nome: data[i][1], cargo: data[i][2], tipo: data[i][3],
+      empresa: data[i][4], tecnico: data[i][5],
+      telas: String(data[i][6] || '').split(',').filter(Boolean)
+    };
+  }
+  return null;
+}
+
+// Ponto único usado por toda ação de escrita que só precisa de um NOME (ações
+// de liderança, e as de técnico que não envolvem empresa/técnico específico).
+// Resolve o autor real via sessão; sem sessão válida, Fase 1 cai pro nome que
+// o cliente mandou (comportamento antigo), Fase 2 barra. Sempre grava no log.
+function autorizarAcao(ss, data, tipoEsperado, acao, nomeClienteFallback, detalhe) {
+  const sess = validarSessao(ss, data.sessionToken, tipoEsperado);
+  const nome = sess ? sess.nome : (EXIGIR_SESSAO ? null : (nomeClienteFallback || '(não identificado)'));
+  if (!nome) return null;
+  registrarLog(ss, acao, nome, sess ? sess.cargo : '', sess ? sess.tipo : tipoEsperado, detalhe);
+  return nome;
+}
+
+// Variante pras ações do lado técnico que gravam o PAR empresa+técnico (LPU,
+// controle de material) — sem isso, o formulário podia mandar qualquer nome/
+// empresa, mesmo sem ser a pessoa logada.
+function autorizarAcaoTecnico(ss, data, acao, empresaFallback, tecnicoFallback, detalhe) {
+  const sess = validarSessao(ss, data.sessionToken, 'TECNICO');
+  const autor = sess ? { empresa: sess.empresa, tecnico: sess.tecnico }
+    : (EXIGIR_SESSAO ? null : { empresa: empresaFallback || '', tecnico: tecnicoFallback || '' });
+  if (!autor) return null;
+  registrarLog(ss, acao, autor.tecnico, sess ? sess.cargo : '', sess ? sess.tipo : 'TECNICO', detalhe);
+  return autor;
+}
+
+// Variante só pra REGISTRAR_ASSINATURA_LPU, a única ação chamada tanto por
+// técnico (PREENCHIMENTO_LPU.html) quanto por liderança (aprovacao_lpu.html/
+// medicao.html) — tenta sessão de técnico primeiro, depois de liderança.
+function autorizarAcaoQualquer(ss, data, acao, nomeClienteFallback, detalhe) {
+  let sess = validarSessao(ss, data.sessionToken, 'TECNICO');
+  if (!sess) sess = validarSessao(ss, data.sessionToken, 'LIDERANCA');
+  const nome = sess ? (sess.tecnico || sess.nome) : (EXIGIR_SESSAO ? null : (nomeClienteFallback || '(não identificado)'));
+  if (!nome) return null;
+  registrarLog(ss, acao, nome, sess ? sess.cargo : '', sess ? sess.tipo : '', detalhe);
+  return nome;
+}
+
+// ── Rate limiting de PIN (CacheService — não precisa sobreviver 12h, um
+//    bloqueio curto já resolve o risco de força bruta pelo endpoint público) ──
+function pinBloqueado(chave) {
+  return Number(CacheService.getScriptCache().get('pin_tent_' + chave) || 0) >= 5;
+}
+function registrarTentativaFalhaPin(chave) {
+  const cache = CacheService.getScriptCache();
+  const tentativas = Number(cache.get('pin_tent_' + chave) || 0) + 1;
+  cache.put('pin_tent_' + chave, String(tentativas), 900); // 15min
+}
+function limparTentativasPin(chave) {
+  CacheService.getScriptCache().remove('pin_tent_' + chave);
+}
+
 // ── POST ─────────────────────────────────────────────────────
 function doPost(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -254,6 +383,9 @@ function derivarOcorrenciaECausa(tipoSolicitacao, cat1, cat2, cat3, cat4) {
 
 // ── CRIAR ATIVIDADE (a partir da máscara já processada no front-end) ──
 function criarAtividade(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'CRIAR_ATIVIDADE', null, data.etiqueta || data.protocoloOem || data.protocoloNoc || '');
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = garantirAba(ss, ABA_ESTEIRA, HEADERS_ESTEIRA, '#1a1200', '#ffa000');
   const row = sheet.getLastRow() + 1;
   const idxDataNoc = HEADERS_ESTEIRA.indexOf('Data NOC') + 1;
@@ -310,6 +442,9 @@ function criarAtividade(ss, data) {
 
 // ── DESPACHAR ──────────────────────────────────────────────────
 function despacharAtividade(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'DESPACHAR', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
 
@@ -348,6 +483,9 @@ function getOrCriarPastaAnexoDespacho() {
 // MEDIÇÃO (liderança → técnico, preenchido no card "Aguardando Despacho" de
 // index.html) ────────────────────────────────────────────────────────────────
 function salvarInfoDespacho(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'SALVAR_INFO_DESPACHO', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -407,6 +545,9 @@ function salvarInfoDespacho(ss, data) {
 
 // ── DEFINIR/TROCAR EQUIPE DE APOIO (pode ser feito a qualquer momento) ──
 function definirApoio(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'DEFINIR_APOIO', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -420,6 +561,9 @@ function definirApoio(ss, data) {
 
 // ── MATERIAIS DA EQUIPE DE APOIO (registro pessoal, não entra na validação oficial) ──
 function salvarMateriaisApoio(ss, data) {
+  const autor = autorizarAcao(ss, data, 'TECNICO', 'SALVAR_MATERIAIS_APOIO', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -432,6 +576,9 @@ function salvarMateriaisApoio(ss, data) {
 
 // ── INÍCIO/CHEGADA DA EQUIPE DE APOIO (clock próprio, não mexe no status geral) ──
 function marcarInicioOuChegadaApoio(ss, data) {
+  const autor = autorizarAcao(ss, data, 'TECNICO', 'MARCAR_INICIO_CHEGADA_APOIO', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -461,6 +608,9 @@ function marcarInicioOuChegadaApoio(ss, data) {
 
 // ── EXCLUIR (só permitido enquanto ainda não foi despachada) ────
 function excluirAtividade(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'EXCLUIR_ATIVIDADE', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -476,6 +626,9 @@ function excluirAtividade(ss, data) {
 
 // ── DESFAZER DESPACHO (recolhe pra fila, limpando o que o técnico já preencheu) ──
 function desfazerDespacho(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'DESFAZER_DESPACHO', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -575,6 +728,9 @@ function encontrarLinhaAcesso(sheet, empresa, tecnico) {
 // Se ainda não foi configurado (primeiro acesso), o complemento enviado
 // agora vira o complemento definitivo.
 function loginTecnico(ss, data) {
+  const chaveRate = 'tec_' + data.empresa + '_' + data.tecnico;
+  if (pinBloqueado(chaveRate)) return resposta('error', { message: 'Muitas tentativas incorretas. Aguarde alguns minutos e tente de novo.' });
+
   const sheet = garantirAcessos(ss);
   const encontrado = encontrarLinhaAcesso(sheet, data.empresa, data.tecnico);
   if (!encontrado) return resposta('error', { message: 'Técnico não encontrado para essa empresa.' });
@@ -584,6 +740,7 @@ function loginTecnico(ss, data) {
     return resposta('error', { message: 'Nenhum PIN cadastrado para este técnico ainda. Fale com a liderança.' });
   }
   if (String(data.pin).trim() !== String(pinSalvo).trim()) {
+    registrarTentativaFalhaPin(chaveRate);
     return resposta('error', { message: 'PIN incorreto.' });
   }
 
@@ -593,26 +750,36 @@ function loginTecnico(ss, data) {
     sheet.getRange(encontrado.linha, 4).setValue(hash);
     sheet.getRange(encontrado.linha, 5).setValue('sim');
     sheet.getRange(encontrado.linha, 6).setValue(new Date().toLocaleString('pt-BR'));
-    return resposta('ok', { primeiroAcesso: true });
+    limparTentativasPin(chaveRate);
+    const token = criarSessao(ss, { nome: data.tecnico, tipo: 'TECNICO', empresa: data.empresa, tecnico: data.tecnico }, 12*60*60*1000);
+    return resposta('ok', { primeiroAcesso: true, token: token });
   }
 
   const hashEnviado = sha256Hex(data.complemento || '');
   if (hashEnviado !== hashSalvo) {
+    registrarTentativaFalhaPin(chaveRate);
     return resposta('error', { message: 'Complemento incorreto.' });
   }
-  return resposta('ok', { primeiroAcesso: false });
+  limparTentativasPin(chaveRate);
+  const token = criarSessao(ss, { nome: data.tecnico, tipo: 'TECNICO', empresa: data.empresa, tecnico: data.tecnico }, 12*60*60*1000);
+  return resposta('ok', { primeiroAcesso: false, token: token });
 }
 
 // Reset: só precisa do PIN certo pra definir um complemento novo.
 function resetComplemento(ss, data) {
+  const chaveRate = 'tec_' + data.empresa + '_' + data.tecnico;
+  if (pinBloqueado(chaveRate)) return resposta('error', { message: 'Muitas tentativas incorretas. Aguarde alguns minutos e tente de novo.' });
+
   const sheet = garantirAcessos(ss);
   const encontrado = encontrarLinhaAcesso(sheet, data.empresa, data.tecnico);
   if (!encontrado) return resposta('error', { message: 'Técnico não encontrado para essa empresa.' });
 
   const pinSalvo = encontrado.dados[2];
   if (!pinSalvo || String(data.pin).trim() !== String(pinSalvo).trim()) {
+    registrarTentativaFalhaPin(chaveRate);
     return resposta('error', { message: 'PIN incorreto.' });
   }
+  limparTentativasPin(chaveRate);
 
   const hash = sha256Hex(data.novoComplemento || '');
   sheet.getRange(encontrado.linha, 4).setValue(hash);
@@ -662,6 +829,9 @@ function listarUsuariosLideranca(ss) {
 }
 
 function loginLideranca(ss, data) {
+  const chaveRate = 'lid_' + data.nome;
+  if (pinBloqueado(chaveRate)) return resposta('error', { message: 'Muitas tentativas incorretas. Aguarde alguns minutos e tente de novo.' });
+
   const sheet = garantirAcessosLideranca(ss);
   const encontrado = encontrarLinhaAcessoLideranca(sheet, data.nome);
   if (!encontrado) return resposta('error', { message: 'Usuário não encontrado.' });
@@ -674,6 +844,7 @@ function loginLideranca(ss, data) {
     return resposta('error', { message: 'Nenhum PIN cadastrado para este usuário ainda. Fale com a liderança.' });
   }
   if (String(data.pin).trim() !== String(pinSalvo).trim()) {
+    registrarTentativaFalhaPin(chaveRate);
     return resposta('error', { message: 'PIN incorreto.' });
   }
 
@@ -684,26 +855,36 @@ function loginLideranca(ss, data) {
     sheet.getRange(encontrado.linha, 4).setValue(hash);
     sheet.getRange(encontrado.linha, 5).setValue('sim');
     sheet.getRange(encontrado.linha, 8).setValue(new Date().toLocaleString('pt-BR'));
-    return resposta('ok', { primeiroAcesso: true, nome: data.nome, cargo: cargo, telas: telas });
+    limparTentativasPin(chaveRate);
+    const token = criarSessao(ss, { nome: data.nome, cargo: cargo, tipo: 'LIDERANCA', telas: telas }, 12*60*60*1000);
+    return resposta('ok', { primeiroAcesso: true, nome: data.nome, cargo: cargo, telas: telas, token: token });
   }
 
   const hashEnviado = sha256Hex(data.complemento || '');
   if (hashEnviado !== hashSalvo) {
+    registrarTentativaFalhaPin(chaveRate);
     return resposta('error', { message: 'Complemento incorreto.' });
   }
+  limparTentativasPin(chaveRate);
   sheet.getRange(encontrado.linha, 8).setValue(new Date().toLocaleString('pt-BR'));
-  return resposta('ok', { primeiroAcesso: false, nome: data.nome, cargo: cargo, telas: telas });
+  const token = criarSessao(ss, { nome: data.nome, cargo: cargo, tipo: 'LIDERANCA', telas: telas }, 12*60*60*1000);
+  return resposta('ok', { primeiroAcesso: false, nome: data.nome, cargo: cargo, telas: telas, token: token });
 }
 
 function resetComplementoLideranca(ss, data) {
+  const chaveRate = 'lid_' + data.nome;
+  if (pinBloqueado(chaveRate)) return resposta('error', { message: 'Muitas tentativas incorretas. Aguarde alguns minutos e tente de novo.' });
+
   const sheet = garantirAcessosLideranca(ss);
   const encontrado = encontrarLinhaAcessoLideranca(sheet, data.nome);
   if (!encontrado) return resposta('error', { message: 'Usuário não encontrado.' });
 
   const pinSalvo = encontrado.dados[2];
   if (!pinSalvo || String(data.pin).trim() !== String(pinSalvo).trim()) {
+    registrarTentativaFalhaPin(chaveRate);
     return resposta('error', { message: 'PIN incorreto.' });
   }
+  limparTentativasPin(chaveRate);
 
   const hash = sha256Hex(data.novoComplemento || '');
   sheet.getRange(encontrado.linha, 4).setValue(hash);
@@ -979,6 +1160,9 @@ function resumoDiarioTecnico(ss, params) {
 
 
 function marcarInicioOuChegada(ss, data) {
+  const autor = autorizarAcao(ss, data, 'TECNICO', 'MARCAR_INICIO_CHEGADA', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
 
@@ -1043,6 +1227,9 @@ function numeroCeoJaTemFusaoDesenhada(fusaoPareamentoJson, numeroCeo) {
 
 // ── SALVAR OCORRÊNCIA (técnico preenche e solicita validação) ───
 function salvarOcorrencia(ss, data) {
+  const autor = autorizarAcao(ss, data, 'TECNICO', 'SALVAR_OCORRENCIA', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -1134,6 +1321,9 @@ function salvarOcorrencia(ss, data) {
 // ── INFORMAR PREVISÃO DE CHEGADA (técnico informa uma estimativa de horário antes
 // de chegar no local — pra despacho repassar ao cliente mais rápido) ────────────
 function informarPrevisaoChegada(ss, data) {
+  const autor = autorizarAcao(ss, data, 'TECNICO', 'INFORMAR_PREVISAO_CHEGADA', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -1199,6 +1389,9 @@ function diferencaTimestampAteHora(timestamp, horaFim) {
 
 // ── VALIDAR (líder confirma com o NOC, ou devolve com motivo) ───
 function validarAtividade(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'VALIDAR', data.validadoPor, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -1228,7 +1421,7 @@ function validarAtividade(ss, data) {
 
     sheet.getRange(rowIndex, idx('Timestamp Validação'), 1, 1).setNumberFormat('@STRING@');
     sheet.getRange(rowIndex, idx('Timestamp Validação')).setValue(new Date().toLocaleString('pt-BR'));
-    sheet.getRange(rowIndex, idx('Validado Por')).setValue(data.validadoPor || '');
+    sheet.getRange(rowIndex, idx('Validado Por')).setValue(autor);
     sheet.getRange(rowIndex, idx('Status')).setValue('VALIDADA');
 
     // MTTD = Despacho → Chegada (tempo até localizar o problema em campo)
@@ -1316,6 +1509,9 @@ function getOrCriarPastaLPU() {
 // das colunas gravadas ('LPU ' pra titular, 'LPU Apoio ' pro apoio), já que o resto
 // do fluxo (itens, PDF, aprovações) é idêntico.
 function salvarLpuAtividade(ss, data) {
+  const autor = autorizarAcaoTecnico(ss, data, 'SALVAR_LPU_ATIVIDADE', data.empresaPrestadora, data.tecnicos, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -1353,9 +1549,9 @@ function salvarLpuAtividade(ss, data) {
   const itens = Array.isArray(data.itens) ? data.itens : [];
   const totalGeral = itens.reduce((soma, item) => soma + (Number(item.total) || 0), 0);
 
-  sheet.getRange(rowIndex, idx(prefixo + 'Empresa Prestadora')).setValue(data.empresaPrestadora || '');
+  sheet.getRange(rowIndex, idx(prefixo + 'Empresa Prestadora')).setValue(autor.empresa || '');
   sheet.getRange(rowIndex, idx(prefixo + 'CNPJ')).setValue(data.cnpj || '');
-  sheet.getRange(rowIndex, idx(prefixo + 'Técnicos')).setValue(data.tecnicos || '');
+  sheet.getRange(rowIndex, idx(prefixo + 'Técnicos')).setValue(autor.tecnico || '');
   sheet.getRange(rowIndex, idx(prefixo + 'Descrição Contábil')).setValue(data.descricaoContabil || '');
   sheet.getRange(rowIndex, idx(prefixo + 'Itens'), 1, 1).setNumberFormat('@STRING@');
   sheet.getRange(rowIndex, idx(prefixo + 'Itens')).setValue(JSON.stringify(itens));
@@ -1373,6 +1569,9 @@ function salvarLpuAtividade(ss, data) {
 
 // ── LPU: despacho aprova/reprova (index.html) — titular e apoio via data.tipoLpu ──
 function validarLpuAprovador(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'VALIDAR_LPU_APROVADOR', data.validadoPor, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -1388,7 +1587,7 @@ function validarLpuAprovador(ss, data) {
   }
 
   if (data.aprovado) {
-    sheet.getRange(rowIndex, idx(prefixo + 'Validado Por Aprovador')).setValue(data.validadoPor || '');
+    sheet.getRange(rowIndex, idx(prefixo + 'Validado Por Aprovador')).setValue(autor);
     sheet.getRange(rowIndex, idx(prefixo + 'Timestamp Aprovador'), 1, 1).setNumberFormat('@STRING@');
     sheet.getRange(rowIndex, idx(prefixo + 'Timestamp Aprovador')).setValue(new Date().toLocaleString('pt-BR'));
     sheet.getRange(rowIndex, idx(colStatus)).setValue('AGUARDANDO_MEDICAO');
@@ -1433,6 +1632,9 @@ function obterLpuPdf(ss, params) {
 // como arquivo novo em vez de sobrescrever, mais simples e sem risco de
 // corromper o arquivo original se algo der errado no meio do caminho.
 function atualizarLpuPdf(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'LPU_ATUALIZAR_PDF', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -1454,6 +1656,9 @@ function atualizarLpuPdf(ss, data) {
 
 // ── LPU: Medição aprova/reprova (medicao.html) — titular e apoio via data.tipoLpu ──
 function validarLpuMedicao(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'VALIDAR_LPU_MEDICAO', data.validadoPor, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -1469,7 +1674,7 @@ function validarLpuMedicao(ss, data) {
   }
 
   if (data.aprovado) {
-    sheet.getRange(rowIndex, idx(prefixo + 'Aprovador Medição')).setValue(data.validadoPor || '');
+    sheet.getRange(rowIndex, idx(prefixo + 'Aprovador Medição')).setValue(autor);
     sheet.getRange(rowIndex, idx(prefixo + 'Timestamp Medição'), 1, 1).setNumberFormat('@STRING@');
     sheet.getRange(rowIndex, idx(prefixo + 'Timestamp Medição')).setValue(new Date().toLocaleString('pt-BR'));
     sheet.getRange(rowIndex, idx(colStatus)).setValue('APROVADO_AGUARDANDO_NF');
@@ -1486,6 +1691,9 @@ function validarLpuMedicao(ss, data) {
 // ── LPU Apoio: decide se teve cobrança própria (empresa de apoio pode ser diferente
 // da titular). Se não teve, some da tela sem gerar LPU nenhuma. ─────────────────────
 function decidirLpuApoio(ss, data) {
+  const autor = autorizarAcao(ss, data, 'TECNICO', 'DECIDIR_LPU_APOIO', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const rowIndex = parseInt(data.rowIndex);
@@ -1524,9 +1732,12 @@ function getOrCriarPastaNF() {
 // em todas as linhas do lote que permite agrupar o "fechamento" na tela da Medição
 // sem precisar de uma aba/entidade nova só pra isso.
 function fecharLpuNf(ss, data) {
+  const autor = autorizarAcaoTecnico(ss, data, 'FECHAR_LPU_NF', data.empresa, data.fechadoPor, data.empresa);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet || sheet.getLastRow() < 2) return resposta('error', { message: 'Nada pra fechar.' });
-  const empresa = data.empresa;
+  const empresa = autor.empresa;
   if (!empresa) return resposta('error', { message: 'Empresa ausente.' });
   if (!data.notaFiscalBase64) return resposta('error', { message: 'Anexe o arquivo da Nota Fiscal.' });
 
@@ -1650,6 +1861,9 @@ function listarLpuPagamento(ss) {
 // confirmado — é assim que um clique só resolve o lote inteiro, mesmo sem uma
 // entidade "fechamento" separada na planilha.
 function marcarLpuPago(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'MARCAR_LPU_PAGO', data.pagoPor, data.nfUrl);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet || sheet.getLastRow() < 2) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const nfUrl = data.nfUrl;
@@ -1666,14 +1880,14 @@ function marcarLpuPago(ss, data) {
     const rowIndex = i + 2;
     if (row[col('LPU NF URL')] === nfUrl && row[col('Status LPU')] === 'APROVADO_AGUARDANDO_NF') {
       sheet.getRange(rowIndex, idx('Status LPU')).setValue('PAGO');
-      sheet.getRange(rowIndex, idx('LPU Pago Por')).setValue(data.pagoPor || '');
+      sheet.getRange(rowIndex, idx('LPU Pago Por')).setValue(autor);
       sheet.getRange(rowIndex, idx('LPU Timestamp Pago'), 1, 1).setNumberFormat('@STRING@');
       sheet.getRange(rowIndex, idx('LPU Timestamp Pago')).setValue(agora);
       atualizadas++;
     }
     if (row[col('LPU Apoio NF URL')] === nfUrl && row[col('Status LPU Apoio')] === 'APROVADO_AGUARDANDO_NF') {
       sheet.getRange(rowIndex, idx('Status LPU Apoio')).setValue('PAGO');
-      sheet.getRange(rowIndex, idx('LPU Apoio Pago Por')).setValue(data.pagoPor || '');
+      sheet.getRange(rowIndex, idx('LPU Apoio Pago Por')).setValue(autor);
       sheet.getRange(rowIndex, idx('LPU Apoio Timestamp Pago'), 1, 1).setNumberFormat('@STRING@');
       sheet.getRange(rowIndex, idx('LPU Apoio Timestamp Pago')).setValue(agora);
       atualizadas++;
@@ -1691,6 +1905,9 @@ function marcarLpuPago(ss, data) {
 // saber o que corrigir antes de anexar uma NF nova. Não mexe no Status LPU (continua
 // APROVADO_AGUARDANDO_NF) — só desfaz o fechamento, a aprovação da Medição continua valendo.
 function reprovarLpuNf(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'REPROVAR_LPU_NF', null, data.nfUrl);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = ss.getSheetByName(ABA_ESTEIRA);
   if (!sheet || sheet.getLastRow() < 2) return resposta('error', { message: 'Aba ESTEIRA não encontrada' });
   const nfUrl = data.nfUrl;
@@ -1818,6 +2035,9 @@ function garantirOrcamentos(ss) {
 // front, ver dashboard_gestao.html). Categoria 'GERAL' é o budget geral de
 // terceiros; outras categorias são nome de empresa (hoje só QUALITY).
 function registrarOrcamentoMensal(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'REGISTRAR_ORCAMENTO_MENSAL', data.registradoPor, data.mes + '/' + data.categoria);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = garantirOrcamentos(ss);
   if (!data.mes || !data.categoria) return resposta('error', { message: 'Mês e categoria são obrigatórios.' });
   const valor = Number(data.valor);
@@ -1826,7 +2046,7 @@ function registrarOrcamentoMensal(ss, data) {
   const row = sheet.getLastRow() + 1;
   sheet.getRange(row, 1, 1, 1).setNumberFormat('@STRING@'); // Mês ("YYYY-MM") — texto livre
   sheet.getRange(row, 1, 1, HEADERS_ORCAMENTOS.length).setValues([[
-    data.mes, data.categoria, valor, data.registradoPor || '', new Date().toLocaleString('pt-BR')
+    data.mes, data.categoria, valor, autor, new Date().toLocaleString('pt-BR')
   ]]);
   return resposta('ok', {});
 }
@@ -1854,6 +2074,9 @@ function garantirDisponibilidade(ss) {
 // data (ver index.html, que cruza isso com a data de hoje antes de montar a
 // lista de técnicos disponíveis pra despachar).
 function registrarDisponibilidade(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'REGISTRAR_DISPONIBILIDADE', data.registradoPor, data.empresa + '/' + data.tecnico);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = garantirDisponibilidade(ss);
   if (!data.empresa || !data.tecnico) return resposta('error', { message: 'Empresa e técnico são obrigatórios.' });
   if (!data.dataInicio || !data.dataFim) return resposta('error', { message: 'Data início e data fim são obrigatórias.' });
@@ -1864,12 +2087,15 @@ function registrarDisponibilidade(ss, data) {
   const row = sheet.getLastRow() + 1;
   sheet.getRange(row, 3, 1, 2).setNumberFormat('@STRING@'); // Data Início / Data Fim ("YYYY-MM-DD") — texto livre
   sheet.getRange(row, 1, 1, HEADERS_DISPONIBILIDADE.length).setValues([[
-    data.empresa, data.tecnico, data.dataInicio, data.dataFim, data.status, data.observacao || '', data.registradoPor || '', new Date().toLocaleString('pt-BR')
+    data.empresa, data.tecnico, data.dataInicio, data.dataFim, data.status, data.observacao || '', autor, new Date().toLocaleString('pt-BR')
   ]]);
   return resposta('ok', {});
 }
 
 function excluirDisponibilidade(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'EXCLUIR_DISPONIBILIDADE', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = garantirDisponibilidade(ss);
   const rowIndex = parseInt(data.rowIndex);
   if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
@@ -2014,10 +2240,12 @@ function listarGeogrid(ss) {
 // (Status='PENDENTE'), registra quem validou e limpa o motivo de recusa anterior
 // (se houver, pra não ficar um motivo velho pendurado num item já corrigido).
 function aprovarGeogridLider(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'APROVAR_GEOGRID_LIDER', data.aprovadoPor, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = garantirGeogrid(ss);
   const rowIndex = parseInt(data.rowIndex);
   if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
-  if (!data.aprovadoPor) return resposta('error', { message: 'Informe quem está aprovando.' });
 
   const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
   const statusAtual = sheet.getRange(rowIndex, idx('Status')).getValue();
@@ -2033,7 +2261,7 @@ function aprovarGeogridLider(ss, data) {
   if (data.quantidadeCeo !== undefined) sheet.getRange(rowIndex, idx('Quantidade CEO Trabalhadas')).setValue(data.quantidadeCeo || '');
 
   sheet.getRange(rowIndex, idx('Status')).setValue('PENDENTE');
-  sheet.getRange(rowIndex, idx('Validado Por Líder')).setValue(data.aprovadoPor);
+  sheet.getRange(rowIndex, idx('Validado Por Líder')).setValue(autor);
   sheet.getRange(rowIndex, idx('Timestamp Validação Líder'), 1, 1).setNumberFormat('@STRING@');
   sheet.getRange(rowIndex, idx('Timestamp Validação Líder')).setValue(new Date().toLocaleString('pt-BR'));
   sheet.getRange(rowIndex, idx('Motivo Recusa')).setValue('');
@@ -2045,10 +2273,12 @@ function aprovarGeogridLider(ss, data) {
 // Sala técnica marca que já replicou a fusão no GEOGRID — nome de quem concluiu
 // fica registrado pra responsabilização (pedido da liderança).
 function concluirGeogrid(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'CONCLUIR_GEOGRID', data.concluidoPor, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = garantirGeogrid(ss);
   const rowIndex = parseInt(data.rowIndex);
   if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
-  if (!data.concluidoPor) return resposta('error', { message: 'Informe quem está concluindo.' });
 
   const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
   const statusAtual = sheet.getRange(rowIndex, idx('Status')).getValue();
@@ -2057,7 +2287,7 @@ function concluirGeogrid(ss, data) {
   }
 
   sheet.getRange(rowIndex, idx('Status')).setValue('CONCLUIDO');
-  sheet.getRange(rowIndex, idx('Concluído Por')).setValue(data.concluidoPor);
+  sheet.getRange(rowIndex, idx('Concluído Por')).setValue(autor);
   sheet.getRange(rowIndex, idx('Timestamp Conclusão'), 1, 1).setNumberFormat('@STRING@');
   sheet.getRange(rowIndex, idx('Timestamp Conclusão')).setValue(new Date().toLocaleString('pt-BR'));
   return resposta('ok', {});
@@ -2070,11 +2300,13 @@ function concluirGeogrid(ss, data) {
 // de novo pra devolver à sala técnica (ver aprovarGeogridLider). Não fica mais
 // concentrado em index.html.
 function recusarGeogrid(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'RECUSAR_GEOGRID', data.recusadoPor, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = garantirGeogrid(ss);
   const rowIndex = parseInt(data.rowIndex);
   if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
   if (!data.motivo) return resposta('error', { message: 'Informe o motivo da recusa.' });
-  if (!data.recusadoPor) return resposta('error', { message: 'Informe quem está recusando.' });
 
   const idx = h => HEADERS_GEOGRID.indexOf(h) + 1;
   const statusAtual = sheet.getRange(rowIndex, idx('Status')).getValue();
@@ -2084,7 +2316,7 @@ function recusarGeogrid(ss, data) {
 
   sheet.getRange(rowIndex, idx('Status')).setValue('AGUARDANDO_VALIDACAO_LIDER');
   sheet.getRange(rowIndex, idx('Motivo Recusa')).setValue(data.motivo);
-  sheet.getRange(rowIndex, idx('Recusado Por')).setValue(data.recusadoPor);
+  sheet.getRange(rowIndex, idx('Recusado Por')).setValue(autor);
   sheet.getRange(rowIndex, idx('Timestamp Recusa'), 1, 1).setNumberFormat('@STRING@');
   sheet.getRange(rowIndex, idx('Timestamp Recusa')).setValue(new Date().toLocaleString('pt-BR'));
   return resposta('ok', {});
@@ -2093,6 +2325,9 @@ function recusarGeogrid(ss, data) {
 // Líder decide excluir de vez (ex.: fusão duplicada, ou não precisa mais ir pro
 // GEOGRID) — remove a linha inteira da planilha, sem deixar rastro no histórico.
 function excluirGeogrid(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'EXCLUIR_GEOGRID', null, 'rowIndex ' + data.rowIndex);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = garantirGeogrid(ss);
   const rowIndex = parseInt(data.rowIndex);
   if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
@@ -2120,15 +2355,17 @@ function garantirContadorAssinaturas(ss) {
 }
 
 function registrarAssinaturaLpu(ss, data) {
+  const autor = autorizarAcaoQualquer(ss, data, 'REGISTRAR_ASSINATURA_LPU', data.tecnico, data.tecnico);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+
   const sheet = garantirContadorAssinaturas(ss);
-  if (!data.tecnico) return resposta('error', { message: 'Técnico é obrigatório.' });
   const agora = new Date().toLocaleString('pt-BR');
   const lastRow = sheet.getLastRow();
 
   if (lastRow >= 2) {
     const tecnicos = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
     for (let i = 0; i < tecnicos.length; i++) {
-      if (tecnicos[i][0] === data.tecnico) {
+      if (tecnicos[i][0] === autor) {
         const linha = i + 2;
         const total = Number(sheet.getRange(linha, 2).getValue() || 0) + 1;
         sheet.getRange(linha, 2, 1, 2).setValues([[total, agora]]);
@@ -2137,7 +2374,7 @@ function registrarAssinaturaLpu(ss, data) {
     }
   }
 
-  sheet.appendRow([data.tecnico, 1, agora]);
+  sheet.appendRow([autor, 1, agora]);
   return resposta('ok', { total: 1 });
 }
 
@@ -2192,6 +2429,8 @@ function garantirControleMaterial(ss) {
 // seriais:[...]}]. Seriais só vem preenchido quando tipo === 'ATN' (um
 // serial por unidade de quantidade — decisão do usuário).
 function salvarControleMaterial(ss, data) {
+  const autor = autorizarAcaoTecnico(ss, data, 'SALVAR_CONTROLE_MATERIAL', data.empresa, data.tecnico, data.idAtividade);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
   if (!data.idAtividade) return resposta('error', { message: 'idAtividade ausente' });
   const itens = data.itens || [];
   if (!itens.length) return resposta('ok', { gravados: 0 });
@@ -2206,8 +2445,8 @@ function salvarControleMaterial(ss, data) {
     data.protocolo || '',
     data.etiqueta || '',
     data.cliente || '',
-    data.tecnico || '',
-    data.empresa || '',
+    autor.tecnico || '',
+    autor.empresa || '',
     agora,
     item.tipo || '',
     item.codigo || '',
@@ -2244,8 +2483,9 @@ function listarControleMaterial(ss) {
 // front-end (sessão OEM logada via NetturboAuth), o backend só exige que
 // venha preenchido.
 function darBaixaMaterial(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'DAR_BAIXA_MATERIAL', data.baixadoPor, data.idAtividade);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
   if (!data.idAtividade) return resposta('error', { message: 'idAtividade ausente' });
-  if (!data.baixadoPor) return resposta('error', { message: 'Informe quem está dando baixa.' });
 
   const sheet = garantirControleMaterial(ss);
   if (sheet.getLastRow() < 2) return resposta('ok', { atualizadas: 0 });
@@ -2263,7 +2503,7 @@ function darBaixaMaterial(ss, data) {
     if (String(row[idxIdAtividade]) !== String(data.idAtividade)) return;
     const rowIndex = i + 2;
     sheet.getRange(rowIndex, idxStatus).setValue('BAIXADO');
-    sheet.getRange(rowIndex, idxBaixadoPor).setValue(data.baixadoPor);
+    sheet.getRange(rowIndex, idxBaixadoPor).setValue(autor);
     sheet.getRange(rowIndex, idxTimestampBaixa, 1, 1).setNumberFormat('@STRING@');
     sheet.getRange(rowIndex, idxTimestampBaixa).setValue(agora);
     atualizadas++;

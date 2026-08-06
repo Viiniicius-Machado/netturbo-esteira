@@ -951,6 +951,7 @@ async function confirmarAtividade(){
   if(!contaContabil){ showToast('Selecione a Conta Contábil antes de confirmar.'); return; }
   const payload = {
     acao: 'CRIAR_ATIVIDADE',
+    sessionToken: NetturboAuth.token(),
     motivo:        document.getElementById('f_motivo').value.trim(),
     cliente:       document.getElementById('f_cliente').value.trim(),
     etiqueta:      document.getElementById('f_etiqueta').value.trim(),
@@ -1108,7 +1109,7 @@ window.registrarDisponibilidade = async function(){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'REGISTRAR_DISPONIBILIDADE', empresa, tecnico, status, dataInicio, dataFim, observacao, registradoPor })
+      body: JSON.stringify({ acao:'REGISTRAR_DISPONIBILIDADE', sessionToken: NetturboAuth.token(), empresa, tecnico, status, dataInicio, dataFim, observacao, registradoPor })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao registrar.'); return; }
@@ -1128,7 +1129,7 @@ window.excluirPeriodoDisponibilidade = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'EXCLUIR_DISPONIBILIDADE', rowIndex })
+      body: JSON.stringify({ acao:'EXCLUIR_DISPONIBILIDADE', sessionToken: NetturboAuth.token(), rowIndex })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao remover.'); return; }
@@ -1394,7 +1395,7 @@ window.validar = async function(rowIndex, aprovado){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify(Object.assign({ acao:'VALIDAR', rowIndex, aprovado, motivo, validadoPor }, payloadExtra))
+      body: JSON.stringify(Object.assign({ acao:'VALIDAR', sessionToken: NetturboAuth.token(), rowIndex, aprovado, motivo, validadoPor }, payloadExtra))
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast((result.message||'Erro ao validar.')); carregarEsteira(); return; }
@@ -1411,7 +1412,7 @@ window.excluirAtividade = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'EXCLUIR_ATIVIDADE', rowIndex })
+      body: JSON.stringify({ acao:'EXCLUIR_ATIVIDADE', sessionToken: NetturboAuth.token(), rowIndex })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast((result.message||'Erro ao excluir.')); carregarEsteira(); return; }
@@ -1606,7 +1607,7 @@ window.salvarInfoDespacho = async function(rowIndex){
     const anexos = pendentes.map(p => ({ base64: p.dataUrl, nome: p.nome }));
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'SALVAR_INFO_DESPACHO', rowIndex, anexos, mensagem, linkMedicao })
+      body: JSON.stringify({ acao:'SALVAR_INFO_DESPACHO', sessionToken: NetturboAuth.token(), rowIndex, anexos, mensagem, linkMedicao })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast((result.message||'Erro ao salvar.')); return; }
@@ -1625,7 +1626,7 @@ window.desfazerDespacho = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'DESFAZER_DESPACHO', rowIndex })
+      body: JSON.stringify({ acao:'DESFAZER_DESPACHO', sessionToken: NetturboAuth.token(), rowIndex })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast((result.message||'Erro ao desfazer.')); carregarEsteira(); return; }
@@ -1666,7 +1667,7 @@ window.despachar = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'DESPACHAR', rowIndex, empresa, tecnico, empresaApoio, tecnicoApoio })
+      body: JSON.stringify({ acao:'DESPACHAR', sessionToken: NetturboAuth.token(), rowIndex, empresa, tecnico, empresaApoio, tecnicoApoio })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast((result.message||'Erro ao despachar.')); carregarEsteira(); return; }
@@ -1693,7 +1694,7 @@ window.adicionarApoio = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'DEFINIR_APOIO', rowIndex, empresaApoio, tecnicoApoio })
+      body: JSON.stringify({ acao:'DEFINIR_APOIO', sessionToken: NetturboAuth.token(), rowIndex, empresaApoio, tecnicoApoio })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast((result.message||'Erro ao definir apoio.')); return; }

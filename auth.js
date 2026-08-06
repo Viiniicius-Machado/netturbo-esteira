@@ -189,7 +189,7 @@
         const result = await resp.json();
         if (result.status !== 'ok') { mostrarErro('naErro', result.message || 'Não foi possível entrar.'); return; }
 
-        const sessao = { nome: result.nome || nome, cargo: result.cargo || '', telas: result.telas || [] };
+        const sessao = { nome: result.nome || nome, cargo: result.cargo || '', telas: result.telas || [], token: result.token || '' };
         salvarSessao(sessao);
 
         if (!temAcessoTela(sessao, tela)) { mostrarBloqueado(tela); return; }
@@ -255,5 +255,13 @@
     return temAcessoTela(lerSessao(), tela);
   }
 
-  window.NetturboAuth = { proteger, usuario, temAcesso, sair };
+  // Token de sessão emitido pelo backend no login (ver LOGIN_LIDERANCA) —
+  // toda ação de escrita manda isso no corpo pra o backend verificar quem
+  // está de fato logado, em vez de confiar só no nome que a tela informa.
+  function token() {
+    const sessao = lerSessao();
+    return sessao ? (sessao.token || '') : '';
+  }
+
+  window.NetturboAuth = { proteger, usuario, temAcesso, sair, token };
 })();

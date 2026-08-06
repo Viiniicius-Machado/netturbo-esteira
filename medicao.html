@@ -231,7 +231,7 @@ window.assinarValidacaoMedicao = async function(rowIndex, tipoLpu){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'REGISTRAR_ASSINATURA_LPU', tecnico: VALIDADOR_MEDICAO })
+      body: JSON.stringify({ acao:'REGISTRAR_ASSINATURA_LPU', sessionToken: NetturboAuth.token(), tecnico: VALIDADOR_MEDICAO })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao assinar.'); return; }
@@ -259,7 +259,7 @@ window.validarMedicao = async function(rowIndex, aprovado, tipoLpu){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'VALIDAR_LPU_MEDICAO', rowIndex, aprovado, motivo, validadoPor: VALIDADOR_MEDICAO, tipoLpu })
+      body: JSON.stringify({ acao:'VALIDAR_LPU_MEDICAO', sessionToken: NetturboAuth.token(), rowIndex, aprovado, motivo, validadoPor: VALIDADOR_MEDICAO, tipoLpu })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao validar.'); carregarMedicao(); return; }
@@ -344,7 +344,7 @@ async function carimbarPdfComAssinaturaMedicao(rowIndex, tipoLpu, validador, num
     const novoBase64 = uint8ParaBase64(await pdfDoc.save());
     await fetch(APPS_SCRIPT_URL, {
       method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ acao: 'LPU_ATUALIZAR_PDF', rowIndex, tipoLpu, pdfBase64: novoBase64 })
+      body: JSON.stringify({ acao: 'LPU_ATUALIZAR_PDF', sessionToken: NetturboAuth.token(), rowIndex, tipoLpu, pdfBase64: novoBase64 })
     });
   }catch(err){
     console.error('Não foi possível carimbar o PDF da Medição:', err);
@@ -415,7 +415,7 @@ window.confirmarPagamento = async function(nfUrl){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'MARCAR_LPU_PAGO', nfUrl, pagoPor: VALIDADOR_MEDICAO })
+      body: JSON.stringify({ acao:'MARCAR_LPU_PAGO', sessionToken: NetturboAuth.token(), nfUrl, pagoPor: VALIDADOR_MEDICAO })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao confirmar pagamento.'); carregarPagamentos(); return; }
@@ -438,7 +438,7 @@ window.reprovarFechamento = async function(nfUrl){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'REPROVAR_LPU_NF', nfUrl, motivo })
+      body: JSON.stringify({ acao:'REPROVAR_LPU_NF', sessionToken: NetturboAuth.token(), nfUrl, motivo })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao reprovar.'); carregarPagamentos(); return; }

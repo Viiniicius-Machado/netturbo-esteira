@@ -696,7 +696,7 @@ window.registrarOrcamento = async function(){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'REGISTRAR_ORCAMENTO_MENSAL', mes, categoria, valor, registradoPor })
+      body: JSON.stringify({ acao:'REGISTRAR_ORCAMENTO_MENSAL', sessionToken: NetturboAuth.token(), mes, categoria, valor, registradoPor })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ alert(result.message||'Erro ao registrar o orçamento.'); return; }

@@ -892,6 +892,7 @@ let RESPONSAVEIS = {}; // empresa -> técnico que centraliza a LPU (ex: VAL -> M
 let SEM_LPU = ['NETTURBO']; // empresas que não cobram por LPU (fallback até o backend responder)
 let TECNICO_LOGADO = '';
 let EMPRESA_LOGADA = '';
+let TECNICO_TOKEN = ''; // ver comentário em tecnico.html — mesma sessão, mesma chave sessionStorage
 let ASSINADO = false;      // true só depois do clique em "Assinar" — trava o envio até lá
 let ASSINATURA_NUMERO = null; // total histórico de assinaturas do técnico, devolvido pelo backend no clique
 
@@ -997,7 +998,7 @@ window.assinarLpu = async function(){
     try{
         const resp = await fetch(APPS_SCRIPT_URL, {
             method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-            body: JSON.stringify({ acao:'REGISTRAR_ASSINATURA_LPU', tecnico: TECNICO_LOGADO })
+            body: JSON.stringify({ acao:'REGISTRAR_ASSINATURA_LPU', sessionToken: TECNICO_TOKEN, tecnico: TECNICO_LOGADO })
         });
         const result = await resp.json();
         if(result.status !== 'ok'){
@@ -1083,8 +1084,10 @@ window.fazerLogin = async function(){
 
         TECNICO_LOGADO = tecnico;
         EMPRESA_LOGADA = empresa;
+        TECNICO_TOKEN = result.token || '';
         sessionStorage.setItem('esteira_tecnico_logado', tecnico);
         sessionStorage.setItem('esteira_empresa_logada', empresa);
+        sessionStorage.setItem('esteira_tecnico_token', TECNICO_TOKEN);
         liberarApp();
     }catch(err){
         console.error(err);
@@ -1128,6 +1131,7 @@ function empresaBloqueiaTecnico(empresa, tecnico){
         }
         TECNICO_LOGADO = salvo;
         EMPRESA_LOGADA = salvoEmpresa;
+        TECNICO_TOKEN = sessionStorage.getItem('esteira_tecnico_token') || '';
         liberarApp();
     }
 })();
@@ -1160,6 +1164,7 @@ window.concluirLPU = async function(){
 
         const payload = {
             acao: 'SALVAR_LPU_ATIVIDADE',
+            sessionToken: TECNICO_TOKEN,
             tipoLpu: getTipoLpuDaURL(),
             rowIndex,
             empresaPrestadora: document.getElementById('empresa').value,

@@ -736,7 +736,7 @@ window.toggleEdicaoLider = function(rowIndex){
 window.aprovarValidacaoLider = async function(rowIndex){
   const nome = NetturboAuth.usuario().nome;
 
-  const payload = { acao:'APROVAR_GEOGRID_LIDER', rowIndex, aprovadoPor: nome };
+  const payload = { acao:'APROVAR_GEOGRID_LIDER', sessionToken: NetturboAuth.token(), rowIndex, aprovadoPor: nome };
   const st = GEOGRID_LIDER_EDIT_STATE[rowIndex];
   if(st){
     // Líder abriu "Editar" — envia o estado atual junto da aprovação.
@@ -776,7 +776,7 @@ window.excluirValidacaoLider = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'EXCLUIR_GEOGRID', rowIndex })
+      body: JSON.stringify({ acao:'EXCLUIR_GEOGRID', sessionToken: NetturboAuth.token(), rowIndex })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao excluir.'); return; }
@@ -941,7 +941,7 @@ window.concluir = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'CONCLUIR_GEOGRID', rowIndex, concluidoPor: nome })
+      body: JSON.stringify({ acao:'CONCLUIR_GEOGRID', sessionToken: NetturboAuth.token(), rowIndex, concluidoPor: nome })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao concluir.'); return; }
@@ -970,7 +970,7 @@ window.recusar = async function(rowIndex){
   try{
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ acao:'RECUSAR_GEOGRID', rowIndex, motivo, recusadoPor: nome })
+      body: JSON.stringify({ acao:'RECUSAR_GEOGRID', sessionToken: NetturboAuth.token(), rowIndex, motivo, recusadoPor: nome })
     });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao recusar.'); return; }
