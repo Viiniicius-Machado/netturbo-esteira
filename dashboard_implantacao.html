@@ -439,38 +439,63 @@ function iniciarApp(){
   document.getElementById('mesFiltro').value = mesAtual;
   document.getElementById('inputMesMapa').value = mesAtual;
   document.getElementById('inputAnoMapa').value = hoje.getFullYear();
-  carregarDashboard();
+  carregarListasLentas().then(carregarDashboard);
   if(!window._dashAutoRefresh){
     window._dashAutoRefresh = setInterval(carregarDashboard, 30000); // atualiza sozinho a cada 30s
   }
+  if(!window._listasLentasAutoRefresh){
+    window._listasLentasAutoRefresh = setInterval(carregarListasLentas, 300000); // técnicos/orçamento/disponibilidade, a cada 5min
+  }
 }
 
+// Evita reprocessar/redesenhar o dashboard inteiro (pipeline + KPIs + mapa de
+// calor) quando o poll de 30s traz a mesma esteira de antes — a maior parte
+// dos ciclos. "Balde de minuto" garante pelo menos 1 render/minuto mesmo sem
+// mudança, senão indicadores dependentes de "agora" (ex. atraso) congelariam.
+let _ultimaChaveRenderDash = null;
 async function carregarDashboard(){
   try{
-    const [respEsteira, respTecnicos, respOrcamentos, respDisponibilidade] = await Promise.all([
-      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA'),
-      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS'),
-      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ORCAMENTOS_MENSAIS'),
-      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE')
-    ]);
-    const [resultEsteira, resultTecnicos, resultOrcamentos, resultDisponibilidade] = await Promise.all([
-      respEsteira.json(), respTecnicos.json(), respOrcamentos.json(), respDisponibilidade.json()
-    ]);
+    const respEsteira = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
+    const resultEsteira = await respEsteira.json();
+    document.getElementById('ultimaAtualizacao').textContent = 'atualizado ' + new Date().toLocaleTimeString('pt-BR');
     // Dashboard dedicado só à frente de Implantação — Manutenção, Transmissão, GTD
     // e Preventiva têm cada uma o próprio dashboard, pra não duplicar indicador.
-    TODAS_ATIVIDADES = (resultEsteira.atividades || []).filter(a => a['Tipo de Solicitação'] === 'Implantação');
-    TECH_MAP = resultTecnicos.empresas || {};
-    TODOS_ORCAMENTOS = resultOrcamentos.orcamentos || [];
-    TODOS_PERIODOS_DISPONIBILIDADE = resultDisponibilidade.periodos || [];
+    const atividadesTipo = (resultEsteira.atividades || []).filter(a => a['Tipo de Solicitação'] === 'Implantação');
+    const chave = JSON.stringify(atividadesTipo) + '|' + Math.floor(Date.now()/60000);
+    if(chave === _ultimaChaveRenderDash) return;
+    _ultimaChaveRenderDash = chave;
+    TODAS_ATIVIDADES = atividadesTipo;
     renderPipeline();
     renderDashboard();
     renderMapaCalor();
-    document.getElementById('ultimaAtualizacao').textContent = 'atualizado ' + new Date().toLocaleTimeString('pt-BR');
   }catch(err){
     console.error(err);
   }
 }
 window.carregarDashboard = carregarDashboard;
+
+// Técnicos/orçamento/disponibilidade são cadastro manual, mudam raro — separado
+// do poll de 30s da esteira acima pra não puxar esses 3 endpoints à toa a cada ciclo.
+async function carregarListasLentas(){
+  try{
+    const [respTecnicos, respOrcamentos, respDisponibilidade] = await Promise.all([
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ORCAMENTOS_MENSAIS'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE')
+    ]);
+    const [resultTecnicos, resultOrcamentos, resultDisponibilidade] = await Promise.all([
+      respTecnicos.json(), respOrcamentos.json(), respDisponibilidade.json()
+    ]);
+    TECH_MAP = resultTecnicos.empresas || {};
+    TODOS_ORCAMENTOS = resultOrcamentos.orcamentos || [];
+    TODOS_PERIODOS_DISPONIBILIDADE = resultDisponibilidade.periodos || [];
+    renderDashboard();
+    renderMapaCalor();
+  }catch(err){
+    console.error(err);
+  }
+}
+window.carregarListasLentas = carregarListasLentas;
 
 function renderPipeline(){
   const aguardandoDespacho = TODAS_ATIVIDADES.filter(a=>a['Status']==='AGUARDANDO_DESPACHO').length;

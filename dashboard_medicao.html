@@ -198,6 +198,9 @@ function iniciarApp(){
 function pfxLpu(a){ return a.tipoLpu === 'apoio' ? 'LPU Apoio ' : 'LPU '; }
 function campoLpu(a, campo){ return a[pfxLpu(a) + campo]; }
 
+// Evita reprocessar os 4 agregados e redesenhar o dashboard inteiro quando o
+// poll de 30s traz exatamente o mesmo dado de antes.
+let _ultimaChaveRenderMedicao = null;
 async function carregarDashboardMedicao(){
   try{
     const [respLpu, respGeogrid, respMaterial] = await Promise.all([
@@ -206,9 +209,13 @@ async function carregarDashboardMedicao(){
       fetch(APPS_SCRIPT_URL + '?acao=LISTAR_CONTROLE_MATERIAL')
     ]);
     const [resultLpu, resultGeogrid, resultMaterial] = await Promise.all([respLpu.json(), respGeogrid.json(), respMaterial.json()]);
-    TODOS_ITENS = resultLpu.itens || [];
-    GEOGRID_ITENS = resultGeogrid.itens || [];
-    CONTROLE_MATERIAL_ITENS = resultMaterial.itens || [];
+    const itens = resultLpu.itens || [], geogrid = resultGeogrid.itens || [], material = resultMaterial.itens || [];
+    const chave = JSON.stringify([itens, geogrid, material]);
+    if(chave === _ultimaChaveRenderMedicao) return;
+    _ultimaChaveRenderMedicao = chave;
+    TODOS_ITENS = itens;
+    GEOGRID_ITENS = geogrid;
+    CONTROLE_MATERIAL_ITENS = material;
     renderDashboardMedicao();
   }catch(err){
     console.error(err);

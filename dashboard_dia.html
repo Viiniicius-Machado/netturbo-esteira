@@ -298,23 +298,46 @@ function blocoPrazoTile(a){
   return `<div class="atv-prazo" style="color:${estourado?'var(--red)':'var(--accent)'}">⏱ ${prazo}${estourado?` — ESTOURADO há ${atraso}`:''}</div>`;
 }
 
+// Evita redesenhar tudo (quadro + rosca + barras) quando o poll de 20s traz
+// exatamente a mesma esteira de antes — a maior parte dos ciclos, numa tela
+// que fica ligada o dia todo. O "balde de minuto" no final da chave garante
+// pelo menos 1 render/minuto mesmo sem mudança nenhuma, senão o "ESTOURADO há
+// Xh Ymin" de cada card (ver blocoPrazoTile) congelaria no valor antigo.
+let _ultimaChaveRenderDia = null;
 async function carregarTudo(){
   try{
-    const [rEsteira, rDisp, rTec] = await Promise.all([
-      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA'),
-      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE'),
-      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS')
-    ]);
-    const [dEsteira, dDisp, dTec] = await Promise.all([rEsteira.json(), rDisp.json(), rTec.json()]);
-    ATIVIDADES = dEsteira.atividades || [];
-    PERIODOS = dDisp.periodos || [];
-    TECH_MAP = dTec.empresas || {};
+    const rEsteira = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
+    const dEsteira = await rEsteira.json();
+    const atividades = dEsteira.atividades || [];
+    const chave = JSON.stringify(atividades) + '|' + Math.floor(Date.now()/60000);
+    if(chave === _ultimaChaveRenderDia) return;
+    _ultimaChaveRenderDia = chave;
+    ATIVIDADES = atividades;
     renderTudo();
   }catch(err){
     console.error('Erro ao carregar Dashboard do Dia:', err);
   }
 }
 window.carregarTudo = carregarTudo;
+
+// Disponibilidade (férias/afastamento) e o cadastro de técnicos mudam raro —
+// separado do poll rápido da esteira acima pra não puxar esses 2 endpoints a
+// cada 20s à toa numa tela que nunca fecha.
+async function carregarListasLentas(){
+  try{
+    const [rDisp, rTec] = await Promise.all([
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS')
+    ]);
+    const [dDisp, dTec] = await Promise.all([rDisp.json(), rTec.json()]);
+    PERIODOS = dDisp.periodos || [];
+    TECH_MAP = dTec.empresas || {};
+    renderTudo();
+  }catch(err){
+    console.error('Erro ao carregar listas do Dashboard do Dia:', err);
+  }
+}
+window.carregarListasLentas = carregarListasLentas;
 
 function atividadesDeHoje(){
   const hoje = new Date();
@@ -562,8 +585,9 @@ function iniciarAutoScroll(){
 
 function iniciarApp(){
   document.getElementById('app').style.display = '';
-  carregarTudo();
+  carregarListasLentas().then(carregarTudo);
   setInterval(carregarTudo, 20000);
+  setInterval(carregarListasLentas, 300000);
   atualizarRelogio();
   setInterval(atualizarRelogio, 1000);
   iniciarAutoScroll();

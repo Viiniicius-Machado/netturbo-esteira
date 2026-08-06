@@ -230,7 +230,7 @@
   <section class="card">
     <div class="card-header"><h2>Esteira de Atividades</h2>
       <div style="flex:1"></div>
-      <button class="btn btn-outline" style="padding:.4rem .8rem;font-size:.72rem" onclick="carregarEsteira()">↻ Atualizar</button>
+      <button class="btn btn-outline" style="padding:.4rem .8rem;font-size:.72rem" onclick="carregarEsteira();carregarDisponibilidade()">↻ Atualizar</button>
     </div>
     <div class="card-body">
       <div class="tipo-tabs" id="tiposEsteiraTabs">
@@ -716,7 +716,7 @@ function blocoPrazoLimite(a){
 
 // Empresas e técnicos (mesma lista já usada no RFO Técnico)
 let TECH_MAP = {}; // preenchido ao vivo pelo backend — ver carregarTecnicos()
-let TODOS_PERIODOS_DISPONIBILIDADE = []; // ver carregarEsteira() — atualiza junto da esteira
+let TODOS_PERIODOS_DISPONIBILIDADE = []; // ver carregarDisponibilidade() — atualiza a cada 60s, separado da esteira (15s)
 
 let ATIVIDADES = [];
 let AGENDAMENTO_ATUAL = false; // estado do toggle Sim/Não na revisão
@@ -764,8 +764,15 @@ function iniciarApp(){
   popularTiposSolicitacao();
   popularContaContabil();
   carregarTecnicos().then(carregarEsteira);
+  carregarDisponibilidade();
   if(!window._esteiraAutoRefresh){
     window._esteiraAutoRefresh = setInterval(carregarEsteira, 15000);
+  }
+  // Disponibilidade (férias/afastamento) é preenchida à mão e não muda a cada
+  // poucos segundos como a esteira — separar do loop rápido evita puxar esse
+  // endpoint 4x mais vezes do que precisa (60s aqui x 15s da esteira).
+  if(!window._dispAutoRefresh){
+    window._dispAutoRefresh = setInterval(carregarDisponibilidade, 60000);
   }
 }
 
@@ -988,24 +995,42 @@ window.confirmarAtividade = confirmarAtividade;
 // salvo "sumindo" segundos depois). Um número de sequência garante que só a
 // chamada mais recente tem permissão de atualizar ATIVIDADES/tela.
 let CARGA_ESTEIRA_SEQ = 0;
+// Evita redesenhar as 3 colunas inteiras (e perder a rolagem/atenção de quem
+// está olhando) quando o poll de 15s traz exatamente o mesmo dado de antes —
+// o que é o caso na maior parte das vezes. O "balde de minuto" no final da
+// chave garante que ainda assim renderiza pelo menos 1x/minuto mesmo sem
+// mudança nenhuma, pra "ESTOURADO há Xh Ymin" (ver blocoPrazoLimite) não
+// congelar deste jeito enquanto nada mais muda.
+let _ultimaChaveRenderEsteira = null;
 async function carregarEsteira(){
   const minhaSeq = ++CARGA_ESTEIRA_SEQ;
   try{
-    const [respEsteira, respDisp] = await Promise.all([
-      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA'),
-      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE')
-    ]);
-    const [resultEsteira, resultDisp] = await Promise.all([respEsteira.json(), respDisp.json()]);
+    const respEsteira = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
+    const resultEsteira = await respEsteira.json();
     if(minhaSeq !== CARGA_ESTEIRA_SEQ) return; // uma chamada mais nova já respondeu antes desta — descarta
-    ATIVIDADES = resultEsteira.atividades || [];
-    TODOS_PERIODOS_DISPONIBILIDADE = resultDisp.periodos || [];
+    const atividades = resultEsteira.atividades || [];
+    const chave = JSON.stringify(atividades) + '|' + Math.floor(Date.now()/60000);
+    if(chave === _ultimaChaveRenderEsteira) return;
+    _ultimaChaveRenderEsteira = chave;
+    ATIVIDADES = atividades;
     renderEsteira();
-    renderListaDisponibilidade();
   }catch(err){
     console.error(err);
   }
 }
 window.carregarEsteira = carregarEsteira;
+
+async function carregarDisponibilidade(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_DISPONIBILIDADE');
+    const result = await resp.json();
+    TODOS_PERIODOS_DISPONIBILIDADE = result.periodos || [];
+    renderListaDisponibilidade();
+  }catch(err){
+    console.error(err);
+  }
+}
+window.carregarDisponibilidade = carregarDisponibilidade;
 
 // Empresa+técnico com um período (Data Início/Fim) cobrindo hoje ficam de fora
 // da lista pra despachar — bloqueio de verdade, não só aviso (ver Disponibilidade
@@ -1091,7 +1116,7 @@ window.registrarDisponibilidade = async function(){
     document.getElementById('inputDataInicioDisp').value = '';
     document.getElementById('inputDataFimDisp').value = '';
     document.getElementById('inputObsDisp').value = '';
-    carregarEsteira();
+    carregarDisponibilidade();
   }catch(err){
     console.error(err);
     showToast('Erro ao conectar com o backend.');
@@ -1108,7 +1133,7 @@ window.excluirPeriodoDisponibilidade = async function(rowIndex){
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast(result.message||'Erro ao remover.'); return; }
     showToast('Período removido.');
-    carregarEsteira();
+    carregarDisponibilidade();
   }catch(err){
     console.error(err);
     showToast('Erro ao conectar com o backend.');

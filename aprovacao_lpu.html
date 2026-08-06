@@ -154,11 +154,18 @@ function iniciarApp(){
   }
 }
 
+// Evita re-escanear a esteira inteira 2x (fila + pendentes) e redesenhar os 2
+// quadros quando o poll de 30s traz exatamente o mesmo dado de antes.
+let _ultimaChaveRenderAprov = null;
 async function carregarAprovacao(){
   try{
     const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
     const result = await resp.json();
-    TODAS_ATIVIDADES = result.atividades || [];
+    const atividades = result.atividades || [];
+    const chave = JSON.stringify(atividades);
+    if(chave === _ultimaChaveRenderAprov) return;
+    _ultimaChaveRenderAprov = chave;
+    TODAS_ATIVIDADES = atividades;
     renderFila();
     renderPendentesPreenchimento();
   }catch(err){

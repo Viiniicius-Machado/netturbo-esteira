@@ -193,38 +193,49 @@ function iniciarApp(){
   document.getElementById('app').style.display = 'block';
   const hoje = new Date();
   document.getElementById('mesFiltro').value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0');
-  carregarControleMaterial();
+  carregarMapaTipoAtividade().then(carregarControleMaterial);
   if(!window._ctrlMatAutoRefresh){
     window._ctrlMatAutoRefresh = setInterval(carregarControleMaterial, 30000);
   }
+  // 'Tipo de Solicitação' de uma atividade não muda depois de criada — não faz
+  // sentido buscar a ESTEIRA inteira a cada 30s só pra montar esse mapa de
+  // consulta. Continua num intervalo bem mais espaçado só por segurança (uma
+  // atividade nova aparecer aqui um pouco depois de ganhar material registrado).
+  if(!window._mapaTipoAutoRefresh){
+    window._mapaTipoAutoRefresh = setInterval(carregarMapaTipoAtividade, 300000);
+  }
 }
 
-async function carregarControleMaterial(){
-  // As duas buscas são independentes de propósito (Promise.allSettled, não
-  // Promise.all) — a ESTEIRA é a planilha mestre, bem maior/mais lenta que o
-  // ledger de material; se ela falhar ou demorar, a tabela de material não
-  // pode travar por causa disso. Se a ESTEIRA falhar, o filtro por setor só
-  // fica temporariamente sem efeito (mapa vazio), mas a tabela continua.
-  const [resMaterial, resEsteira] = await Promise.allSettled([
-    fetch(APPS_SCRIPT_URL + '?acao=LISTAR_CONTROLE_MATERIAL').then(r=>r.json()),
-    fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA').then(r=>r.json())
-  ]);
+async function carregarMapaTipoAtividade(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
+    const result = await resp.json();
+    MAPA_TIPO_POR_ATIVIDADE = {};
+    (result.atividades || []).forEach(a => { MAPA_TIPO_POR_ATIVIDADE[a['ID Atividade']] = a['Tipo de Solicitação']; });
+    renderTabela();
+  }catch(err){
+    console.error('Erro ao carregar LISTAR_ESTEIRA (filtro por setor fica sem efeito):', err);
+  }
+}
+window.carregarMapaTipoAtividade = carregarMapaTipoAtividade;
 
-  if(resMaterial.status === 'fulfilled'){
-    TODOS_ITENS = resMaterial.value.itens || [];
-  } else {
-    console.error('Erro ao carregar LISTAR_CONTROLE_MATERIAL:', resMaterial.reason);
+// Evita reagrupar/reordenar o ledger inteiro e redesenhar a tabela quando o
+// poll de 30s traz exatamente os mesmos itens de antes.
+let _ultimaChaveRenderMaterial = null;
+async function carregarControleMaterial(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_CONTROLE_MATERIAL');
+    const result = await resp.json();
+    const itens = result.itens || [];
+    const chave = JSON.stringify(itens);
+    if(chave === _ultimaChaveRenderMaterial) return;
+    _ultimaChaveRenderMaterial = chave;
+    TODOS_ITENS = itens;
+    renderTabela();
+  }catch(err){
+    console.error('Erro ao carregar LISTAR_CONTROLE_MATERIAL:', err);
     showToast('Erro ao carregar os dados de material.');
   }
-
-  if(resEsteira.status === 'fulfilled'){
-    MAPA_TIPO_POR_ATIVIDADE = {};
-    (resEsteira.value.atividades || []).forEach(a => { MAPA_TIPO_POR_ATIVIDADE[a['ID Atividade']] = a['Tipo de Solicitação']; });
-  } else {
-    console.error('Erro ao carregar LISTAR_ESTEIRA (filtro por setor fica sem efeito):', resEsteira.reason);
-  }
-
-  renderTabela();
 }
 window.carregarControleMaterial = carregarControleMaterial;
 

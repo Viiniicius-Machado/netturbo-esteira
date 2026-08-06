@@ -602,12 +602,20 @@ async function fazerReset(){
 window.fazerReset = fazerReset;
 
 // ── ATIVIDADES ───────────────────────────────────────────────
+// Evita reconstruir os cards (e reinicializar os chips de Categoria) quando o
+// poll de 20s traz exatamente a mesma lista de antes — a maior parte dos
+// ciclos em que o técnico não está com formulário aberto.
+let _ultimaChaveRenderTecnico = null;
 async function carregarAtividades(){
   try{
     const url = APPS_SCRIPT_URL + '?acao=LISTAR_ATIVIDADES_TECNICO&empresa=' + encodeURIComponent(EMPRESA_LOGADA) + '&tecnico=' + encodeURIComponent(TECNICO_LOGADO);
     const resp = await fetch(url);
     const result = await resp.json();
-    renderAtividades(result.atividades || []);
+    const atividades = result.atividades || [];
+    const chave = JSON.stringify(atividades);
+    if(chave === _ultimaChaveRenderTecnico) return;
+    _ultimaChaveRenderTecnico = chave;
+    renderAtividades(atividades);
   }catch(err){
     console.error(err);
   }

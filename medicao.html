@@ -152,11 +152,18 @@ function iniciarApp(){
   }
 }
 
+// Evita redesenhar a fila e o resumo quando o poll de 30s traz exatamente o
+// mesmo dado de antes.
+let _ultimaChaveRenderMedicao = null;
 async function carregarMedicao(){
   try{
     const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_LPU_MEDICAO');
     const result = await resp.json();
-    TODOS_ITENS = result.itens || [];
+    const itens = result.itens || [];
+    const chave = JSON.stringify(itens);
+    if(chave === _ultimaChaveRenderMedicao) return;
+    _ultimaChaveRenderMedicao = chave;
+    TODOS_ITENS = itens;
     renderFila();
     renderDashboard();
   }catch(err){
@@ -352,11 +359,16 @@ async function carimbarPdfComAssinaturaMedicao(rowIndex, tipoLpu, validador, num
 // aba/entidade nova só pra isso.
 let ITENS_PAGAMENTO = [];
 
+let _ultimaChaveRenderPagamentos = null;
 async function carregarPagamentos(){
   try{
     const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_LPU_PAGAMENTO');
     const result = await resp.json();
-    ITENS_PAGAMENTO = result.itens || [];
+    const itens = result.itens || [];
+    const chave = JSON.stringify(itens);
+    if(chave === _ultimaChaveRenderPagamentos) return;
+    _ultimaChaveRenderPagamentos = chave;
+    ITENS_PAGAMENTO = itens;
     renderPagamentos();
   }catch(err){
     console.error(err);

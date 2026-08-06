@@ -213,6 +213,15 @@ Duas famílias de login independentes, mesmo mecanismo de base (PIN fornecido pe
   - A coluna **Telas** da aba `ACESSOS_LIDERANCA` (lista separada por vírgula, ou `*` para liberar tudo) é o que define, por pessoa, quais dessas telas ela pode acessar — editável direto na planilha, sem mexer em código, usando o mesmo texto que aparece no `titulo` do card em `painel.html` (comparação ignora maiúscula/minúscula, mas não corrige erro de digitação). `painel.html` checa essa permissão em **todos** os cards antes de exibi-los — inclusive os de login de técnico e os dois que só tinham senha própria — mas isso decide só a visibilidade do card no painel: `tecnico.html`/`PREENCHIMENTO_LPU.html`/`fechamento_lpu.html`/`manutencao_preventiva.html` continuam com o próprio login de técnico por baixo, então quem não é técnico cadastrado não passa da tela de login mesmo tendo o link.
   - A coluna **Cargo** da mesma aba também já é usada pra permissão de verdade (não é só identificação): em `geogrid.html`, Cargo `OEM` fica de fora da etapa "Aguardando validação do líder" — ver seção da tela acima.
 
+## Performance do polling
+
+Todas as telas com atualização automática seguem 2 regras (2026-08-06), pra não puxar dado à toa do Apps Script a cada ciclo:
+
+- **Endpoint de leitura lenta separado do rápido**: dado que muda raro (`LISTAR_TECNICOS`, `LISTAR_DISPONIBILIDADE`, `LISTAR_ORCAMENTOS_MENSAIS`, ou a esteira inteira só pra montar um mapa `ID Atividade → Tipo` em `controle_material.html`) não fica mais no mesmo poll rápido do dado que muda a cada segundo — tem o próprio timer, bem mais espaçado (`carregarDisponibilidade`/`carregarListasLentas`/`carregarMapaTipoAtividade`, a cada 60s-300s conforme a tela), independente do poll principal (15-30s conforme a tela).
+- **Não redesenha se nada mudou**: cada função de carga guarda um hash (`JSON.stringify`) do último dado renderizado e só chama a função de render de novo se o dado mudou — evita reprocessar/redesenhar tudo a cada ciclo quando, na prática, não mudou nada (a maior parte dos ciclos). Nas telas com "Prazo/atraso" no card (`index.html`, `dashboard_dia.html`), a chave inclui também o minuto atual, garantindo pelo menos 1 render/minuto mesmo sem mudança nenhuma — senão o "ESTOURADO há Xh Ymin" ficaria congelado no valor antigo indefinidamente.
+
+`LISTAR_ESTEIRA` continua devolvendo o histórico inteiro da planilha (sem filtro por data no backend) — o que foi feito aqui reduz quantas vezes/quantos endpoints extras cada tela pede, não o tamanho de cada resposta individual da esteira. Filtrar por data no backend é a próxima oportunidade de ganho, mas exige mudar `Código.gs` e reimplantar.
+
 ## Como rodar localmente
 
 Por ser um site estático, basta abrir os arquivos `.html` diretamente no navegador (duplo clique ou `file://`), ou servir a pasta com qualquer servidor HTTP estático. Não há dependências para instalar nem processo de build.
