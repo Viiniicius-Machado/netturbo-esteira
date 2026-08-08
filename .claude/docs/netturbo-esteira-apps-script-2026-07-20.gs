@@ -666,14 +666,20 @@ function desfazerDespacho(ss, data) {
 
 // ── ACESSO DE TÉCNICOS (PIN + Complemento) ──────────────────────
 const ABA_ACESSOS = 'ACESSOS_TECNICOS';
-// "Equipe" no final (não entre Técnico e PIN) de propósito — loginTecnico e
-// encontrarLinhaAcesso leem PIN/Complemento Hash/Configurado por posição fixa
-// (colunas C/D/E), então uma coluna nova só é segura no fim, sem deslocar nada.
+// "Equipe"/"Titular" no final (não entre Técnico e PIN) de propósito — loginTecnico
+// e encontrarLinhaAcesso leem PIN/Complemento Hash/Configurado por posição fixa
+// (colunas C/D/E), então coluna nova só é segura no fim, sem deslocar nada.
 // Preenchimento é opcional e manual na planilha: quando 2+ técnicos da mesma
 // empresa têm a mesma Equipe, o Dashboard do Dia conta a dupla como 1 unidade
 // de M.O. só (ver EQUIPES_MAP/calcularStatusMO lá) — pensado pra empresas tipo
 // VAL, onde só 1 do par recebe/baixa atividade de verdade.
-const HEADERS_ACESSOS = ['Empresa','Técnico','PIN','Complemento Hash','Configurado','Timestamp Configuração','Equipe'];
+// "Titular" (SIM/NÃO) marca, dentro de uma Equipe, quem é esse 1 que recebe/
+// baixa de verdade — index.html só oferece o titular pra despachar (ver
+// empresasDespacho/tecnicosDisponiveisHoje) e as telas dele (tecnico.html,
+// PREENCHIMENTO_LPU.html, fechamento_lpu.html) mostram o nome combinado da
+// dupla (ver nomeExibicao). Equipe sem ninguém marcado Titular não colapsa —
+// mostra todo mundo, pra não sumir gente da lista por cadastro incompleto.
+const HEADERS_ACESSOS = ['Empresa','Técnico','PIN','Complemento Hash','Configurado','Timestamp Configuração','Equipe','Titular'];
 
 // Empresas em que UM técnico centraliza toda a LPU da equipe. A atividade
 // continua contando pro técnico que atendeu (MTTR/IRR/resumo pessoal); só a
@@ -710,7 +716,7 @@ function garantirAcessos(ss) {
 // (adicionar linha, apagar linha) já reflete direto, sem precisar mexer em código.
 function listarTecnicos(ss) {
   const sheet = garantirAcessos(ss);
-  if (sheet.getLastRow() < 2) return resposta('ok', { empresas: {}, equipes: {} });
+  if (sheet.getLastRow() < 2) return resposta('ok', { empresas: {}, equipes: {}, empresasDespacho: {}, nomeExibicao: {} });
 
   const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS_ACESSOS.length).getValues();
   const empresas = {};
@@ -718,19 +724,70 @@ function listarTecnicos(ss) {
   // Equipe preenchida na planilha; quem não tem fica de fora (fallback pro
   // Dashboard do Dia contar por técnico individual, ver EQUIPES_MAP lá).
   const equipes = {};
+  // Auxiliares só pra montar empresasDespacho/nomeExibicao abaixo, não vão na resposta.
+  const membrosPorGrupo = {};   // { empresa: { equipeLabel: [tecnico1, tecnico2, ...] } }
+  const titularPorGrupo = {};   // { empresa: { equipeLabel: tecnicoTitular } }
+
   data.forEach(row => {
     const empresa = String(row[0] || '').trim();
     const tecnico = String(row[1] || '').trim();
     const equipe = String(row[6] || '').trim();
+    const titular = String(row[7] || '').trim().toLowerCase() === 'sim';
     if (!empresa || !tecnico) return;
+
     if (!empresas[empresa]) empresas[empresa] = [];
     empresas[empresa].push(tecnico);
+
     if (equipe) {
       if (!equipes[empresa]) equipes[empresa] = {};
       equipes[empresa][tecnico] = equipe;
+
+      if (!membrosPorGrupo[empresa]) membrosPorGrupo[empresa] = {};
+      if (!membrosPorGrupo[empresa][equipe]) membrosPorGrupo[empresa][equipe] = [];
+      membrosPorGrupo[empresa][equipe].push(tecnico);
+
+      if (titular) {
+        if (!titularPorGrupo[empresa]) titularPorGrupo[empresa] = {};
+        titularPorGrupo[empresa][equipe] = tecnico;
+      }
     }
   });
-  return resposta('ok', { empresas: empresas, equipes: equipes, responsaveis: RESPONSAVEL_LPU_POR_EMPRESA, semLpu: EMPRESAS_SEM_LPU });
+
+  // empresasDespacho: quem aparece pra escolher na hora de despachar (index.html,
+  // titular/apoio/apoio2 — ver tecnicosDisponiveisHoje). Técnico solo (sem Equipe)
+  // sempre aparece; equipe COM Titular marcado mostra só o titular; equipe SEM
+  // titular marcado continua mostrando todo mundo (cadastro incompleto não pode
+  // fazer gente sumir da lista de despacho).
+  // nomeExibicao: { empresa: { tecnicoTitular: 'Warley & Nicolas' } } — nome
+  // combinado (primeiro nome de cada um, titular primeiro) pras telas que o
+  // próprio titular usa (tecnico.html/PREENCHIMENTO_LPU.html/fechamento_lpu.html).
+  const empresasDespacho = {};
+  const nomeExibicao = {};
+  Object.keys(empresas).forEach(empresa => {
+    const grupos = membrosPorGrupo[empresa] || {};
+    const titulares = titularPorGrupo[empresa] || {};
+    const nomesEmEquipe = new Set();
+    Object.values(grupos).forEach(membros => membros.forEach(t => nomesEmEquipe.add(t)));
+
+    const visiveis = [];
+    Object.keys(grupos).forEach(equipeLabel => {
+      const membros = grupos[equipeLabel];
+      const titular = titulares[equipeLabel];
+      if (titular) {
+        visiveis.push(titular);
+        const ordenado = [titular].concat(membros.filter(m => m !== titular));
+        if (!nomeExibicao[empresa]) nomeExibicao[empresa] = {};
+        nomeExibicao[empresa][titular] = ordenado.map(n => n.split(' ')[0]).join(' & ');
+      } else {
+        membros.forEach(m => visiveis.push(m));
+      }
+    });
+    empresas[empresa].forEach(t => { if (!nomesEmEquipe.has(t)) visiveis.push(t); });
+
+    empresasDespacho[empresa] = visiveis;
+  });
+
+  return resposta('ok', { empresas: empresas, equipes: equipes, empresasDespacho: empresasDespacho, nomeExibicao: nomeExibicao, responsaveis: RESPONSAVEL_LPU_POR_EMPRESA, semLpu: EMPRESAS_SEM_LPU });
 }
 
 function encontrarLinhaAcesso(sheet, empresa, tecnico) {

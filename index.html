@@ -716,6 +716,10 @@ function blocoPrazoLimite(a){
 
 // Empresas e técnicos (mesma lista já usada no RFO Técnico)
 let TECH_MAP = {}; // preenchido ao vivo pelo backend — ver carregarTecnicos()
+// Lista pra despachar (titular/apoio) — empresa com Equipe+Titular cadastrados
+// (ex.: VAL, dupla que só um recebe/baixa) mostra só o titular; sem isso, cai
+// de volta pra TECH_MAP igual antes. Ver empresasDespacho no LISTAR_TECNICOS.
+let EMPRESAS_DESPACHO = {};
 let TODOS_PERIODOS_DISPONIBILIDADE = []; // ver carregarDisponibilidade() — atualiza a cada 60s, separado da esteira (15s)
 
 let ATIVIDADES = [];
@@ -740,6 +744,7 @@ async function carregarTecnicos(){
     const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS');
     const result = await resp.json();
     TECH_MAP = result.empresas || {};
+    EMPRESAS_DESPACHO = result.empresasDespacho || TECH_MAP;
   }catch(err){
     console.error('Não foi possível carregar a lista de técnicos:', err);
   }
@@ -1038,7 +1043,7 @@ window.carregarDisponibilidade = carregarDisponibilidade;
 // da Equipe). 'ocultos' informa quantos sumiram, pra não parecer que a lista
 // de técnicos da empresa ficou vazia sem motivo.
 function tecnicosDisponiveisHoje(empresa){
-  const nomes = TECH_MAP[empresa] || [];
+  const nomes = EMPRESAS_DESPACHO[empresa] || [];
   const hoje = new Date();
   const hojeStr = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
   const indisponiveis = new Set(

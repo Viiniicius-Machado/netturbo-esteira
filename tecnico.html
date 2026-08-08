@@ -317,6 +317,13 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
 
 let TECH_MAP = {}; // preenchido ao vivo pelo backend — ver carregarTecnicos()
+// { empresa: { tecnicoTitular: 'Warley & Nicolas' } } — só o titular de uma
+// dupla cadastrada tem entrada aqui (ver nomeExibicao no LISTAR_TECNICOS do
+// backend); quem não é titular de equipe cai no fallback (próprio nome).
+let NOME_EXIBICAO = {};
+function nomeExibicaoDe(empresa, tecnico){
+  return (NOME_EXIBICAO[empresa] && NOME_EXIBICAO[empresa][tecnico]) || tecnico;
+}
 
 let TECNICO_LOGADO = '';
 let EMPRESA_LOGADA = '';
@@ -336,12 +343,21 @@ async function carregarTecnicos(){
     const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS');
     const result = await resp.json();
     TECH_MAP = result.empresas || {};
+    NOME_EXIBICAO = result.nomeExibicao || {};
   }catch(err){
     console.error('Não foi possível carregar a lista de técnicos:', err);
   }
   popularEmpresas();
 }
-carregarTecnicos();
+// Se a sessão já existente (tentarSessaoExistente, mais abaixo) tiver ligado a
+// saudação antes desse fetch voltar, ela mostra o nome cru na primeira pintura
+// e é corrigida aqui pro nome combinado assim que NOME_EXIBICAO chega.
+const carregarTecnicosPromise = carregarTecnicos().then(atualizarSaudacao);
+
+function atualizarSaudacao(){
+  const el = document.getElementById('boasVindasNome');
+  if(el && TECNICO_LOGADO) el.textContent = 'Olá, ' + nomeExibicaoDe(EMPRESA_LOGADA, TECNICO_LOGADO);
+}
 
 window.atualizarTecnicosLogin = function(){
   const empresa = document.getElementById('selEmpresa').value;
@@ -402,7 +418,7 @@ async function fazerLogin(){
     document.getElementById('headerApp').style.display = 'flex';
     document.getElementById('pageActions').style.display = 'flex';
     document.getElementById('app').style.display = 'block';
-    document.getElementById('boasVindasNome').textContent = 'Olá, ' + tecnico;
+    atualizarSaudacao();
     atualizarLinkFechamentoLpu();
     if(result.primeiroAcesso){ showToast('Senha pessoal criada com sucesso!'); }
     carregarAtividades();
@@ -428,7 +444,7 @@ window.fazerLogin = fazerLogin;
     document.getElementById('headerApp').style.display = 'flex';
     document.getElementById('pageActions').style.display = 'flex';
     document.getElementById('app').style.display = 'block';
-    document.getElementById('boasVindasNome').textContent = 'Olá, ' + salvo;
+    atualizarSaudacao();
     atualizarLinkFechamentoLpu();
     // setTimeout(...,0): espera a página terminar de carregar TODO o script
     // antes de chamar essas funções — sem isso, dava erro quando o login

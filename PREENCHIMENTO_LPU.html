@@ -888,6 +888,10 @@ function launchItems() {
 // tecnico.html. Acesso restrito a prestadoras terceiras: NETTURBO não preenche LPU.
 // ══════════════════════════════════════════════════════════════
 let TECH_MAP = {};
+let NOME_EXIBICAO = {}; // { empresa: { tecnicoTitular: 'Warley & Nicolas' } } — ver comentário em tecnico.html
+function nomeExibicaoDe(empresa, tecnico){
+    return (NOME_EXIBICAO[empresa] && NOME_EXIBICAO[empresa][tecnico]) || tecnico;
+}
 let RESPONSAVEIS = {}; // empresa -> técnico que centraliza a LPU (ex: VAL -> Marcos), quando existir
 let SEM_LPU = ['NETTURBO']; // empresas que não cobram por LPU (fallback até o backend responder)
 let TECNICO_LOGADO = '';
@@ -907,6 +911,7 @@ async function carregarTecnicos(){
         const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS');
         const result = await resp.json();
         TECH_MAP = result.empresas || {};
+        NOME_EXIBICAO = result.nomeExibicao || {};
         RESPONSAVEIS = result.responsaveis || {};
         SEM_LPU = result.semLpu || SEM_LPU;
     }catch(err){
@@ -960,8 +965,8 @@ async function prefillDaAtividade(rowIndex){
         document.getElementById('etiqueta').value = atividade['Protocolo O&M'] || atividade['Protocolo NOC'] || '';
         // LPU delegada (ex: responsável do VAL preenchendo por outro técnico): o campo
         // "Técnicos" representa quem executou o serviço, não quem está preenchendo.
-        if(atividade.delegadaLpu && atividade['Técnico']) document.getElementById('tecnicos').value = atividade['Técnico'];
-        else if(atividade.delegadaLpuApoio && atividade['Técnico Apoio']) document.getElementById('tecnicos').value = atividade['Técnico Apoio'];
+        if(atividade.delegadaLpu && atividade['Técnico']) document.getElementById('tecnicos').value = nomeExibicaoDe(EMPRESA_LOGADA, atividade['Técnico']);
+        else if(atividade.delegadaLpuApoio && atividade['Técnico Apoio']) document.getElementById('tecnicos').value = nomeExibicaoDe(EMPRESA_LOGADA, atividade['Técnico Apoio']);
         // Conta Contábil definida no despacho (index.html) — trava a escolha do técnico
         // pra não divergir do que já foi orçado. Atividade antiga (sem essa coluna
         // preenchida) mantém o comportamento de sempre: campo em aberto.
@@ -1051,7 +1056,7 @@ function liberarApp(){
     document.getElementById('app').style.display = 'block';
     document.getElementById('empresa').value = EMPRESA_LOGADA;
     document.getElementById('cnpj').value = CNPJ_POR_EMPRESA[EMPRESA_LOGADA] || '';
-    document.getElementById('tecnicos').value = TECNICO_LOGADO;
+    document.getElementById('tecnicos').value = nomeExibicaoDe(EMPRESA_LOGADA, TECNICO_LOGADO);
     if(getTipoLpuDaURL() === 'apoio'){
         const sub = document.querySelector('.fhd .hi p');
         if(sub) sub.textContent = 'Preenchimento LPU · Equipe de Apoio';
