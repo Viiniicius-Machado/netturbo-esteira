@@ -666,7 +666,14 @@ function desfazerDespacho(ss, data) {
 
 // ── ACESSO DE TÉCNICOS (PIN + Complemento) ──────────────────────
 const ABA_ACESSOS = 'ACESSOS_TECNICOS';
-const HEADERS_ACESSOS = ['Empresa','Técnico','PIN','Complemento Hash','Configurado','Timestamp Configuração'];
+// "Equipe" no final (não entre Técnico e PIN) de propósito — loginTecnico e
+// encontrarLinhaAcesso leem PIN/Complemento Hash/Configurado por posição fixa
+// (colunas C/D/E), então uma coluna nova só é segura no fim, sem deslocar nada.
+// Preenchimento é opcional e manual na planilha: quando 2+ técnicos da mesma
+// empresa têm a mesma Equipe, o Dashboard do Dia conta a dupla como 1 unidade
+// de M.O. só (ver EQUIPES_MAP/calcularStatusMO lá) — pensado pra empresas tipo
+// VAL, onde só 1 do par recebe/baixa atividade de verdade.
+const HEADERS_ACESSOS = ['Empresa','Técnico','PIN','Complemento Hash','Configurado','Timestamp Configuração','Equipe'];
 
 // Empresas em que UM técnico centraliza toda a LPU da equipe. A atividade
 // continua contando pro técnico que atendeu (MTTR/IRR/resumo pessoal); só a
@@ -703,18 +710,27 @@ function garantirAcessos(ss) {
 // (adicionar linha, apagar linha) já reflete direto, sem precisar mexer em código.
 function listarTecnicos(ss) {
   const sheet = garantirAcessos(ss);
-  if (sheet.getLastRow() < 2) return resposta('ok', { empresas: {} });
+  if (sheet.getLastRow() < 2) return resposta('ok', { empresas: {}, equipes: {} });
 
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS_ACESSOS.length).getValues();
   const empresas = {};
+  // { empresa: { tecnico: 'Equipe 1' } } — só entra aqui quem tem a coluna
+  // Equipe preenchida na planilha; quem não tem fica de fora (fallback pro
+  // Dashboard do Dia contar por técnico individual, ver EQUIPES_MAP lá).
+  const equipes = {};
   data.forEach(row => {
     const empresa = String(row[0] || '').trim();
     const tecnico = String(row[1] || '').trim();
+    const equipe = String(row[6] || '').trim();
     if (!empresa || !tecnico) return;
     if (!empresas[empresa]) empresas[empresa] = [];
     empresas[empresa].push(tecnico);
+    if (equipe) {
+      if (!equipes[empresa]) equipes[empresa] = {};
+      equipes[empresa][tecnico] = equipe;
+    }
   });
-  return resposta('ok', { empresas: empresas, responsaveis: RESPONSAVEL_LPU_POR_EMPRESA, semLpu: EMPRESAS_SEM_LPU });
+  return resposta('ok', { empresas: empresas, equipes: equipes, responsaveis: RESPONSAVEL_LPU_POR_EMPRESA, semLpu: EMPRESAS_SEM_LPU });
 }
 
 function encontrarLinhaAcesso(sheet, empresa, tecnico) {
@@ -2046,6 +2062,10 @@ function listarEsteira(ss, params) {
   if (params && params.apenasHoje === 'true') {
     const hojeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
     atividades = atividades.filter(a => {
+      // Continua em aberto (qualquer dia que tenha entrado) OU chegou hoje —
+      // sem isso, uma atividade despachada ontem e ainda em campo hoje some
+      // do Dashboard do Dia assim que vira meia-noite, mesmo sem ter acabado.
+      if (STATUS_ESTEIRA_ABERTOS.indexOf(a['Status']) !== -1) return true;
       const d = a['Timestamp Recebido'];
       if (!(d instanceof Date)) return false;
       return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd') === hojeStr;

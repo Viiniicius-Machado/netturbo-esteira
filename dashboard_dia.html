@@ -90,6 +90,8 @@
     .dia-col-body{padding:.6rem;display:flex;flex-direction:column;gap:.55rem}
 
     .atv-tile{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .7rem}
+    .atv-tile-anterior{border-left:3px solid var(--amber)}
+    .atv-dia-anterior{font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.02em;margin-top:.35rem}
     .atv-tile-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.4rem}
     .atv-protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.95rem}
     .atv-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:.25rem}
@@ -241,6 +243,7 @@ const DONUT_SEGMENTOS = [
 
 let ATIVIDADES = [];
 let TECH_MAP = {};
+let EQUIPES_MAP = {}; // { empresa: { tecnico: 'Equipe 1' } } — ver LISTAR_TECNICOS/calcularStatusMO
 let PERIODOS = [];
 let SEGMENTO_ATUAL = localStorage.getItem('netturbo_dia_segmento') || 'TODOS';
 
@@ -332,6 +335,7 @@ async function carregarListasLentas(){
     const [dDisp, dTec] = await Promise.all([rDisp.json(), rTec.json()]);
     PERIODOS = dDisp.periodos || [];
     TECH_MAP = dTec.empresas || {};
+    EQUIPES_MAP = dTec.equipes || {};
     renderTudo();
   }catch(err){
     console.error('Erro ao carregar listas do Dashboard do Dia:', err);
@@ -339,12 +343,12 @@ async function carregarListasLentas(){
 }
 window.carregarListasLentas = carregarListasLentas;
 
+// O backend (LISTAR_ESTEIRA?apenasHoje=true) já devolve só quem chegou hoje OU
+// continua em aberto (qualquer dia) — aqui é só repassar; nada de refiltrar por
+// dia de novo, senão as atividades em andamento de dias anteriores (o motivo
+// desse filtro do lado do servidor existir) desapareceriam de novo aqui.
 function atividadesDeHoje(){
-  const hoje = new Date();
-  return ATIVIDADES.filter(a => {
-    const d = parseDataAmpla(a['Timestamp Recebido']);
-    return d && mesmoDia(d, hoje);
-  });
+  return ATIVIDADES;
 }
 
 function servicoAtividade(a){
@@ -380,16 +384,26 @@ function ultimaDataDe(a){
   return 0;
 }
 
+function diaCurto(date){
+  return String(date.getDate()).padStart(2,'0') + '/' + String(date.getMonth()+1).padStart(2,'0');
+}
+
 function renderTile(a){
   const st = statusInfoDe(a);
   const protocolo = a['Protocolo O&M'] || a['Protocolo NOC'] || '—';
   const despachoData = parseDataAmpla(a['Timestamp Despacho']);
+  // Carregada de dia anterior (ver filtro apenasHoje no backend: continua em
+  // aberto mesmo sem ter chegado hoje) — sinalizado no card pra quem olha de
+  // longe não confundir com uma atividade nova de hoje.
+  const recebidoData = parseDataAmpla(a['Timestamp Recebido']);
+  const deDiaAnterior = recebidoData && !mesmoDia(recebidoData, new Date());
   return `
-    <div class="atv-tile">
+    <div class="atv-tile${deDiaAnterior ? ' atv-tile-anterior' : ''}">
       <div class="atv-tile-top">
         <div class="atv-protocolo">${protocolo}${a['Etiqueta'] ? ' · '+a['Etiqueta'] : ''}</div>
         <div class="atv-dot ${st.dot}" title="${st.label}"></div>
       </div>
+      ${deDiaAnterior ? `<div class="atv-dia-anterior">⏳ Em andamento desde ${diaCurto(recebidoData)}</div>` : ''}
       <div class="atv-cliente">${a['Cliente']||'—'}</div>
       <div class="atv-servico">${servicoAtividade(a)}</div>
       <div class="atv-equipe">${equipeDe(a)}</div>
@@ -488,19 +502,35 @@ function bucketDisponibilidade(status){
   return null;
 }
 
+// Conta por Equipe quando ACESSOS_TECNICOS tem a coluna preenchida (ex.: VAL,
+// onde 2 técnicos formam 1 equipe e só 1 dos dois recebe/baixa atividade de
+// verdade) — sem isso, 7 logins de técnico infla a M.O. real da prestadora.
+// Quem não tem Equipe cadastrada continua contando 1 a 1 (fallback: chave =
+// o próprio nome do técnico, ou seja, uma "equipe" de 1 pessoa só).
 function calcularStatusMO(hoje){
   const ativos = hoje.filter(a => STATUS_EM_ANDAMENTO.includes(a['Status']));
   const contagem = { ativ:0, ocioso:0, treinamento:0, ferias:0, indisponivel:0 };
+
   Object.entries(TECH_MAP).forEach(([empresa, nomes]) => {
+    const grupos = {};
     (nomes||[]).forEach(tecnico => {
-      const bucket = bucketDisponibilidade(statusDisponibilidadeHoje(empresa, tecnico));
-      if(bucket){ contagem[bucket]++; return; }
-      const emAtividade = ativos.some(a =>
+      const chave = (EQUIPES_MAP[empresa] && EQUIPES_MAP[empresa][tecnico]) || tecnico;
+      (grupos[chave] = grupos[chave] || []).push(tecnico);
+    });
+
+    Object.values(grupos).forEach(membros => {
+      // Equipe conta "Em Atividade" se QUALQUER um dos membros estiver em
+      // campo agora — a dupla trabalha junta, então basta 1 estar ocupado.
+      const emAtividade = membros.some(tecnico => ativos.some(a =>
         (a['Empresa']===empresa && a['Técnico']===tecnico) ||
-        (a['Empresa Apoio']===empresa && a['Técnico Apoio']===tecnico));
-      contagem[emAtividade ? 'ativ' : 'ocioso']++;
+        (a['Empresa Apoio']===empresa && a['Técnico Apoio']===tecnico)));
+      if(emAtividade){ contagem.ativ++; return; }
+
+      const bucket = membros.map(tecnico => bucketDisponibilidade(statusDisponibilidadeHoje(empresa, tecnico))).find(Boolean);
+      contagem[bucket || 'ocioso']++;
     });
   });
+
   return contagem;
 }
 
