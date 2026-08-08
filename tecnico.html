@@ -48,6 +48,8 @@
     .atv-protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:1rem}
     .atv-cliente{font-size:.88rem;margin-top:.2rem}
     .atv-meta{font-size:.75rem;color:var(--text-muted);margin-top:.4rem;line-height:1.6}
+    .atv-meta a{color:var(--accent);font-weight:600;text-decoration:none}
+    .atv-meta a:active{opacity:.7}
     .atv-status{display:inline-block;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .55rem;border-radius:20px;margin-top:.5rem}
     .st-despachada{background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)}
     .st-iniciada{background:rgba(255,160,0,.1);color:var(--amber);border:1px solid rgba(255,160,0,.3)}
@@ -987,6 +989,16 @@ function parseDataAmpla(val){
 
 // Mostra o Prazo Limite (SLA calculado na criação, ver criarAtividade no backend)
 // no card — vermelho se já estourou, mesmo padrão do index.html.
+// Endereço vindo da máscara do NOC (texto solto, não link) — vira busca do
+// Google Maps clicável, mesma ideia do "ONDE FAZER AS MEDIÇÕES?" (link já
+// pronto colado pelo despacho), só que aqui o link é montado a partir do
+// texto porque não existe uma coluna própria de link pra endereço de falha.
+function enderecoComLinkMaps(endereco){
+  if(!endereco) return '';
+  const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(endereco);
+  return `<a href="${url}" target="_blank" rel="noopener">📍 ${endereco}</a>`;
+}
+
 function blocoPrazoLimite(a){
   const prazo = a['Prazo Limite'];
   if(!prazo) return '';
@@ -1105,7 +1117,7 @@ function renderAtividades(atividades){
     return `<div class="atv-card">
       <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
       <div class="atv-cliente">${a['Cliente']||'—'}</div>
-      <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
+      <div class="atv-meta">${a['Motivo']||''}<br>${enderecoComLinkMaps(a['Endereço'])}<br>${a['Data NOC']||''} ${a['Período']?'· '+a['Período']:''}</div>
       ${blocoPrazoLimite(a)}
       ${infoApoio}
       ${blocoDespacho}
@@ -1345,7 +1357,7 @@ function renderCardApoio(a){
   return `<div class="atv-card">
     <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
     <div class="atv-cliente">${a['Cliente']||'—'}</div>
-    <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>Titular: ${a['Técnico']||'—'} (${a['Empresa']||''})</div>
+    <div class="atv-meta">${a['Motivo']||''}<br>${enderecoComLinkMaps(a['Endereço'])}<br>Titular: ${a['Técnico']||'—'} (${a['Empresa']||''})</div>
     ${renderBlocoDespacho(a)}
     <span class="atv-status st-despachada">Você é EQUIPE DE APOIO</span>
     ${botao}
@@ -1386,7 +1398,7 @@ function renderCardApoioValidada(a){
   return `<div class="atv-card">
     <div class="atv-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</div>
     <div class="atv-cliente">${a['Cliente']||'—'}</div>
-    <div class="atv-meta">${a['Motivo']||''}<br>${a['Endereço']||''}<br>Titular: ${a['Técnico']||'—'} (${a['Empresa']||''})</div>
+    <div class="atv-meta">${a['Motivo']||''}<br>${enderecoComLinkMaps(a['Endereço'])}<br>Titular: ${a['Técnico']||'—'} (${a['Empresa']||''})</div>
     <span class="atv-status st-despachada">Você é EQUIPE DE APOIO</span>
     ${corpo}
   </div>`;

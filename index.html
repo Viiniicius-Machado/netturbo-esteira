@@ -45,9 +45,14 @@
     .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
     .btn-green{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
 
-    .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-top:1rem}
-    @media(max-width:600px){.field-grid{grid-template-columns:1fr}}
-    @media(min-width:900px){.field-grid{grid-template-columns:repeat(3,1fr)}}
+    /* auto-fit/minmax em vez de contagem fixa de coluna por @media de LARGURA
+       DA JANELA — antes (1fr 1fr, virando repeat(3,1fr) a partir de 900px de
+       janela) cortava campo (ex.: Categoria 1) sempre que a janela não estava
+       maximizada, porque a regra olhava a largura da tela, não a do próprio
+       grid. Assim, o número de colunas reage à largura de verdade do bloco.
+       360px (não 180px): dá ~3 colunas limpas num card cheio (~1300px, igual
+       o layout original de sempre) em vez de espremer 6-7 colunas estreitas. */
+    .field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:.7rem;margin-top:1rem}
     .field{display:flex;flex-direction:column;gap:.25rem}
     .field.full{grid-column:1/-1}
     .field label{font-size:.62rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)}
@@ -189,40 +194,42 @@
           <button class="btn btn-green" onclick="confirmarAtividade()">Adicionar à Esteira</button>
         </div>
       </div>
-    </div>
-  </section>
 
-  <!-- DISPONIBILIDADE DA EQUIPE (férias, treinamento, suspensão, inativo por
-       qualquer motivo — técnico com um período cobrindo hoje some do seletor
-       de despacho, ver atualizarTecnicosDespacho) -->
-  <section class="card">
-    <div class="card-header" style="cursor:pointer" onclick="toggleDisponibilidade()"><h2>Disponibilidade da Equipe</h2>
-      <div style="flex:1"></div>
-      <span class="col-count" id="countDisponibilidade">0</span>
-      <button class="btn btn-outline" id="btnToggleDisponibilidade" style="padding:.3rem .6rem;font-size:.75rem;margin-left:.5rem" onclick="event.stopPropagation();toggleDisponibilidade()">▼</button>
-    </div>
-    <div class="card-body" id="corpoDisponibilidade" style="display:none">
-      <div class="field-grid">
-        <div class="field"><label>Empresa</label><select id="selEmpresaDisp" onchange="atualizarTecnicosDisp()"></select></div>
-        <div class="field"><label>Técnico</label><select id="selTecnicoDisp"><option value="">Selecione a empresa...</option></select></div>
-        <div class="field"><label>Status</label>
-          <select id="selStatusDisp">
-            <option value="INATIVO">Inativo</option>
-            <option value="FERIAS">Férias</option>
-            <option value="TREINAMENTO">Treinamento</option>
-            <option value="SUSPENSAO">Suspensão Disciplinar</option>
-            <option value="ATESTADO">Atestado</option>
-            <option value="MANUTENCAO_FROTA">Manutenção Frota</option>
-          </select>
+      <!-- DISPONIBILIDADE DA EQUIPE (férias, treinamento, suspensão, inativo por
+           qualquer motivo — técnico com um período cobrindo hoje some do seletor
+           de despacho, ver atualizarTecnicosDespacho). Vive dentro deste mesmo
+           card (não é mais card próprio) pra não abrir uma faixa cheia só pra
+           isso — colapsada por padrão, mesmo padrão de sempre. -->
+      <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border-hi)">
+        <div style="display:flex;align-items:center;gap:.6rem;cursor:pointer" onclick="toggleDisponibilidade()">
+          <label style="font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;flex:1;cursor:pointer">Disponibilidade da Equipe</label>
+          <span class="col-count" id="countDisponibilidade">0</span>
+          <button class="btn btn-outline" id="btnToggleDisponibilidade" style="padding:.3rem .6rem;font-size:.75rem" onclick="event.stopPropagation();toggleDisponibilidade()">▼</button>
         </div>
-        <div class="field"><label>Data Início</label><input type="date" id="inputDataInicioDisp" onchange="sincronizarDataFimDisp()"/></div>
-        <div class="field"><label>Data Fim</label><input type="date" id="inputDataFimDisp"/></div>
-        <div class="field full"><label>Observação (opcional)</label><input type="text" id="inputObsDisp" placeholder="Motivo, detalhe do período..."/></div>
+        <div id="corpoDisponibilidade" style="display:none;margin-top:.6rem">
+          <div class="field-grid">
+            <div class="field"><label>Empresa</label><select id="selEmpresaDisp" onchange="atualizarTecnicosDisp()"></select></div>
+            <div class="field"><label>Técnico</label><select id="selTecnicoDisp"><option value="">Selecione a empresa...</option></select></div>
+            <div class="field"><label>Status</label>
+              <select id="selStatusDisp">
+                <option value="INATIVO">Inativo</option>
+                <option value="FERIAS">Férias</option>
+                <option value="TREINAMENTO">Treinamento</option>
+                <option value="SUSPENSAO">Suspensão Disciplinar</option>
+                <option value="ATESTADO">Atestado</option>
+                <option value="MANUTENCAO_FROTA">Manutenção Frota</option>
+              </select>
+            </div>
+            <div class="field"><label>Data Início</label><input type="date" id="inputDataInicioDisp" onchange="sincronizarDataFimDisp()"/></div>
+            <div class="field"><label>Data Fim</label><input type="date" id="inputDataFimDisp"/></div>
+            <div class="field full"><label>Observação (opcional)</label><input type="text" id="inputObsDisp" placeholder="Motivo, detalhe do período..."/></div>
+          </div>
+          <div style="margin-top:.8rem">
+            <button class="btn btn-accent" onclick="registrarDisponibilidade()">Registrar Indisponibilidade</button>
+          </div>
+          <div id="listaDisponibilidade" style="margin-top:1rem"></div>
+        </div>
       </div>
-      <div style="margin-top:.8rem">
-        <button class="btn btn-accent" onclick="registrarDisponibilidade()">Registrar Indisponibilidade</button>
-      </div>
-      <div id="listaDisponibilidade" style="margin-top:1rem"></div>
     </div>
   </section>
 
@@ -797,7 +804,10 @@ const CAMPOS_MULTILINHA = ['motivo', 'obs', 'porta'];
 const LABEL_PATTERNS = [
   { key:'motivo',         re:/^motivo\s*:\s*/i },
   { key:'atividade',      re:/^atividade\s*:\s*/i },
-  { key:'cliente',        re:/^client[e]\s*:\s*/i },
+  // "(ID)" opcional depois de "Cliente" — alguns mesários rotulam a linha
+  // "Cliente(ID):" quando o nome do cliente já vem com o código colado
+  // junto (ver extrairIdDoCliente, mais abaixo, que separa os dois).
+  { key:'cliente',        re:/^client[e]\s*(\(\s*id\s*\))?\s*:\s*/i },
   { key:'endereco',       re:/^endere[çc]o\s*:\s*/i },
   { key:'logradouro',     re:/^logradouro\s*:\s*/i },
   { key:'numero',         re:/^n[úu]mero\s*:\s*/i },
@@ -808,9 +818,20 @@ const LABEL_PATTERNS = [
   { key:'gps',            re:/^localiza[çc][ãa]o\s*:\s*/i },
   { key:'dataNoc',        re:/^data\s*:\s*/i },
   { key:'periodo',        re:/^(per[íi]odo|hor[áa]rio)\s*:\s*/i },
-  { key:'protocoloAmbos', re:/^protocolo\s*noc\s*\/\s*o(em|&m|&amp;m)\s*:\s*/i },
+  // "Data/Horário:" combinado numa linha só ("06/08 - 10H") — o valor é
+  // dividido em Data e Período (ver dataPeriodo no parseMascara).
+  { key:'dataPeriodo',    re:/^data\s*\/\s*hor[áa]rio\s*:\s*/i },
+  // Combinado NOC+O&M num campo só, com um separador entre os 2 números —
+  // aceita "NOC" ou "ASC" (variante vista em mensagem real) antes da barra,
+  // e o valor depois é dividido em 2 (ver protocoloAmbos no parseMascara).
+  { key:'protocoloAmbos', re:/^protocolo\s*(noc|asc)?\s*\/\s*o(em|&m|&amp;m)\s*:\s*/i },
   { key:'protocoloNoc',   re:/^protocolo\s*noc\s*:\s*/i },
   { key:'protocoloOem',   re:/^protocolo\s*o(em|&m|&amp;m)\s*:\s*/i },
+  // Variantes vistas em mensagens reais: "Protocolo:" sozinho (sem NOC/O&M
+  // depois, mas na mesma posição de sempre — 1º protocolo da dupla) e
+  // "Prot: O&M:"/"Prot O&M:" (abreviação, às vezes com um ":" a mais).
+  { key:'protocoloNoc',   re:/^protocolo\s*:\s*/i },
+  { key:'protocoloOem',   re:/^prot(ocolo)?\s*:?\s*o(em|&m|&amp;m)\s*:\s*/i },
   { key:'etiqueta',       re:/^etiqueta\s*:\s*/i },
   { key:'pop',            re:/^pop\s*:\s*/i },
   { key:'porta',          re:/^porta(\s+gpon)?\s*:\s*/i },
@@ -822,6 +843,25 @@ const LABEL_PATTERNS = [
 const PADRAO_URL = /^(https?:\/\/\S+)$/i;
 const PADRAO_PROTOCOLO_HORA = /^(\d{4,})\s*-\s*(\d{1,2}h\d{2})$/i;
 const PADRAO_CIDADE_DATA = /^([A-Za-zÀ-ÖØ-öø-ÿ\s]+?)\s*-\s*(\d{2}\/\d{2}\/\d{4})$/;
+
+// Nome do cliente às vezes vem com o código/ID colado junto na mesma linha
+// ("Cliente(ID): FOXCONN ... LTDA -08BABWBS", "Cliente: AMANA CAFETERIA LTDA
+// (M7NZ18JZ)") — separa o código pra Etiqueta/ID e deixa só o nome no Cliente.
+// Só reconhece 2 formatos, os únicos vistos em mensagem real e que não têm
+// como confundir com nome de site de verdade: "(CÓDIGO)" no final, ou um
+// traço colado direto no código sem espaço depois ("Nome -CÓDIGO"). Traço COM
+// espaço dos dois lados ("Nome - SITE-X", comum em repetidora) fica de fora
+// de propósito — aí o traço faz parte do nome, não separa nada.
+function extrairIdDoCliente(valor){
+  let m = valor.match(/^(.*?)\s*\(\s*([A-Za-z0-9]+)\s*\)\s*(.*)$/);
+  if(m){
+    const resto = (m[3]||'').trim();
+    return { nome: (m[1] + (resto ? ' ' + resto : '')).trim(), id: m[2] };
+  }
+  m = valor.match(/^(.*?)\s-([A-Za-z0-9]+)$/);
+  if(m) return { nome: m[1].trim(), id: m[2] };
+  return { nome: valor, id: '' };
+}
 
 function parseMascara(texto){
   const linhas = texto.split(/\r?\n/)
@@ -838,12 +878,20 @@ function parseMascara(texto){
       if(re.test(linha)){
         const valor = linha.replace(re,'').trim();
         if(key === 'protocoloAmbos'){
-          campos.protocoloNoc = valor;
-          campos.protocoloOem = valor;
+          // "138042 | 138194" / "138165 / 138169" — 2 números com um
+          // separador no meio, não o mesmo número repetido pros 2 campos.
+          const partes = valor.split(/\s*[\/|]\s*/).filter(Boolean);
+          campos.protocoloNoc = partes[0] || valor;
+          campos.protocoloOem = partes[1] || partes[0] || valor;
+        }else if(key === 'dataPeriodo'){
+          // "06/08  - 10H" → Data / Período
+          const partes = valor.split(/\s*-\s*/).filter(Boolean);
+          campos.dataNoc = partes[0] || valor;
+          if(partes[1]) campos.periodo = partes[1];
         }else{
           campos[key] = valor;
         }
-        ultimoKey = (key === 'protocoloAmbos') ? 'protocoloOem' : key;
+        ultimoKey = (key === 'protocoloAmbos') ? 'protocoloOem' : (key === 'dataPeriodo' ? 'periodo' : key);
         casou = true;
         break;
       }
@@ -906,6 +954,14 @@ function parseMascara(texto){
   // quando só existe Porta, sem POP).
   if(campos.pop){
     campos.porta = 'POP: ' + campos.pop + (campos.porta ? ' | Porta: ' + campos.porta : '');
+  }
+
+  // Separa o ID colado no Cliente (ver extrairIdDoCliente) — só usa como
+  // Etiqueta se a mensagem não trouxe uma linha "Etiqueta:" própria.
+  if(campos.cliente){
+    const { nome, id } = extrairIdDoCliente(campos.cliente);
+    campos.cliente = nome;
+    if(id && !campos.etiqueta) campos.etiqueta = id;
   }
 
   // Etiqueta funciona como identificador do chamado quando a mensagem não
