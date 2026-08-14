@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<title>Controle de Obras · Prestadoras · Netturbo Esteira</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="auth.js"></script>
+<style>
+  :root{
+    --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
+    --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+    --border:#252525;--border-hi:#353535;
+    --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+    --red:#e53935;--amber:#ffa000;--green:#8bc34a;
+    --radius:6px;--radius-lg:10px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{font-size:15px}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+  .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+  .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+  .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+  .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+  .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+  .topbar-spacer{flex:1}
+  .hdr-badge{font-size:.56rem;font-weight:700;letter-spacing:.1em;padding:.22rem .5rem;border-radius:20px;background:rgba(168,201,60,.1);color:var(--accent);border:1px solid rgba(168,201,60,.3)}
+  a.voltar-link{color:#0a0a0a;text-decoration:none;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.75;display:flex;align-items:center;gap:.3rem}
+  a.voltar-link:hover{opacity:1}
+
+  main{max-width:1400px;margin:0 auto;padding:1.3rem 1.2rem 0}
+
+  .btn{padding:.6rem 1.1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.82rem}
+  .btn-accent{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
+  .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
+  .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-danger{background:transparent;border:1px solid rgba(229,57,53,.4);color:var(--red)}
+  .btn-danger:hover{background:rgba(229,57,53,.08)}
+  .btn-sm{padding:.3rem .6rem;font-size:.65rem;border-radius:5px}
+
+  /* ── DROPZONE ── */
+  .dropzone{margin-top:1.2rem;border:2px dashed var(--border-hi);border-radius:var(--radius-lg);background:var(--surface);padding:1.6rem 1.2rem;text-align:center;transition:border-color .15s ease,background .15s ease;cursor:pointer}
+  .dropzone.dragover{border-color:var(--accent);background:var(--accent-dim)}
+  .dropzone svg{color:var(--text-muted);margin-bottom:.5rem}
+  .dropzone.dragover svg{color:var(--accent)}
+  .dropzone-title{font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.03em;color:var(--text)}
+  .dropzone-sub{font-size:.72rem;color:var(--text-muted);margin-top:.3rem}
+  .dropzone-actions{margin-top:.8rem;display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
+  #inputArquivos{display:none}
+
+  .import-log{margin-top:.8rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:.6rem .8rem;font-size:.74rem;color:var(--text-dim);display:none}
+  .import-log.show{display:block}
+  .import-log .il-line{padding:.15rem 0}
+  .il-ok{color:var(--green)}
+  .il-warn{color:var(--amber)}
+  .il-err{color:var(--red)}
+
+  /* ── FILTROS ── */
+  .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:1.1rem 0}
+  .toolbar input[type="month"]{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem}
+  .chip-row{display:flex;gap:.4rem;flex-wrap:wrap}
+  .chip{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;user-select:none}
+  .chip.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
+  .toolbar-spacer{flex:1}
+
+  /* ── STAT CARDS ── */
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem;margin-bottom:1.1rem}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--border-hi);border-radius:var(--radius);padding:.7rem .9rem}
+  .stat-value{font-family:'Rajdhani',sans-serif;font-size:1.55rem;font-weight:700;color:var(--text);line-height:1.1}
+  .stat-label{font-size:.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.2rem}
+  .stat-card.stat-accent{border-top-color:var(--accent)}
+  .stat-card.stat-accent .stat-value{color:var(--accent)}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
+  .card-header{padding:.6rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap}
+  .card-header small{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text-muted)}
+  .card-body{padding:.9rem 1rem}
+
+  .grid-2{display:grid;grid-template-columns:2fr 1fr;gap:1rem}
+  @media (max-width:900px){.grid-2{grid-template-columns:1fr}}
+
+  /* ── ranking / barra horizontal (empresas e SEV) ── */
+  .rank-item{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-top:1px solid var(--border)}
+  .rank-item:first-child{border-top:none}
+  .rank-pos{font-family:'Rajdhani',sans-serif;font-size:.8rem;color:var(--text-muted);width:18px;flex-shrink:0}
+  .rank-main{flex:1;min-width:0}
+  .rank-nome{font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;justify-content:space-between;gap:.5rem}
+  .rank-nome b{font-family:'Rajdhani',sans-serif;color:var(--accent);font-weight:700}
+  .rank-sub{font-size:.66rem;color:var(--text-muted);margin-top:.1rem}
+  .rank-bar-track{height:6px;background:var(--surface2);border-radius:3px;margin-top:.32rem;overflow:hidden}
+  .rank-bar-fill{height:100%;background:var(--accent);border-radius:3px}
+
+  /* ── orçamento ── */
+  .gauge-card{display:flex;align-items:center;gap:1.1rem;flex-wrap:wrap}
+  .gauge-svg-wrap{position:relative;width:96px;height:96px;flex-shrink:0}
+  .gauge-svg{width:100%;height:100%;transform:rotate(-90deg)}
+  .gauge-track{fill:none;stroke:var(--surface2);stroke-width:9}
+  .gauge-fill{fill:none;stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+  .gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.15rem}
+  .gauge-center span{font-size:.5rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
+  .gauge-info{flex:1;min-width:220px}
+  .orcamento-linhas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem .9rem;margin-top:.7rem}
+  .orcamento-linhas > div{display:flex;justify-content:space-between;gap:.5rem;font-size:.74rem;color:var(--text-muted);border-top:1px solid var(--border);padding-top:.4rem}
+  .orcamento-linhas b{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.85rem;color:var(--text)}
+  .status-pill{display:inline-block;padding:.3rem .7rem;border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.04em;text-transform:uppercase;margin-top:.5rem}
+  .status-pill.ok{background:rgba(139,195,74,.12);color:var(--green);border:1px solid rgba(139,195,74,.35)}
+  .status-pill.warn{background:rgba(255,160,0,.12);color:var(--amber);border:1px solid rgba(255,160,0,.35)}
+  .status-pill.bad{background:rgba(229,57,53,.12);color:var(--red);border:1px solid rgba(229,57,53,.35)}
+  .budget-edit{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--text-muted);margin-top:.7rem}
+  .budget-edit input{background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--text);font-size:.78rem;padding:.35rem .5rem;width:120px;font-family:'Rajdhani',sans-serif;font-weight:700}
+
+  /* ── tabelas ── */
+  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:.72rem;min-width:760px}
+  thead th{text-align:left;padding:.6rem .7rem;color:var(--text-muted);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2);cursor:pointer;white-space:nowrap}
+  thead th:hover{color:var(--accent)}
+  tbody td{padding:.55rem .7rem;border-bottom:1px solid var(--border);font-family:monospace;font-size:.7rem;white-space:nowrap}
+  tbody tr:hover{background:var(--surface2)}
+  .empty-msg{padding:2rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+  .pill-empresa{padding:.15rem .5rem;border-radius:12px;font-size:.62rem;font-weight:700;font-family:'Inter',sans-serif;background:var(--surface3);border:1px solid var(--border-hi);color:var(--text-dim)}
+  .conta-tag{font-size:.6rem;color:var(--text-muted)}
+  .conta-tag.manut{color:var(--accent)}
+
+  footer.tool-actions{display:flex;justify-content:flex-end;gap:.5rem;margin:1rem 0 2rem}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Controle de Obras · Prestadoras</div>
+    <div class="topbar-sub">VAL · SOLUTEC · OLIVEIRA · PV TELECOM</div>
+  </div>
+  <div class="topbar-spacer"></div>
+  <a class="voltar-link" href="painel.html">&larr; Painel</a>
+</header>
+
+<main>
+  <div class="dropzone" id="dropzone">
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/></svg>
+    <div class="dropzone-title">Arraste aqui os PDFs (relatório de prestação de serviços) ou os ZIPs das prestadoras</div>
+    <div class="dropzone-sub">Aceita .pdf e .zip (procura PDFs dentro, em qualquer subpasta). Reimportar o mesmo arquivo não duplica o registro.</div>
+    <div class="dropzone-actions">
+      <button class="btn btn-accent" onclick="document.getElementById('inputArquivos').click()">Selecionar Arquivos</button>
+      <input type="file" id="inputArquivos" multiple accept=".pdf,.zip"/>
+    </div>
+    <div class="import-log" id="importLog"></div>
+  </div>
+
+  <div class="toolbar">
+    <input type="month" id="filtroMes"/>
+    <div class="chip-row" id="chipsEmpresa"></div>
+    <div class="toolbar-spacer"></div>
+    <button class="btn btn-outline btn-sm" id="btnExportarCsv">Exportar CSV</button>
+  </div>
+
+  <div class="stat-row" id="statRow"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">Por Prestadora <small id="subPrestadoras"></small></div>
+      <div class="card-body" id="rankEmpresas"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">Orçamento Manutenção <small id="mesOrcamentoLabel"></small></div>
+      <div class="card-body">
+        <div class="gauge-card">
+          <div class="gauge-svg-wrap">
+            <svg class="gauge-svg" viewBox="0 0 100 100">
+              <circle class="gauge-track" cx="50" cy="50" r="42"/>
+              <circle class="gauge-fill" id="gaugeFill" cx="50" cy="50" r="42"/>
+            </svg>
+            <div class="gauge-center"><span>usado</span><div id="gaugeNum">–</div></div>
+          </div>
+          <div class="gauge-info">
+            <div id="statusPillBox"></div>
+            <div class="orcamento-linhas">
+              <div>Gasto realizado <b id="orcGasto">–</b></div>
+              <div>Orçamento <b id="orcBudget">–</b></div>
+              <div>Ritmo diário <b id="orcRitmo">–</b></div>
+              <div>Projeção fim do mês <b id="orcProjecao">–</b></div>
+            </div>
+            <div class="budget-edit">
+              Orçamento do mês (R$): <input type="number" id="inputBudget" step="100"/>
+              <button class="btn btn-outline btn-sm" id="btnSalvarBudget">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Ranking de Descrições (itens SEV usados nas baixas) <small id="subRankingSev"></small></div>
+    <div class="card-body">
+      <div class="chip-row" style="margin-bottom:.7rem">
+        <div class="chip active" data-ordsev="valor">Ordenar por Valor</div>
+        <div class="chip" data-ordsev="qtd">Ordenar por Ocorrências</div>
+      </div>
+      <div id="rankSev"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Obras Importadas <small id="subObras"></small></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="empresa">Empresa</th>
+            <th data-sort="tecnico">Técnico</th>
+            <th data-sort="clientePop">Cliente / POP</th>
+            <th data-sort="idEtiqueta">ID</th>
+            <th data-sort="dataOrdenacao">Data</th>
+            <th data-sort="contaDescricao">Conta Contábil</th>
+            <th data-sort="totalGeral">Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbodyObras"></tbody>
+      </table>
+      <div class="empty-msg" id="msgVazioObras" style="display:none">Nenhuma obra encontrada para o filtro atual.</div>
+    </div>
+  </div>
+
+  <footer class="tool-actions">
+    <button class="btn btn-danger btn-sm" id="btnResetSeed">Restaurar dados originais</button>
+  </footer>
+</main>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+
+const LS_KEY = 'netturbo_obras_terceirizadas_v1';
+const LS_BUDGET_KEY = 'netturbo_obras_budget_v1';
+const EMPRESAS_CANONICAS = ['VAL TELECOM','SOLUTEC','OLIVEIRA TELECOM','PV TELECOM'];
+
+/* ═══════════════════════════ SEED (dados já importados dos PDFs anexados) ═══════════════════════════ */
+const SEED_DATA = [{"arquivo":"11357234 - 30.07.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis","cidade":"Piracicaba","clientePop":"ATIVIDADE DA CPFL","idEtiqueta":"11357234","periodoIni":"30/07/2026","periodoFim":"30/07/2026","dataRelatorio":"30/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":95,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91},{"codigo":"SEV0087","descricao":"Mão de Obra Disponivel - Semanal","fator":"Comum","classe":"Plantão","unidade":"hora","valorUnit":4,"qtd":1,"total":4}]},{"arquivo":"11374389 - 09.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"Sumaré","clientePop":"ATIVIDADE DA CPFL","idEtiqueta":"11374389","periodoIni":"09/08/2026","periodoFim":"09/08/2026","dataRelatorio":"10/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"21382995 - 13.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"Louveira","clientePop":"Atividade da CPFL","idEtiqueta":"21382995","periodoIni":"13/08/2026","periodoFim":"13/08/2026","dataRelatorio":"14/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":95,"itens":[{"codigo":"SEV0087","descricao":"Mão de Obra Disponivel - Semanal","fator":"Comum","classe":"Plantão","unidade":"hora","valorUnit":4,"qtd":1,"total":4},{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"8312661 - 06.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"Valinhos","clientePop":"FAZENDA SÃO JOSÉ","idEtiqueta":"8312661","periodoIni":"06/08/2026","periodoFim":"06/08/2026","dataRelatorio":"07/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":408,"itens":[{"codigo":"SEV0008","descricao":"Lançamento de cabo optico com rede Existente Comum Classe L SEV0005 Instalação Plaqueta de identificação","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.15,"qtd":228,"total":262.2},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":12,"qtd":8,"total":96},{"codigo":"SEV0048","descricao":"Inserção de Cabo Optico em Periferico (CEO/CTO/DIO/DGOI)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":18,"qtd":2,"total":36},{"codigo":"SEV0087","descricao":"Mão de Obra Disponivel - Semanal","fator":"Comum","classe":"Plantão","unidade":"hora","valorUnit":4,"qtd":3,"total":12}]},{"arquivo":"8312683 - 31.07.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"PIRACICABA","clientePop":"C.A.S EQUIPAMENTOS","idEtiqueta":"8312683","periodoIni":"31/07/2026","periodoFim":"31/07/2026","dataRelatorio":"07/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":112.7,"itens":[{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter) Comum Classe CFO SEV0042 Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":1,"total":2.1},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":2,"total":4.6},{"codigo":"SEV0079","descricao":"Deslocamento para Piracicaba, Araras, Rio Claro, Limeira, Comum Deslocamento unidade R$ 1 R$ 80.00 Jaguariuna 80.00 Subtotal Deslocamento: R$ 80.00 Cód. Descrição Fator Classe Med. V. Unit Qtd Total SEV0087 Mão de Obra Disponivel - Semanal","fator":"Comum","classe":"Plantão","unidade":"hora","valorUnit":4,"qtd":4,"total":16}]},{"arquivo":"8313256 - 10.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"Rio Claro","clientePop":"ECO PRIMOS COMÉRCIO DE RESÍDUOS","idEtiqueta":"8313256","periodoIni":"10/08/2026","periodoFim":"10/08/2026","dataRelatorio":"11/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":597.7,"itens":[{"codigo":"SEV0001","descricao":"Instalação Ancoragem Simples Fita Aço Autosustentavel (passagem de Comum Classe unidade R$ 7 R$ 1.40 rede) L 0.20 SEV0005 Instalação Plaqueta de identificação Comum Classe unidade R$ 11 R$ 3.30 L 0.30 SEV0006 Lançamento de cabo optico Auto Sustentavel Comum Classe metro R$ 261 R$ 313.20 L 1.20 Subtotal Classe L: R$ 317.90 Cód. Descrição Fator Classe Med. V. Unit Qtd Total SEV0030 Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":2,"total":99.8},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":8,"total":80},{"codigo":"SEV0079","descricao":"Deslocamento para Piracicaba, Araras, Rio Claro, Limeira, Comum Deslocamento unidade R$ 1 R$ 80.00 Jaguariuna 80.00 Subtotal Deslocamento: R$ 80.00 Cód. Descrição Fator Classe Med. V. Unit Qtd Total SEV0087 Mão de Obra Disponivel - Semanal","fator":"Comum","classe":"Plantão","unidade":"hora","valorUnit":4,"qtd":5,"total":20}]},{"arquivo":"831354 - 11.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"CAMPINAS","clientePop":"IVAN CARMONA DE SOUZA","idEtiqueta":"8313549","periodoIni":"11/08/2026","periodoFim":"11/08/2026","dataRelatorio":"12/08/2026","contaCodigo":"3.1.1.2.05.0006","contaDescricao":"Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)","totalGeral":51,"itens":[{"codigo":"SEV0058","descricao":"Acesso para Configuração de ativos remoto.","fator":"Comum","classe":"INT","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0087","descricao":"Mão de Obra Disponivel - Semanal","fator":"Comum","classe":"Plantão","unidade":"hora","valorUnit":4,"qtd":4,"total":16}]},{"arquivo":"8314060 - 30.07.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis","cidade":"PIRACICABA","clientePop":"LGMT EQUIPAMENTOS INDUSTRIAIS","idEtiqueta":"8314060","periodoIni":"30/07/2026","periodoFim":"30/07/2026","dataRelatorio":"30/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":196.9,"itens":[{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":2,"total":0.6},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":1,"total":49.9},{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":1,"total":2.1},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":5,"total":50},{"codigo":"SEV0079","descricao":"Deslocamento para Piracicaba, Araras, Rio Claro, Limeira, Comum Deslocamento unidade R$ 1 R$ 80.00 Jaguariuna 80.00 Subtotal Deslocamento: R$ 80.00 Cód. Descrição Fator Classe Med. V. Unit Qtd Total SEV0087 Mão de Obra Disponivel - Semanal","fator":"Comum","classe":"Plantão","unidade":"hora","valorUnit":4,"qtd":3,"total":12}]},{"arquivo":"8314876 - 03.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"JAGUARIÚNA","clientePop":"INSTITUTO EDUCACIONAL JAGUARY LTDA","idEtiqueta":"8314876","periodoIni":"03/08/2026","periodoFim":"03/08/2026","dataRelatorio":"07/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":900.9,"itens":[{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação Critico Classe L SEV0008 Lançamento de cabo optico com rede Existente","fator":"Critico","classe":"L","unidade":"unidade","valorUnit":0.4,"qtd":4,"total":1.6},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":69,"qtd":2,"total":138},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":2,"total":70},{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":6,"total":12.6},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":5,"total":11.5},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":6,"total":60},{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":2.2,"qtd":1,"total":2.2},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":12,"qtd":27,"total":324},{"codigo":"SEV0079","descricao":"Deslocamento para Piracicaba, Araras, Rio Claro, Limeira, Comum Deslocamento unidade R$ 1 R$ 80.00 Jaguariuna 80.00 Subtotal Deslocamento: R$ 80.00 Cód. Descrição Fator Classe Med. V. Unit Qtd Total SEV0087 Mão de Obra Disponivel - Semanal","fator":"Comum","classe":"Plantão","unidade":"hora","valorUnit":4,"qtd":9,"total":36}]},{"arquivo":"CTNQM6MR  - 31.07.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"PIRACICABA","clientePop":"TERRAVERRE","idEtiqueta":"CTNQM6MR","periodoIni":"31/07/2026","periodoFim":"31/07/2026","dataRelatorio":"07/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":339.45,"itens":[{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação Comum Classe L SEV0008 Lançamento de cabo optico com rede Existente","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":5,"total":1.5},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":3,"total":6.3},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":3,"total":6.9},{"codigo":"SEV0044","descricao":"Teste Verificação de Falha (VFL)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.05,"qtd":1,"total":2.05},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":13,"total":130},{"codigo":"SEV0048","descricao":"Inserção de Cabo Optico em Periferico (CEO/CTO/DIO/DGOI)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":9.9,"qtd":2,"total":19.8},{"codigo":"SEV0087","descricao":"Mão de Obra Disponivel - Semanal","fator":"Comum","classe":"Plantão","unidade":"hora","valorUnit":4,"qtd":4,"total":16}]},{"arquivo":"Plant+úo - 09.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"Campinas","clientePop":"Plantão","idEtiqueta":"Plantão","periodoIni":"09/08/2026","periodoFim":"09/08/2026","dataRelatorio":"10/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":480,"itens":[{"codigo":"SEV0077","descricao":"Mão De Obra Disponivel Comum Plantão Hora SEV0077 Mão De Obra Disponivel","fator":"Critico","classe":"Plantão","unidade":"Hora","valorUnit":19,"qtd":12,"total":228}]},{"arquivo":"PLANT+âO  - 02.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"Caieiras e Jundiaí","clientePop":"PLANTÃO","idEtiqueta":"PLANTÃO","periodoIni":"02/08/2026","periodoFim":"02/08/2026","dataRelatorio":"07/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":480,"itens":[{"codigo":"SEV0077","descricao":"Mão De Obra Disponivel Comum Plantão Hora SEV0077 Mão De Obra Disponivel","fator":"Critico","classe":"Plantão","unidade":"Hora","valorUnit":19,"qtd":12,"total":228}]},{"arquivo":"POP ARBORAIS  - 12.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"CAMPINAS","clientePop":"POP ARBORAIS","idEtiqueta":"","periodoIni":"12/08/2026","periodoFim":"12/08/2026","dataRelatorio":"12/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":318.8,"itens":[{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação Comum Classe L SEV0008 Lançamento de cabo optico com rede Existente","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":4,"total":1.2},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":1,"total":49.9},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":6,"total":60},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":12,"qtd":6,"total":72}]},{"arquivo":"SPCER-PEG - 02.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"Caieiras","clientePop":"REPETIDORA SPCER-PEG","idEtiqueta":"","periodoIni":"02/08/2026","periodoFim":"02/08/2026","dataRelatorio":"07/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":948,"itens":[{"codigo":"SEV0002","descricao":"Instalação Encabeçamento Simples Fita Aço Autosustentavel","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.4,"qtd":1,"total":0.4},{"codigo":"SEV0003","descricao":"Instalação Encabeçamento para Espinamento (Bap, Olhal,","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.7,"qtd":1,"total":0.7},{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":8,"total":2.4},{"codigo":"SEV0008","descricao":"Lançamento de cabo optico com rede Existente","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.15,"qtd":166,"total":190.9},{"codigo":"SEV0049","descricao":"Travessia em Rodovia de Cabo Optico","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":250,"qtd":1,"total":250},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":2,"total":99.8},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":2,"total":4.2},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":2,"total":4.6},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":27,"total":270},{"codigo":"SEV0078","descricao":"Deslocamento para Barueri, São Paulo, Guarulhos e ABC","fator":"Comum","classe":"Deslocamento","unidade":"unidade","valorUnit":90,"qtd":1,"total":90}]},{"arquivo":"SPLOU-LBM - 02.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"Jundiaí","clientePop":"REPETIDORA LÍBANO SPLOU-LBN","idEtiqueta":"SPLOU-LBM","periodoIni":"02/08/2026","periodoFim":"03/08/2026","dataRelatorio":"07/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":1470.1,"itens":[{"codigo":"SEV0002","descricao":"Instalação Encabeçamento Simples Fita Aço Autosustentavel Critico Classe L SEV0005 Instalação Plaqueta de identificação","fator":"Critico","classe":"L","unidade":"unidade","valorUnit":0.5,"qtd":4,"total":2},{"codigo":"SEV0008","descricao":"Lançamento de cabo optico com rede Existente","fator":"Critico","classe":"L","unidade":"unidade","valorUnit":0.4,"qtd":13,"total":5.2},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":69,"qtd":2,"total":138},{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":2.2,"qtd":1,"total":2.2},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":2.5,"qtd":1,"total":2.5},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":12,"qtd":24,"total":288},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":1,"total":2.1},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":21,"total":210},{"codigo":"SEV0048","descricao":"Inserção de Cabo Optico em Periferico (CEO/CTO/DIO/DGOI)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":9.9,"qtd":2,"total":19.8},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0087","descricao":"Mão de Obra Disponivel - Semanal","fator":"Comum","classe":"Plantão","unidade":"hora","valorUnit":4,"qtd":4,"total":16}]},{"arquivo":"YRYRDR5Z - 13.08.pdf","pastaEmpresa":"OLIVEIRA TELECOM","empresa":"OLIVEIRA TELECOM","cnpj":"54.851.754/0001-84","tecnico":"Evaneis Silva","cidade":"Campinas","clientePop":"BRASIL SERVIÇO DE TELECOMUNICAÇÃO","idEtiqueta":"YRYRDR5Z","periodoIni":"13/08/2026","periodoFim":"13/08/2026","dataRelatorio":"14/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":95,"itens":[{"codigo":"SEV0087","descricao":"Mão de Obra Disponivel - Semanal","fator":"Comum","classe":"Plantão","unidade":"hora","valorUnit":4,"qtd":1,"total":4},{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"08BABWBS - 08.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Jundiaí","clientePop":"foxconn","idEtiqueta":"08BABWBS","periodoIni":"08/08/2026","periodoFim":"08/08/2026","dataRelatorio":"13/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":102.3,"itens":[{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente Comum Classe CFO SEV0042 Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":2,"total":70},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3}]},{"arquivo":"102492026 - 27.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Jundiaí","clientePop":"10249/2026","idEtiqueta":"","periodoIni":"27/07/2026","periodoFim":"27/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"103232026 - 28.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Jundiaí","clientePop":"10323/2026","idEtiqueta":"","periodoIni":"28/07/2026","periodoFim":"28/07/2026","dataRelatorio":"28/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11333330 - 30.06_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"itatiba","clientePop":"11333330","idEtiqueta":"","periodoIni":"30/06/2026","periodoFim":"30/06/2026","dataRelatorio":"01/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11338856 - 08.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/00001-68","tecnico":"Petterson","cidade":"Hortolândia","clientePop":"11338856","idEtiqueta":"","periodoIni":"08/07/2026","periodoFim":"08/07/2026","dataRelatorio":"14/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11338882 - 07.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/00001-68","tecnico":"Petterson","cidade":"Hortolândia","clientePop":"11338882","idEtiqueta":"","periodoIni":"07/07/2026","periodoFim":"07/07/2026","dataRelatorio":"14/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200.8,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11341860 - 30.06_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"valinhos","clientePop":"11341860","idEtiqueta":"","periodoIni":"30/06/2026","periodoFim":"30/06/2026","dataRelatorio":"07/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200.8,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11341954 - 03.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11341954","idEtiqueta":"","periodoIni":"03/07/2026","periodoFim":"03/07/2026","dataRelatorio":"07/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11346227 - 23.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11346227","idEtiqueta":"","periodoIni":"23/07/2026","periodoFim":"23/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11347054 - 01.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54029.825/0001-68","tecnico":"Petterson","cidade":"valinhos","clientePop":"11347054","idEtiqueta":"","periodoIni":"01/07/2026","periodoFim":"01/06/2026","dataRelatorio":"03/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11348031 - 02.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"itatiba","clientePop":"11348031","idEtiqueta":"","periodoIni":"02/07/2026","periodoFim":"02/07/2026","dataRelatorio":"07/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11348032 - 02.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"valinhos","clientePop":"11348032","idEtiqueta":"","periodoIni":"02/07/2026","periodoFim":"02/07/2026","dataRelatorio":"07/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11352247 - 14.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11352247","idEtiqueta":"","periodoIni":"14/07/2026","periodoFim":"14/07/2026","dataRelatorio":"23/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11353735 - 12.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11353735","idEtiqueta":"","periodoIni":"12/07/2026","periodoFim":"12/07/2026","dataRelatorio":"15/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":219,"itens":[{"codigo":"SEV0001","descricao":"Instalação Ancoragem Simples Fita Aço Autosustentavel (passagem de Comum Classe unidade R$ 1 R$ 0.20 rede) L 0.20 Subtotal Classe L: R$ 0.20 Cód. Descrição Fator Classe Med. V. Unit Qtd Total SEV0084 Correção Fiberloop e correção de posicionamento de CEO Comum Classe P SEV0085 Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":18.8,"qtd":1,"total":18.8}]},{"arquivo":"11354218 - 15.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11354218","idEtiqueta":"","periodoIni":"15/07/2026","periodoFim":"15/07/2026","dataRelatorio":"23/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11354222 - 15.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11354222","idEtiqueta":"","periodoIni":"15/07/2026","periodoFim":"15/07/2026","dataRelatorio":"23/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11354270 - 17.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11354270","idEtiqueta":"","periodoIni":"17/07/2026","periodoFim":"17/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11354431 - 08.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Itatiba","clientePop":"11354431","idEtiqueta":"","periodoIni":"08/08/2026","periodoFim":"08/08/2026","dataRelatorio":"13/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11354432 - 22.07.2_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"itatiba","clientePop":"11354432","idEtiqueta":"","periodoIni":"22/07/2026","periodoFim":"22/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11354432 - 22.07_signed (1).pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Bragança","clientePop":"11354432","idEtiqueta":"","periodoIni":"22/07/2026","periodoFim":"22/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11354450 - 23.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11354450","idEtiqueta":"","periodoIni":"23/07/2026","periodoFim":"23/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200.2,"itens":[{"codigo":"SEV0001","descricao":"Instalação Ancoragem Simples Fita Aço Autosustentavel (passagem de Comum Classe unidade R$ 1 R$ 0.20 rede) L 0.20 Subtotal Classe L: R$ 0.20 Cód. Descrição Fator Classe Med. V. Unit Qtd Total SEV0085 Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11354455 - 24.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11354455","idEtiqueta":"","periodoIni":"24/07/2026","periodoFim":"24/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11355563 - 17.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Sumaré","clientePop":"11355563","idEtiqueta":"","periodoIni":"17/07/2026","periodoFim":"17/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200.2,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11355876 - 30.06_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"valinhos","clientePop":"11355876","idEtiqueta":"","periodoIni":"30/06/2026","periodoFim":"30/06/2026","dataRelatorio":"01/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11356544 - 03.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"itatiba","clientePop":"11356544","idEtiqueta":"","periodoIni":"03/07/2026","periodoFim":"03/07/2026","dataRelatorio":"07/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200.8,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11356604 - 24.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11356604","idEtiqueta":"","periodoIni":"24/07/2026","periodoFim":"24/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11358018 - 02.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"campinas","clientePop":"11358018","idEtiqueta":"","periodoIni":"02/07/2026","periodoFim":"02/07/2026","dataRelatorio":"07/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11358857 - 23.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11358857","idEtiqueta":"","periodoIni":"23/07/2026","periodoFim":"23/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":236.1,"itens":[{"codigo":"SEV0001","descricao":"Instalação Ancoragem Simples Fita Aço Autosustentavel (passagem de","fator":"Critico","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":1,"total":0.3},{"codigo":"SEV0084","descricao":"Correção Fiberloop e correção de posicionamento de CEO Critico Classe P SEV0085 Acompanhamento Troca de Poste","fator":"Critico","classe":"P","unidade":"unidade","valorUnit":20.8,"qtd":1,"total":20.8}]},{"arquivo":"11359263 - 02.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Sumaré","clientePop":"11359263","idEtiqueta":"","periodoIni":"02/07/2026","periodoFim":"02/07/2026","dataRelatorio":"07/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11359384 - 29.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11359384","idEtiqueta":"","periodoIni":"29/07/2026","periodoFim":"29/07/2026","dataRelatorio":"10/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11359391 - 10.07_signed (1).pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/00001-68","tecnico":"Petterson","cidade":"Sumaré","clientePop":"11359391","idEtiqueta":"","periodoIni":"10/07/2026","periodoFim":"10/07/2026","dataRelatorio":"14/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11359844 - 28.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Valinhos","clientePop":"11359844","idEtiqueta":"","periodoIni":"28/07/2026","periodoFim":"28/07/2026","dataRelatorio":"28/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11360745 - 08.07_signed (1).pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/00001-68","tecnico":"Petterson","cidade":"valinhos","clientePop":"11360745","idEtiqueta":"","periodoIni":"08/07/2026","periodoFim":"08/07/2026","dataRelatorio":"14/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11360888 - 15.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11360888","idEtiqueta":"","periodoIni":"15/07/2026","periodoFim":"15/07/2026","dataRelatorio":"23/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11362289 - 13.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"itatiba","clientePop":"11362289","idEtiqueta":"","periodoIni":"13/07/2026","periodoFim":"13/07/2026","dataRelatorio":"23/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11371592 - 05.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Hortolândia","clientePop":"11371592","idEtiqueta":"","periodoIni":"05/08/2026","periodoFim":"05/08/2026","dataRelatorio":"13/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11372178 - 07.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Valinhos","clientePop":"11372178","idEtiqueta":"","periodoIni":"07/08/2026","periodoFim":"07/08/2026","dataRelatorio":"13/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11372419 - 05.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Hortolândia","clientePop":"","idEtiqueta":"11372419","periodoIni":"05/08/2026","periodoFim":"05/08/2026","dataRelatorio":"13/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11374708 - 11.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"","clientePop":"11374708","idEtiqueta":"","periodoIni":"11/08/2026","periodoFim":"11/08/2026","dataRelatorio":"13/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"11379770 - 03.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"11379770","idEtiqueta":"","periodoIni":"03/08/2026","periodoFim":"03/08/2026","dataRelatorio":"10/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"21337581  - 07.07_signed (1).pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/00001-68","tecnico":"Petterson","cidade":"louveira","clientePop":"21337581","idEtiqueta":"","periodoIni":"07/07/2026","periodoFim":"07/07/2026","dataRelatorio":"14/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200.8,"itens":[{"codigo":"SEV0001","descricao":"Instalação Ancoragem Simples Fita Aço Autosustentavel (passagem de Comum Classe unidade R$ 1 R$ 0.20 rede) L 0.20 SEV0005 Instalação Plaqueta de identificação Comum Classe unidade R$ 2 R$ 0.60 L 0.30 Subtotal Classe L: R$ 0.80 Cód. Descrição Fator Classe Med. V. Unit Qtd Total SEV0085 Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"21344643 - 01.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Louveira","clientePop":"21344643","idEtiqueta":"","periodoIni":"01/07/2026","periodoFim":"01/07/2026","dataRelatorio":"07/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"21347731 - 17.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Jundiaí","clientePop":"21347731","idEtiqueta":"","periodoIni":"17/07/2026","periodoFim":"17/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"21349627 - 07.07_signed (1).pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/00001-68","tecnico":"Petterson","cidade":"louveira","clientePop":"21349627","idEtiqueta":"","periodoIni":"07/07/2026","periodoFim":"07/07/2026","dataRelatorio":"14/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"21351464 - 08.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/00001-68","tecnico":"Petterson","cidade":"Jundiaí","clientePop":"21351464","idEtiqueta":"","periodoIni":"08/07/2026","periodoFim":"08/07/2026","dataRelatorio":"14/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"21371850 - 08.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Jundiaí","clientePop":"21371850","idEtiqueta":"","periodoIni":"08/08/2026","periodoFim":"08/08/2026","dataRelatorio":"13/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"21372373 - 09.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Jundiaí","clientePop":"21372373","idEtiqueta":"","periodoIni":"09/08/2026","periodoFim":"09/08/2026","dataRelatorio":"13/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"21374569 - 28.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Jundiaí","clientePop":"21374569","idEtiqueta":"","periodoIni":"28/07/2026","periodoFim":"28/07/2026","dataRelatorio":"28/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"3QL9MX2E - 02.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Jundiaí","clientePop":"GRACO SERVICOS E IMPOSTACAO","idEtiqueta":"3QL9MX2E","periodoIni":"02/07/2026","periodoFim":"02/07/2026","dataRelatorio":"07/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":495.3,"itens":[{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação Critico Classe L SEV0008 Lançamento de cabo optico com rede Existente","fator":"Critico","classe":"L","unidade":"unidade","valorUnit":0.4,"qtd":4,"total":1.6},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":69,"qtd":1,"total":69},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":42,"qtd":1,"total":42},{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":2.2,"qtd":1,"total":2.2},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":12,"qtd":25,"total":300},{"codigo":"SEV0048","descricao":"Inserção de Cabo Optico em Periferico (CEO/CTO/DIO/DGOI)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":18,"qtd":1,"total":18}]},{"arquivo":"3RGAHWCR - 06.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"3RGAHWCR 27/07/2026","clientePop":"SPCAS-OVE ATLANTICA","idEtiqueta":"","periodoIni":null,"periodoFim":null,"dataRelatorio":null,"contaCodigo":"3.1.1.2.05.0005","contaDescricao":"Serviços de Instalação CLIENTE - IMPLANTAÇÃO","totalGeral":428.3,"itens":[{"codigo":"SEV0088","descricao":"Tratativa de fibra Comum Classe CFO SEV0037 Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"metro","valorUnit":0.15,"qtd":838,"total":125.7},{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter) Comum Classe CFO SEV0042 Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":3,"total":105},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":4,"total":8.4}]},{"arquivo":"7067189 - 07.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/00001-68","tecnico":"Petterson","cidade":"Hortolândia","clientePop":"7067189","idEtiqueta":"","periodoIni":"07/07/2026","periodoFim":"07/07/2026","dataRelatorio":"14/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"7507613 - 29.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"7507613","idEtiqueta":"","periodoIni":"29/07/2026","periodoFim":"29/07/2026","dataRelatorio":"10/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"8311011 - 01.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Atibaia","clientePop":"KLEBER FARIAS SLEIMAN","idEtiqueta":"8311011","periodoIni":"01/07/2026","periodoFim":"01/07/2026","dataRelatorio":"07/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":706.45,"itens":[{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação Comum Classe L unidade SEV0008 Lançamento de cabo optico com rede Existente","fator":"Comum","classe":"L","unidade":"metro","valorUnit":0.3,"qtd":4,"total":1.2},{"codigo":"SEV0049","descricao":"Travessia em Rodovia de Cabo Optico","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":1.15,"qtd":183,"total":210.45},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":2,"total":99.8},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":8,"total":80},{"codigo":"SEV0080","descricao":"Deslocamento para Bragança Paulista, Atibaia, Extrema MG.","fator":"Comum","classe":"Deslocamento","unidade":"unidade","valorUnit":65,"qtd":1,"total":65}]},{"arquivo":"8311272 - 18.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Itupeva","clientePop":"ROBOT ASSISTENCIA","idEtiqueta":"8311272","periodoIni":"18/07/2026","periodoFim":"18/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":176.5,"itens":[{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":42,"qtd":2,"total":84},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":2.5,"qtd":1,"total":2.5},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":12,"qtd":6,"total":72},{"codigo":"SEV0048","descricao":"Inserção de Cabo Optico em Periferico (CEO/CTO/DIO/DGOI)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":18,"qtd":1,"total":18}]},{"arquivo":"8311568 - 11.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Valinhos","clientePop":"MADIA IMOVEIS LTDA","idEtiqueta":"8311568","periodoIni":"11/07/2026","periodoFim":"11/07/2026","dataRelatorio":"15/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":103.4,"itens":[{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente Comum Classe CFO SEV0041 Teste Potencia Luz (Power Meter)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":4,"total":8.4}]},{"arquivo":"8311773 - 06.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Itatiba","clientePop":"edifício monte castelo","idEtiqueta":"8311773","periodoIni":"06/08/2026","periodoFim":"06/08/2026","dataRelatorio":"13/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":345.3,"itens":[{"codigo":"SEV0008","descricao":"Lançamento de cabo optico com rede Existente","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.15,"qtd":88,"total":101.2},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":2,"total":99.8},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":13,"total":130}]},{"arquivo":"8311855 - 10.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"itatiba","clientePop":"CARRANTOS SERVICOS DE VIGILANCIA","idEtiqueta":"8311855","periodoIni":"10/07/2026","periodoFim":"10/07/2026","dataRelatorio":"15/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":559.28,"itens":[{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter) Comum Classe CFO SEV0042 Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":1,"total":2.1},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO) Comum Classe CFO SEV0088 Tratativa de fibra","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente Critico Classe CFO SEV0041 Teste Potencia Luz (Power Meter)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":1,"total":10},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos Critico Classe CFO SEV0045 Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Critico","classe":"CFO","unidade":"metro","valorUnit":0.15,"qtd":1698,"total":254.7},{"codigo":"SEV0088","descricao":"Tratativa de fibra","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":42,"qtd":2,"total":84}]},{"arquivo":"8312179 - 30.06_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54029.825/0001-68","tecnico":"Petterson","cidade":"valinhos","clientePop":"prefeitura do município de Valinhos","idEtiqueta":"8312179","periodoIni":"30/06/2026","periodoFim":"30/06/2026","dataRelatorio":"03/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":59.4,"itens":[{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente Comum Classe CFO SEV0041 Teste Potencia Luz (Power Meter)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos Comum Classe CFO SEV0045 Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":1,"total":2.1}]},{"arquivo":"8312545 - 10.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Paulínia","clientePop":"churrascaria e lanchonete Nalin","idEtiqueta":"8312545","periodoIni":"10/07/2026","periodoFim":"10/07/2026","dataRelatorio":"15/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":291.95,"itens":[{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação Comum Classe L SEV0008 Lançamento de cabo optico com rede Existente","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":2,"total":0.6},{"codigo":"SEV0032","descricao":"Preparação e montagem de Caixa de Terminal Optica (CTO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":90,"qtd":1,"total":90},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":13,"total":130},{"codigo":"SEV0048","descricao":"Inserção de Cabo Optico em Periferico (CEO/CTO/DIO/DGOI)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":9.9,"qtd":1,"total":9.9}]},{"arquivo":"8312855 - 14.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"itatiba","clientePop":"LA ROC CLUB","idEtiqueta":"8312855","periodoIni":"14/07/2026","periodoFim":"14/07/2026","dataRelatorio":"23/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":313.6,"itens":[{"codigo":"SEV0008","descricao":"Lançamento de cabo optico com rede Existente","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.15,"qtd":110,"total":126.5},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":1,"total":49.9},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":9,"total":90},{"codigo":"SEV0048","descricao":"Inserção de Cabo Optico em Periferico (CEO/CTO/DIO/DGOI)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":9.9,"qtd":1,"total":9.9}]},{"arquivo":"8313726 - 04.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"acessoline","idEtiqueta":"8313726","periodoIni":"04/08/2026","periodoFim":"04/08/2026","dataRelatorio":"10/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"8314361 - 11.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"valinhos","clientePop":"José Lincolin Amâncio","idEtiqueta":"8314361","periodoIni":"11/07/2026","periodoFim":"11/07/2026","dataRelatorio":"28/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":597.7,"itens":[{"codigo":"SEV0001","descricao":"Instalação Ancoragem Simples Fita Aço Autosustentavel (passagem de Comum Classe unidade R$ 1 R$ 0.20 rede) L 0.20 SEV0008 Lançamento de cabo optico com rede Existente Critico Classe metro R$ 214 R$ 267.50 L 1.25 Subtotal Classe L: R$ 267.70 Cód. Descrição Fator Classe Med. V. Unit Qtd Total SEV0030 Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":69,"qtd":2,"total":138},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":12,"qtd":16,"total":192}]},{"arquivo":"8315546 - 27.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Jundiaí","clientePop":"ICON-DIAGNOSTICO","idEtiqueta":"8315546","periodoIni":"27/07/2026","periodoFim":"27/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":93.1,"itens":[{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":1,"total":2.1},{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"8315634 - 03.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"sociedade hípica","idEtiqueta":"8315634","periodoIni":"03/08/2026","periodoFim":"03/08/2026","dataRelatorio":"10/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":93.1,"itens":[{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":1,"total":2.1},{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"BASE-SPITA-BSE - 22.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"itatiba","clientePop":"BASE-SPITA-BSE","idEtiqueta":"","periodoIni":"22/07/2026","periodoFim":"22/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":308.9,"itens":[{"codigo":"SEV0008","descricao":"Lançamento de cabo optico com rede Existente","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.15,"qtd":100,"total":115},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":1,"total":49.9},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":12,"qtd":12,"total":144}]},{"arquivo":"DXGZG75 - 03.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"CHURRASCARIA NOVA PAMPA","idEtiqueta":"DXGZG757","periodoIni":"03/08/2026","periodoFim":"03/08/2026","dataRelatorio":"10/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":522.45,"itens":[{"codigo":"SEV0008","descricao":"Lançamento de cabo optico com rede Existente","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.15,"qtd":109,"total":125.35},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":2,"total":99.8},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":26,"total":260}]},{"arquivo":"IPV6 - 30.06_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"valinhos","clientePop":"IPV6 PROVEDOR DE INTERNET","idEtiqueta":"","periodoIni":"30/06/2026","periodoFim":"30/06/2026","dataRelatorio":"03/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200.8,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"M+úo De Obra - 18.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"","clientePop":"","idEtiqueta":"","periodoIni":"18/07/2026","periodoFim":"18/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":480,"itens":[{"codigo":"SEV0077","descricao":"Mão De Obra Disponivel Comum Plantão Hora SEV0077 Mão De Obra Disponivel","fator":"Critico","classe":"Plantão","unidade":"Hora","valorUnit":19,"qtd":12,"total":228}]},{"arquivo":"M+úo De Obra Disponivel  - 08.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"","clientePop":"","idEtiqueta":"","periodoIni":"08/08/2026","periodoFim":"09/08/2026","dataRelatorio":"13/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":960,"itens":[{"codigo":"SEV0077","descricao":"Mão De Obra Disponivel Comum Plantão Hora SEV0077 Mão De Obra Disponivel","fator":"Critico","classe":"Plantão","unidade":"Hora","valorUnit":19,"qtd":24,"total":456}]},{"arquivo":"M+úo De Obra Dispon+¡vel - 11.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"","clientePop":"","idEtiqueta":"","periodoIni":"11/07/2026","periodoFim":"12/07/2026","dataRelatorio":"15/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":960,"itens":[{"codigo":"SEV0077","descricao":"Mão De Obra Disponivel Comum Plantão Hora SEV0077 Mão De Obra Disponivel","fator":"Critico","classe":"Plantão","unidade":"Hora","valorUnit":19,"qtd":24,"total":456}]},{"arquivo":"REPETIDORA FOS - 03.08.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Campinas","clientePop":"REPETIDORA FOS","idEtiqueta":"","periodoIni":"03/08/2026","periodoFim":"03/08/2026","dataRelatorio":"10/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":279.5,"itens":[{"codigo":"SEV0008","descricao":"Lançamento de cabo optico com rede Existente","fator":"Critico","classe":"L","unidade":"metro","valorUnit":1.25,"qtd":130,"total":162.5},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":69,"qtd":1,"total":69},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":12,"qtd":4,"total":48}]},{"arquivo":"SPCJR-DCO  - 18.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Cajamar","clientePop":"SPCJR-DCO","idEtiqueta":"","periodoIni":"18/07/2026","periodoFim":"18/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":1532,"itens":[{"codigo":"SEV0029","descricao":"Preparação e montagem de Caixa de Emenda Optica FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":200,"qtd":2,"total":400},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":72,"total":720},{"codigo":"SEV0078","descricao":"Deslocamento para Barueri, São Paulo, Guarulhos e ABC","fator":"Comum","classe":"Deslocamento","unidade":"unidade","valorUnit":90,"qtd":1,"total":90},{"codigo":"SEV0008","descricao":"Lançamento de cabo optico com rede Existente Comum Classe L SEV0008 Lançamento de cabo optico com rede Existente","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.15,"qtd":140,"total":161}]},{"arquivo":"SPITA-BSE - 15.07_signed (1).pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Itatiba","clientePop":"SPITA-BSE","idEtiqueta":"","periodoIni":"15/07/2026","periodoFim":"15/07/2026","dataRelatorio":"27/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":723.85,"itens":[{"codigo":"SEV0008","descricao":"Lançamento de cabo optico com rede Existente","fator":"Critico","classe":"L","unidade":"metro","valorUnit":1.25,"qtd":85,"total":106.25},{"codigo":"SEV0029","descricao":"Preparação e montagem de Caixa de Emenda Optica FOSC","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":250,"qtd":1,"total":250},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":2,"total":4.6},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":4,"total":40},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Critico","classe":"CFO","unidade":"unidade","valorUnit":12,"qtd":24,"total":288}]},{"arquivo":"SPSPO-BRT - 16.07.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"São Paulo","clientePop":"SPSPO-BRT","idEtiqueta":"","periodoIni":"16/07/2026","periodoFim":"16/07/2026","dataRelatorio":"29/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":640.9,"itens":[{"codigo":"SEV0003","descricao":"Instalação Encabeçamento para Espinamento (Bap, Olhal, Parafuso)","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.7,"qtd":4,"total":2.8},{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":5,"total":1.5},{"codigo":"SEV0008","descricao":"Lançamento de cabo optico com rede Existente","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.15,"qtd":130,"total":149.5},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":2,"total":99.8},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":26,"total":260},{"codigo":"SEV0078","descricao":"Deslocamento para Barueri, São Paulo, Guarulhos e ABC","fator":"Comum","classe":"Deslocamento","unidade":"unidade","valorUnit":90,"qtd":1,"total":90}]},{"arquivo":"TROCA DE POSTE 12.07_signed.pdf","pastaEmpresa":"PV TELECOM","empresa":"PV Telecom","cnpj":"54.029.825/0001-68","tecnico":"Petterson","cidade":"Sorocaba","clientePop":"","idEtiqueta":"","periodoIni":"12/07/2026","periodoFim":"12/07/2026","dataRelatorio":"15/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":161,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91},{"codigo":"SEV0082","descricao":"Deslocamento para Sorocaba, Indaiatuba","fator":"Comum","classe":"Deslocamento","unidade":"unidade","valorUnit":70,"qtd":1,"total":70}]},{"arquivo":"11373350 - 08.08.pdf","pastaEmpresa":"SOLUTEC","empresa":"Solutec","cnpj":"37.986.202/0001-64","tecnico":"Lielder","cidade":"Campinas","clientePop":"11373350","idEtiqueta":"Acompanhamento","periodoIni":"08/08/2026","periodoFim":"08/08/2026","dataRelatorio":"09/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":202.4,"itens":[{"codigo":"SEV0004","descricao":"Instalação Ancoragem para Espinamento Suporte SUPA (passagem de Comum Classe unidade R$ 2 R$ 1.20 rede) L 0.60 SEV0005 Instalação Plaqueta de identificação Comum Classe unidade R$ 4 R$ 1.20 L 0.30 Subtotal Classe L: R$ 2.40 Cód. Descrição Fator Classe Med. V. Unit Qtd Total SEV0085 Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"11377496 - 08.08.pdf","pastaEmpresa":"SOLUTEC","empresa":"Solutec","cnpj":"37.986.202/0001-64","tecnico":"Lielder","cidade":"Campinas","clientePop":"11377496","idEtiqueta":"Acompanhamento","periodoIni":"08/08/2026","periodoFim":"08/08/2026","dataRelatorio":"09/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":200,"itens":[{"codigo":"SEV0085","descricao":"Acompanhamento Troca de Poste","fator":"Comum","classe":"P","unidade":"unidade","valorUnit":200,"qtd":1,"total":200}]},{"arquivo":"137337 - 04.08.pdf","pastaEmpresa":"SOLUTEC","empresa":"Solutec","cnpj":"37.986.202/0001-64","tecnico":"Lielder","cidade":"Campinas","clientePop":"REPETIDORA - SPCAS-FPS","idEtiqueta":"137337","periodoIni":"04/08/2026","periodoFim":"04/08/2026","dataRelatorio":"07/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":562.2,"itens":[{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação Comum Classe L SEV0006 Lançamento de cabo optico Auto Sustentavel","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":8,"total":2.4},{"codigo":"SEV0007","descricao":"Espinamento de cabos Comum Classe L SEV0009 Lançamento de cordoalha dieletrica","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.2,"qtd":246,"total":295.2}]},{"arquivo":"138322 - 03.08.pdf","pastaEmpresa":"SOLUTEC","empresa":"Solutec","cnpj":"37.986.202/0001-64","tecnico":"Lielder","cidade":"Campinas","clientePop":"REPETIDORA - SPCAS/ARB","idEtiqueta":"138322","periodoIni":"03/08/2026","periodoFim":"06/08/2026","dataRelatorio":"09/08/2026","contaCodigo":"3.1.1.2.05.0103","contaDescricao":"Serviços de Melhoria REDE - REPARO PROGRAMADO DE REDE","totalGeral":2657.38,"itens":[{"codigo":"SEV0001","descricao":"Instalação Ancoragem Simples Fita Aço Autosustentavel (passagem de Comum Classe unidade R$ 12 R$ 2.40 rede) L 0.20 SEV0002 Instalação Encabeçamento Simples Fita Aço Autosustentavel Comum Classe unidade R$ 6 R$ 2.40 L 0.40 SEV0004 Instalação Ancoragem para Espinamento Suporte SUPA (passagem de Comum Classe unidade R$ 10 R$ 6.00 rede) L 0.60 SEV0005 Instalação Plaqueta de identificação Comum Classe unidade R$ 48 R$ 14.40 L 0.30 SEV0006 Lançamento de cabo optico Auto Sustentavel Comum Classe metro R$ 700 R$ 840.00 L 1.20 SEV0007 Espinamento de cabos Comum Classe metro R$ 120 R$ 84.00 L 0.70 SEV0008 Lançamento de cabo optico com rede Existente Comum Classe metro R$ 920 R$ 1058.00 L 1.15 SEV0009 Lançamento de cordoalha dieletrica Comum Classe metro R$ 120 R$ 84.00 L 0.70 Subtotal Classe L: R$ 2091.20 Cód. Descrição Fator Classe Med. V. Unit Qtd Total SEV0030 Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":3,"total":149.7},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0039","descricao":"Identificação interna Tubo loos Rotuladora","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":0.79,"qtd":2,"total":1.58},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":37,"total":370},{"codigo":"SEV0048","descricao":"Inserção de Cabo Optico em Periferico (CEO/CTO/DIO/DGOI)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":9.9,"qtd":1,"total":9.9}]},{"arquivo":"8313958 - 06.08.pdf","pastaEmpresa":"SOLUTEC","empresa":"Solutec","cnpj":"37.986.202/0001-64","tecnico":"Lielder","cidade":"Valinhos","clientePop":"ZARELLI SUPERMERCADOS LTDA","idEtiqueta":"8313958","periodoIni":"06/08/2026","periodoFim":"06/08/2026","dataRelatorio":"07/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":57.3,"itens":[{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente Comum Classe CFO SEV0042 Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3}]},{"arquivo":"8314414 - 04.08.pdf","pastaEmpresa":"SOLUTEC","empresa":"Solutec","cnpj":"37.986.202/0001-64","tecnico":"Lielder","cidade":"Campinas","clientePop":"UNIPATIUN-CAR","idEtiqueta":"8314414","periodoIni":"04/08/2026","periodoFim":"04/08/2026","dataRelatorio":"07/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"CT0XM9KT - 05.08.pdf","pastaEmpresa":"SOLUTEC","empresa":"Solutec","cnpj":"37.986.202/0001-64","tecnico":"Lielder","cidade":"Itupeva","clientePop":"SUNTECH SUPPLIES INDUSTRIA E","idEtiqueta":"CT0XM9KT","periodoIni":"05/08/2026","periodoFim":"05/08/2026","dataRelatorio":"07/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":483.8,"itens":[{"codigo":"SEV0006","descricao":"Lançamento de cabo optico Auto Sustentavel","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.2,"qtd":120,"total":144},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":2,"total":99.8},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":24,"total":240}]},{"arquivo":"PLANT+âO - 08.08.pdf","pastaEmpresa":"SOLUTEC","empresa":"Solutec","cnpj":"37.986.202/0001-64","tecnico":"Lielder","cidade":"","clientePop":"Platão","idEtiqueta":"","periodoIni":"08/08/2026","periodoFim":"08/08/2026","dataRelatorio":"09/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":480,"itens":[{"codigo":"SEV0077","descricao":"Mão De Obra Disponivel Comum Plantão Hora SEV0077 Mão De Obra Disponivel","fator":"Critico","classe":"Plantão","unidade":"Hora","valorUnit":19,"qtd":12,"total":228}]},{"arquivo":"8310561 - 03.08.pdf","pastaEmpresa":"VAL TELECOM","empresa":"VAL TELECOM","cnpj":"47114651000176","tecnico":"VAL 02 - MERINO","cidade":"VINHEDO","clientePop":"FITAS DE AÇO 8310561","idEtiqueta":"8310561","periodoIni":"03/08/2026","periodoFim":"03/08/2026","dataRelatorio":"04/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":270,"itens":[{"codigo":"SEV0014","descricao":"Lançamento de cabo Drop Aereo","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1,"qtd":136,"total":136},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":2,"total":70},{"codigo":"SEV0041","descricao":"Teste Potencia Luz (Power Meter)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.1,"qtd":1,"total":2.1},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":2,"total":20},{"codigo":"SEV0048","descricao":"Inserção de Cabo Optico em Periferico (CEO/CTO/DIO/DGOI)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":9.9,"qtd":4,"total":39.6}]},{"arquivo":"8310847 - 05.08.pdf","pastaEmpresa":"VAL TELECOM","empresa":"VAL TELECOM","cnpj":"47114651000176","tecnico":"VAL 02 - MERINO","cidade":"VINHEDO","clientePop":"8310847","idEtiqueta":"8310847","periodoIni":"05/08/2026","periodoFim":"05/08/2026","dataRelatorio":"06/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"8311582 - 05.08.pdf","pastaEmpresa":"VAL TELECOM","empresa":"VAL TELECOM","cnpj":"47114651000176","tecnico":"VAL 02 - MERINO","cidade":"VINHEDO","clientePop":"8311582","idEtiqueta":"8311582","periodoIni":"05/08/2026","periodoFim":"05/08/2026","dataRelatorio":"06/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"8314642 - 10.08.pdf","pastaEmpresa":"VAL TELECOM","empresa":"VAL TELECOM","cnpj":"47114651000176","tecnico":"VAL 02 - MERINO","cidade":"JUNDIAI","clientePop":"MICROSET TECNOLOGIA LTDA (8314642)","idEtiqueta":"8314642","periodoIni":"10/08/2026","periodoFim":"10/08/2026","dataRelatorio":"10/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":91,"itens":[{"codigo":"SEV0076","descricao":"Visita Técnica Improdutiva","fator":"Comum","classe":"Improtividade","unidade":"unidade","valorUnit":91,"qtd":1,"total":91}]},{"arquivo":"BSDRCTDT - 05.08.pdf","pastaEmpresa":"VAL TELECOM","empresa":"VAL TELECOM","cnpj":"47114651000176","tecnico":"VAL 02 - MERINO","cidade":"JUNDIAI","clientePop":"RC ARMAZEM E LOGISTICA LTDA (BSDRCTDT)","idEtiqueta":"BSDRCTDT","periodoIni":"05/08/2026","periodoFim":"05/08/2026","dataRelatorio":"06/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":537.95,"itens":[{"codigo":"SEV0003","descricao":"Instalação Encabeçamento para Espinamento (Bap, Olhal, Parafuso)","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.7,"qtd":1,"total":0.7},{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":4,"total":1.2},{"codigo":"SEV0006","descricao":"Lançamento de cabo optico Auto Sustentavel","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.2,"qtd":124,"total":148.8},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":2,"total":99.8},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0040","descricao":"Identificação interna Fusão","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":0.15,"qtd":1,"total":0.15},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":25,"total":250}]},{"arquivo":"SPCAS-FPS - 03.08.pdf","pastaEmpresa":"VAL TELECOM","empresa":"VAL TELECOM","cnpj":"47114651000176","tecnico":"VAL 02 - MERINO","cidade":"CAMPINAS","clientePop":"REPETIDORA - SPCAS-FPS","idEtiqueta":"SPCAS-FPS","periodoIni":"03/08/2026","periodoFim":"03/08/2026","dataRelatorio":"04/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":922.4,"itens":[{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação Comum Classe L SEV0006 Lançamento de cabo optico Auto Sustentavel","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":4,"total":1.2},{"codigo":"SEV0029","descricao":"Preparação e montagem de Caixa de Emenda Optica FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":200,"qtd":1,"total":200},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":1,"total":49.9},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":3,"total":105},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":12,"total":120}]},{"arquivo":"SPITA-BSE - 04.08.pdf","pastaEmpresa":"VAL TELECOM","empresa":"VAL TELECOM","cnpj":"47114651000176","tecnico":"VAL 02 - MERINO","cidade":"BRAGANÇA PAULISTA","clientePop":"REPETIDORA SPITA-BSE","idEtiqueta":"SPITA-BSE","periodoIni":"04/08/2026","periodoFim":"04/08/2026","dataRelatorio":"06/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":282.8,"itens":[{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":2,"total":0.6},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":1,"total":49.9},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":1,"total":35},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":1,"total":2.3},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":13,"total":130},{"codigo":"SEV0080","descricao":"Deslocamento para Bragança Paulista, Atibaia, Extrema MG.","fator":"Comum","classe":"Deslocamento","unidade":"unidade","valorUnit":65,"qtd":1,"total":65}]},{"arquivo":"SPSPO-BRT - 30.07.pdf","pastaEmpresa":"VAL TELECOM","empresa":"VAL TELECOM","cnpj":"47114651000176","tecnico":"VAL 02 - MERINO","cidade":"SAO PAULO","clientePop":"REPETIDORA BOM RETIRO - SPSPO-BRT","idEtiqueta":"SPSPO-BRT","periodoIni":"30/07/2026","periodoFim":"30/07/2026","dataRelatorio":"30/07/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":540.8,"itens":[{"codigo":"SEV0005","descricao":"Instalação Plaqueta de identificação Comum Classe L SEV0006 Lançamento de cabo optico Auto Sustentavel","fator":"Comum","classe":"L","unidade":"unidade","valorUnit":0.3,"qtd":6,"total":1.8},{"codigo":"SEV0030","descricao":"Preparação e montagem de Caixa de Emenda Optica Mini FOSC","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":49.9,"qtd":2,"total":99.8},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":24,"total":240},{"codigo":"SEV0078","descricao":"Deslocamento para Barueri, São Paulo, Guarulhos e ABC","fator":"Comum","classe":"Deslocamento","unidade":"unidade","valorUnit":90,"qtd":1,"total":90}]},{"arquivo":"SPVOS-MCCDO - 06.08.pdf","pastaEmpresa":"VAL TELECOM","empresa":"VAL TELECOM","cnpj":"47114651000176","tecnico":"VAL 02 - MERINO","cidade":"VALINHOS","clientePop":"REPETIDORA MACUCO - SPVOS-MCC","idEtiqueta":"SPVOS-MCCDO","periodoIni":"06/08/2026","periodoFim":"06/08/2026","dataRelatorio":"06/08/2026","contaCodigo":"3.1.1.2.05.0008","contaDescricao":"Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)","totalGeral":430.3,"itens":[{"codigo":"SEV0006","descricao":"Lançamento de cabo optico Auto Sustentavel Comum Classe L SEV0005 Instalação Plaqueta de identificação","fator":"Comum","classe":"L","unidade":"metro","valorUnit":1.2,"qtd":100,"total":120},{"codigo":"SEV0037","descricao":"Reabertura e Fechamento de Ceo Existente","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":35,"qtd":3,"total":105},{"codigo":"SEV0042","descricao":"Teste OTDR Para Localização de defeitos","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":2.3,"qtd":2,"total":4.6},{"codigo":"SEV0045","descricao":"Preparação e Emenda Fibra Optica (FUSÃO)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":10,"qtd":18,"total":180},{"codigo":"SEV0048","descricao":"Inserção de Cabo Optico em Periferico (CEO/CTO/DIO/DGOI)","fator":"Comum","classe":"CFO","unidade":"unidade","valorUnit":9.9,"qtd":2,"total":19.8}]}];
+
+/* ═══════════════════════════ ESTADO ═══════════════════════════ */
+let TODAS_OBRAS = [];      // vem do localStorage (hidratado com SEED_DATA na 1ª vez)
+let EMPRESA_ATIVA = null;  // null = todas
+let ORD_SEV = 'valor';
+let ORDENACAO_TABELA = { campo: 'dataOrdenacao', dir: -1 };
+
+/* ═══════════════════════════ UTIL ═══════════════════════════ */
+function normalizarEmpresa(nome){
+  const n = (nome || '').toUpperCase().trim().replace(/\s+/g,' ');
+  if (n.includes('VAL')) return 'VAL TELECOM';
+  if (n.includes('SOLUTEC')) return 'SOLUTEC';
+  if (n.includes('OLIVEIRA')) return 'OLIVEIRA TELECOM';
+  if (n.includes('PV')) return 'PV TELECOM';
+  return n || 'DESCONHECIDA';
+}
+function parseDataBR(str){
+  if (!str) return null;
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(str.trim());
+  if (!m) return null;
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  return isNaN(d.getTime()) ? null : d;
+}
+function fmtMoeda(v){
+  return (v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+}
+function fmtNum(v){ return (v||0).toLocaleString('pt-BR'); }
+function isManutencao(rec){ return /MANUTEN/i.test(rec.contaDescricao || ''); }
+function diasNoMes(ano, mesIdx){ return new Date(ano, mesIdx + 1, 0).getDate(); }
+function chaveMes(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+
+function idRegistro(rec){
+  // clientePop entra na chave porque em alguns relatórios (ex.: "Mão de Obra Disponível")
+  // o campo ID/Etiqueta vem vazio de verdade — só o Cliente/POP distingue as obras.
+  return [rec.empresa, rec.idEtiqueta || '', rec.clientePop || '', rec.periodoIni || '', rec.dataRelatorio || '', rec.totalGeral].join('|');
+}
+
+function normalizarRegistroSeed(r){
+  return {
+    id: null, // preenchido depois de normalizar empresa
+    empresa: normalizarEmpresa(r.empresa || r.pastaEmpresa),
+    cnpj: r.cnpj || '',
+    tecnico: r.tecnico || '',
+    cidade: r.cidade || '',
+    clientePop: r.clientePop || '',
+    idEtiqueta: r.idEtiqueta || '',
+    periodoIni: r.periodoIni || '',
+    periodoFim: r.periodoFim || '',
+    dataRelatorio: r.dataRelatorio || '',
+    contaCodigo: r.contaCodigo || '',
+    contaDescricao: r.contaDescricao || '',
+    totalGeral: Number(r.totalGeral) || 0,
+    itens: (r.itens || []).map(it => ({
+      codigo: it.codigo, descricao: it.descricao, fator: it.fator, classe: it.classe,
+      unidade: it.unidade, valorUnit: Number(it.valorUnit)||0, qtd: Number(it.qtd)||0, total: Number(it.total)||0
+    })),
+    arquivo: r.arquivo || '',
+    importadoEm: r.importadoEm || new Date().toISOString()
+  };
+}
+
+/* ═══════════════════════════ PERSISTÊNCIA (localStorage) ═══════════════════════════ */
+function carregarObras(){
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch(e){ raw = null; }
+  if (!raw || !Array.isArray(raw) || !raw.length) {
+    // hidrata a partir do SEED na 1ª vez que a tela é aberta neste navegador
+    raw = SEED_DATA.map(normalizarRegistroSeed);
+    raw.forEach(r => r.id = idRegistro(r));
+    salvarObras(raw);
+  }
+  return raw;
+}
+function salvarObras(lista){
+  localStorage.setItem(LS_KEY, JSON.stringify(lista));
+}
+function carregarBudgets(){
+  try { return JSON.parse(localStorage.getItem(LS_BUDGET_KEY) || 'null') || { '2026-08': 106000 }; }
+  catch(e){ return { '2026-08': 106000 }; }
+}
+function salvarBudgets(obj){ localStorage.setItem(LS_BUDGET_KEY, JSON.stringify(obj)); }
+
+/* ═══════════════════════════ PARSER (PDF → registro) — mesma lógica usada para gerar o SEED ═══════════════════════════ */
+async function extrairTextoPdf(arrayBuffer){
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let partes = [];
+  for (let p = 1; p <= pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    partes.push(content.items.map(it => it.str).join(' '));
+  }
+  return partes.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function parsearRelatorio(flat, nomeArquivo){
+  const rec = {
+    empresa:'', cnpj:'', tecnico:'', cidade:'', clientePop:'', idEtiqueta:'',
+    periodoIni:'', periodoFim:'', dataRelatorio:'', contaCodigo:'', contaDescricao:'',
+    totalGeral:0, itens:[], arquivo: nomeArquivo, importadoEm: new Date().toISOString()
+  };
+
+  let m = flat.match(/Empresa\s+(.+?)\s+CNPJ\s+([\d./-]+)/);
+  if (m){ rec.empresa = m[1].trim(); rec.cnpj = m[2].trim(); }
+
+  // Cada campo é ancorado pelo próximo rótulo via lookahead (em vez de exigir ".+?" antes dele),
+  // porque campos como Cidade/Cliente-POP/ID-Etiqueta às vezes vêm em branco no relatório (ex.:
+  // "Mão de Obra Disponível") — exigir 1+ caractere ali fazia o match inteiro falhar e perdia até
+  // o Técnico, que vinha antes.
+  m = flat.match(/T[ée]cnicos\s+(.*?)\s*(?=Cidade)/);
+  if (m) rec.tecnico = m[1].trim();
+
+  m = flat.match(/Cidade\s+(.*?)\s*(?=Cliente\s*\/\s*POP)/);
+  if (m) rec.cidade = m[1].trim();
+
+  m = flat.match(/Cliente\s*\/\s*POP\s+(.*?)\s*(?=ID\s*\/\s*Etiqueta)/);
+  if (m) rec.clientePop = m[1].trim();
+
+  m = flat.match(/ID\s*\/\s*Etiqueta\s+(.*?)\s*(?=Per[ií]odo)/);
+  if (m) rec.idEtiqueta = m[1].trim();
+
+  m = flat.match(/Per[ií]odo\s+(\d{2}\/\d{2}\/\d{4})\s+a\s+(\d{2}\/\d{2}\/\d{4})\s+Data Relat[oó]rio\s+(\d{2}\/\d{2}\/\d{4})/);
+  if (m){ rec.periodoIni = m[1]; rec.periodoFim = m[2]; rec.dataRelatorio = m[3]; }
+
+  m = flat.match(/Descri[cç][aã]o Cont[aá]bil\s+([\d.]+)\s*-\s*(.+?)\s+C[oó]d\./);
+  if (m){ rec.contaCodigo = m[1].trim(); rec.contaDescricao = m[2].trim(); }
+
+  const totais = [...flat.matchAll(/TOTAL GERAL:\s*R\$\s*([\d.,]+)/g)];
+  if (totais.length) rec.totalGeral = parseFloat(totais[totais.length-1][1].replace(',', '.'));
+
+  const itemRe = /SEV(\d+)\s+(.+?)\s+(Comum|Critico|Crítico)\s+(?:Classe\s+)?(\S+)\s+(\S+)\s+R\$\s*([\d.,]+)\s+(\d+)\s+R\$\s*([\d.,]+)/g;
+  let im;
+  while ((im = itemRe.exec(flat)) !== null){
+    rec.itens.push({
+      codigo: 'SEV' + im[1], descricao: im[2].trim(), fator: im[3], classe: im[4],
+      unidade: im[5], valorUnit: parseFloat(im[6].replace(',', '.')), qtd: parseInt(im[7], 10),
+      total: parseFloat(im[8].replace(',', '.'))
+    });
+  }
+
+  rec.empresa = normalizarEmpresa(rec.empresa);
+  rec.id = idRegistro(rec);
+  return rec;
+}
+
+/* ═══════════════════════════ IMPORTAÇÃO (drag&drop / seletor) ═══════════════════════════ */
+const logEl = document.getElementById('importLog');
+function logImport(msg, tipo){
+  logEl.classList.add('show');
+  const div = document.createElement('div');
+  div.className = 'il-line ' + (tipo === 'ok' ? 'il-ok' : tipo === 'warn' ? 'il-warn' : tipo === 'err' ? 'il-err' : '');
+  div.textContent = msg;
+  logEl.prepend(div);
+}
+
+async function coletarPdfsDeArquivos(fileList){
+  const pdfs = []; // { nome, arrayBuffer }
+  for (const file of fileList){
+    const nome = file.name;
+    if (/\.zip$/i.test(nome)){
+      try {
+        const zip = await JSZip.loadAsync(file);
+        const entradas = Object.values(zip.files).filter(e => !e.dir && /\.pdf$/i.test(e.name));
+        for (const entrada of entradas){
+          const buf = await entrada.async('arraybuffer');
+          pdfs.push({ nome: entrada.name.split('/').pop(), arrayBuffer: buf });
+        }
+      } catch(e){
+        logImport('Erro ao abrir ZIP "' + nome + '": ' + e.message, 'err');
+      }
+    } else if (/\.pdf$/i.test(nome)){
+      const buf = await file.arrayBuffer();
+      pdfs.push({ nome, arrayBuffer: buf });
+    }
+  }
+  return pdfs;
+}
+
+async function processarArquivos(fileList){
+  const pdfs = await coletarPdfsDeArquivos(fileList);
+  if (!pdfs.length){ logImport('Nenhum PDF encontrado nos arquivos selecionados.', 'warn'); return; }
+
+  let novos = 0, atualizados = 0, erros = 0;
+  const mapa = new Map(TODAS_OBRAS.map(r => [r.id, r]));
+
+  for (const pdf of pdfs){
+    try {
+      const flat = await extrairTextoPdf(pdf.arrayBuffer);
+      const rec = parsearRelatorio(flat, pdf.nome);
+      if (!rec.totalGeral || !rec.empresa){
+        logImport('Não reconhecido como relatório de prestação de serviços: ' + pdf.nome, 'warn');
+        erros++;
+        continue;
+      }
+      const existia = mapa.has(rec.id);
+      mapa.set(rec.id, rec);
+      if (existia) atualizados++; else novos++;
+    } catch(e){
+      logImport('Erro ao ler "' + pdf.nome + '": ' + e.message, 'err');
+      erros++;
+    }
+  }
+
+  TODAS_OBRAS = Array.from(mapa.values());
+  salvarObras(TODAS_OBRAS);
+  logImport(novos + ' nova(s) obra(s), ' + atualizados + ' atualizada(s), ' + erros + ' ignorada(s).', novos ? 'ok' : 'warn');
+  renderTudo();
+}
+
+const dropzone = document.getElementById('dropzone');
+const inputArquivos = document.getElementById('inputArquivos');
+['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('dragover'); }));
+['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('dragover'); }));
+dropzone.addEventListener('drop', e => { if (e.dataTransfer.files.length) processarArquivos(e.dataTransfer.files); });
+inputArquivos.addEventListener('change', e => { if (e.target.files.length) processarArquivos(e.target.files); e.target.value = ''; });
+
+/* ═══════════════════════════ FILTROS ═══════════════════════════ */
+function obrasFiltradas(){
+  const mes = document.getElementById('filtroMes').value; // "2026-08"
+  return TODAS_OBRAS.filter(r => {
+    if (EMPRESA_ATIVA && r.empresa !== EMPRESA_ATIVA) return false;
+    if (mes){
+      const d = parseDataBR(r.periodoIni) || parseDataBR(r.dataRelatorio);
+      if (!d || chaveMes(d) !== mes) return false;
+    }
+    return true;
+  });
+}
+
+/* ═══════════════════════════ RENDER: stats + ranking empresas ═══════════════════════════ */
+function renderStatsEEmpresas(){
+  const lista = obrasFiltradas();
+  const totalGeral = lista.reduce((s,r) => s + r.totalGeral, 0);
+  const qtdObras = lista.length;
+  const ticketMedio = qtdObras ? totalGeral / qtdObras : 0;
+  const empresasAtivas = new Set(lista.map(r => r.empresa)).size;
+
+  document.getElementById('statRow').innerHTML = `
+    <div class="stat-card stat-accent"><div class="stat-value">${fmtMoeda(totalGeral)}</div><div class="stat-label">Valor a Receber (total)</div></div>
+    <div class="stat-card"><div class="stat-value">${fmtNum(qtdObras)}</div><div class="stat-label">Obras Executadas</div></div>
+    <div class="stat-card"><div class="stat-value">${fmtMoeda(ticketMedio)}</div><div class="stat-label">Ticket Médio</div></div>
+    <div class="stat-card"><div class="stat-value">${empresasAtivas}</div><div class="stat-label">Prestadoras no Período</div></div>
+  `;
+
+  document.getElementById('subPrestadoras').textContent = qtdObras + ' obra(s) no filtro atual';
+
+  const porEmpresa = {};
+  lista.forEach(r => {
+    if (!porEmpresa[r.empresa]) porEmpresa[r.empresa] = { valor:0, qtd:0 };
+    porEmpresa[r.empresa].valor += r.totalGeral;
+    porEmpresa[r.empresa].qtd += 1;
+  });
+  const ranking = Object.entries(porEmpresa).sort((a,b) => b[1].valor - a[1].valor);
+  const maxValor = ranking.length ? ranking[0][1].valor : 1;
+
+  document.getElementById('rankEmpresas').innerHTML = ranking.length ? ranking.map(([empresa, d], i) => `
+    <div class="rank-item">
+      <div class="rank-pos">${i+1}º</div>
+      <div class="rank-main">
+        <div class="rank-nome"><span>${empresa}</span><b>${fmtMoeda(d.valor)}</b></div>
+        <div class="rank-sub">${d.qtd} obra(s) · ticket médio ${fmtMoeda(d.valor / d.qtd)}</div>
+        <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(d.valor/maxValor*100).toFixed(1)}%"></div></div>
+      </div>
+    </div>
+  `).join('') : '<div class="empty-msg">Nenhuma obra no filtro atual.</div>';
+}
+
+/* ═══════════════════════════ RENDER: orçamento manutenção (bolo único, todas as prestadoras) ═══════════════════════════ */
+function desenharGauge(pct){
+  const fill = document.getElementById('gaugeFill');
+  const r = 42, C = 2 * Math.PI * r;
+  const pctClamp = Math.max(0, Math.min(pct, 130)); // deixa passar um pouco do anel pra mostrar estouro
+  const offset = C - (Math.min(pctClamp,100) / 100) * C;
+  fill.setAttribute('stroke-dasharray', C);
+  fill.setAttribute('stroke-dashoffset', offset);
+  fill.style.stroke = pct > 100 ? 'var(--red)' : pct > 85 ? 'var(--amber)' : 'var(--green)';
+  document.getElementById('gaugeNum').textContent = Math.round(pct) + '%';
+}
+
+function renderOrcamento(){
+  const mesInput = document.getElementById('filtroMes').value;
+  const hoje = new Date();
+  const usandoMesAtual = !mesInput || mesInput === chaveMes(hoje);
+  const [ano, mesIdx] = mesInput ? [Number(mesInput.slice(0,4)), Number(mesInput.slice(5,7)) - 1] : [hoje.getFullYear(), hoje.getMonth()];
+  const chave = ano + '-' + String(mesIdx+1).padStart(2,'0');
+
+  document.getElementById('mesOrcamentoLabel').textContent = new Date(ano, mesIdx, 1).toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+
+  // orçamento é um bolo único — soma de TODAS as prestadoras, ignora o filtro de empresa (só respeita o mês)
+  const lista = TODAS_OBRAS.filter(r => {
+    if (!isManutencao(r)) return false;
+    const d = parseDataBR(r.periodoIni) || parseDataBR(r.dataRelatorio);
+    return d && chaveMes(d) === chave;
+  });
+  const gasto = lista.reduce((s,r) => s + r.totalGeral, 0);
+
+  const budgets = carregarBudgets();
+  const budget = Number(budgets[chave]) || 0;
+  document.getElementById('inputBudget').value = budget || '';
+
+  const totalDias = diasNoMes(ano, mesIdx);
+  const diasDecorridos = usandoMesAtual ? Math.min(hoje.getDate(), totalDias) : totalDias;
+  const ritmo = diasDecorridos ? gasto / diasDecorridos : 0;
+  const projecao = usandoMesAtual ? ritmo * totalDias : gasto;
+
+  const pct = budget ? (gasto / budget * 100) : 0;
+  desenharGauge(pct);
+
+  document.getElementById('orcGasto').textContent = fmtMoeda(gasto);
+  document.getElementById('orcBudget').textContent = budget ? fmtMoeda(budget) : 'não definido';
+  document.getElementById('orcRitmo').textContent = fmtMoeda(ritmo) + '/dia';
+  document.getElementById('orcProjecao').textContent = usandoMesAtual ? fmtMoeda(projecao) : '—';
+
+  let statusHtml = '';
+  if (!budget){
+    statusHtml = '<span class="status-pill warn">Defina o orçamento do mês</span>';
+  } else if (!usandoMesAtual){
+    const pctFinal = gasto / budget * 100;
+    statusHtml = pctFinal > 100
+      ? `<span class="status-pill bad">Estourou o orçamento (${pctFinal.toFixed(0)}%)</span>`
+      : `<span class="status-pill ok">Fechou dentro do orçamento (${pctFinal.toFixed(0)}%)</span>`;
+  } else if (projecao > budget){
+    statusHtml = `<span class="status-pill bad">Risco de estourar — projeção ${fmtMoeda(projecao)}</span>`;
+  } else if (projecao > budget * 0.9){
+    statusHtml = `<span class="status-pill warn">Atenção — perto do limite (projeção ${fmtMoeda(projecao)})</span>`;
+  } else {
+    statusHtml = `<span class="status-pill ok">Dentro da meta — projeção ${fmtMoeda(projecao)}</span>`;
+  }
+  document.getElementById('statusPillBox').innerHTML = statusHtml;
+}
+
+document.getElementById('btnSalvarBudget').addEventListener('click', () => {
+  const mesInput = document.getElementById('filtroMes').value;
+  const hoje = new Date();
+  const chave = mesInput || chaveMes(hoje);
+  const budgets = carregarBudgets();
+  budgets[chave] = Number(document.getElementById('inputBudget').value) || 0;
+  salvarBudgets(budgets);
+  renderOrcamento();
+});
+
+/* ═══════════════════════════ RENDER: ranking de descrições SEV ═══════════════════════════ */
+function renderRankingSev(){
+  const lista = obrasFiltradas();
+  const agregados = {};
+  let totalOcorrencias = 0;
+  lista.forEach(r => r.itens.forEach(it => {
+    const chave = it.codigo + ' — ' + it.descricao;
+    if (!agregados[chave]) agregados[chave] = { valor:0, ocorrencias:0, qtdTotal:0 };
+    agregados[chave].valor += it.total;
+    agregados[chave].ocorrencias += 1;
+    agregados[chave].qtdTotal += it.qtd;
+    totalOcorrencias++;
+  }));
+
+  let entradas = Object.entries(agregados);
+  entradas.sort((a,b) => ORD_SEV === 'valor' ? b[1].valor - a[1].valor : b[1].ocorrencias - a[1].ocorrencias);
+  entradas = entradas.slice(0, 20);
+
+  document.getElementById('subRankingSev').textContent = totalOcorrencias + ' lançamento(s) de item no filtro atual';
+
+  if (!entradas.length){
+    document.getElementById('rankSev').innerHTML = '<div class="empty-msg">Nenhum item no filtro atual.</div>';
+    return;
+  }
+  const maxRef = ORD_SEV === 'valor' ? entradas[0][1].valor : entradas[0][1].ocorrencias;
+
+  document.getElementById('rankSev').innerHTML = entradas.map(([nome, d], i) => `
+    <div class="rank-item">
+      <div class="rank-pos">${i+1}º</div>
+      <div class="rank-main">
+        <div class="rank-nome"><span>${nome}</span><b>${ORD_SEV === 'valor' ? fmtMoeda(d.valor) : d.ocorrencias + 'x'}</b></div>
+        <div class="rank-sub">${d.ocorrencias} ocorrência(s) · ${fmtMoeda(d.valor)} no total</div>
+        <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${((ORD_SEV==='valor'?d.valor:d.ocorrencias)/maxRef*100).toFixed(1)}%"></div></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+document.querySelectorAll('[data-ordsev]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('[data-ordsev]').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    ORD_SEV = chip.dataset.ordsev;
+    renderRankingSev();
+  });
+});
+
+/* ═══════════════════════════ RENDER: tabela de obras ═══════════════════════════ */
+function excluirObra(id){
+  if (!confirm('Remover esta obra do controle? (isso não apaga o PDF, só tira do painel)')) return;
+  TODAS_OBRAS = TODAS_OBRAS.filter(r => r.id !== id);
+  salvarObras(TODAS_OBRAS);
+  renderTudo();
+}
+window.excluirObra = excluirObra;
+
+function renderTabela(){
+  let lista = obrasFiltradas().map(r => ({
+    ...r,
+    dataOrdenacao: (parseDataBR(r.periodoIni) || parseDataBR(r.dataRelatorio) || new Date(0)).getTime()
+  }));
+
+  const { campo, dir } = ORDENACAO_TABELA;
+  lista.sort((a,b) => {
+    const va = a[campo], vb = b[campo];
+    if (typeof va === 'number') return (va - vb) * dir;
+    return String(va||'').localeCompare(String(vb||''), 'pt-BR') * dir;
+  });
+
+  document.getElementById('subObras').textContent = lista.length + ' obra(s)';
+  const tbody = document.getElementById('tbodyObras');
+  document.getElementById('msgVazioObras').style.display = lista.length ? 'none' : 'block';
+
+  tbody.innerHTML = lista.map(r => `
+    <tr>
+      <td><span class="pill-empresa">${r.empresa}</span></td>
+      <td>${r.tecnico || '—'}</td>
+      <td>${r.clientePop || '—'}</td>
+      <td>${r.idEtiqueta || '—'}</td>
+      <td>${r.periodoIni || r.dataRelatorio || '—'}</td>
+      <td><span class="conta-tag ${isManutencao(r)?'manut':''}">${r.contaDescricao || '—'}</span></td>
+      <td>${fmtMoeda(r.totalGeral)}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="excluirObra('${r.id.replace(/'/g,"\\'")}')">Remover</button></td>
+    </tr>
+  `).join('');
+}
+
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const campo = th.dataset.sort;
+    if (ORDENACAO_TABELA.campo === campo) ORDENACAO_TABELA.dir *= -1;
+    else ORDENACAO_TABELA = { campo, dir: 1 };
+    renderTabela();
+  });
+});
+
+/* ═══════════════════════════ EXPORT CSV ═══════════════════════════ */
+document.getElementById('btnExportarCsv').addEventListener('click', () => {
+  const lista = obrasFiltradas();
+  const linhas = [['Empresa','Técnico','Cliente/POP','ID','Período','Conta Contábil','Total'].join(';')];
+  lista.forEach(r => linhas.push([
+    r.empresa, r.tecnico, r.clientePop, r.idEtiqueta, r.periodoIni,
+    (r.contaDescricao||'').replace(/;/g,','), r.totalGeral.toFixed(2).replace('.', ',')
+  ].join(';')));
+  const blob = new Blob(['\uFEFF' + linhas.join('\n')], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'obras_prestadoras.csv';
+  a.click();
+});
+
+/* ═══════════════════════════ FILTROS: chips + mês ═══════════════════════════ */
+function renderChipsEmpresa(){
+  const empresasPresentes = Array.from(new Set(TODAS_OBRAS.map(r => r.empresa))).sort();
+  const cont = document.getElementById('chipsEmpresa');
+  cont.innerHTML = ['<div class="chip' + (EMPRESA_ATIVA===null?' active':'') + '" data-emp="">Todas</div>']
+    .concat(empresasPresentes.map(e => `<div class="chip${EMPRESA_ATIVA===e?' active':''}" data-emp="${e}">${e}</div>`))
+    .join('');
+  cont.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      EMPRESA_ATIVA = chip.dataset.emp || null;
+      renderTudo();
+    });
+  });
+}
+
+document.getElementById('filtroMes').addEventListener('change', renderTudo);
+
+document.getElementById('btnResetSeed').addEventListener('click', () => {
+  if (!confirm('Isso apaga tudo que foi importado neste navegador e volta só para os PDFs que já estavam anexados. Continuar?')) return;
+  localStorage.removeItem(LS_KEY);
+  TODAS_OBRAS = carregarObras();
+  renderTudo();
+});
+
+/* ═══════════════════════════ RENDER GERAL ═══════════════════════════ */
+function renderTudo(){
+  renderChipsEmpresa();
+  renderStatsEEmpresas();
+  renderOrcamento();
+  renderRankingSev();
+  renderTabela();
+}
+
+function iniciar(){
+  const hoje = new Date();
+  document.getElementById('filtroMes').value = chaveMes(hoje);
+  TODAS_OBRAS = carregarObras();
+  renderTudo();
+}
+
+NetturboAuth.proteger({ tela:'Controle de Obras — Prestadoras', aoEntrar: iniciar });
+</script>
+
+</body>
+</html>
