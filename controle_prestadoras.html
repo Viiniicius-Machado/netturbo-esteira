@@ -106,6 +106,7 @@
   .orcamento-linhas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem .9rem;margin-top:.7rem}
   .orcamento-linhas > div{display:flex;justify-content:space-between;gap:.5rem;font-size:.74rem;color:var(--text-muted);border-top:1px solid var(--border);padding-top:.4rem}
   .orcamento-linhas b{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.85rem;color:var(--text)}
+  .orcamento-linhas .linha-destaque b{font-size:1.1rem}
   .status-pill{display:inline-block;padding:.3rem .7rem;border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.04em;text-transform:uppercase;margin-top:.5rem}
   .status-pill.ok{background:rgba(139,195,74,.12);color:var(--green);border:1px solid rgba(139,195,74,.35)}
   .status-pill.warn{background:rgba(255,160,0,.12);color:var(--amber);border:1px solid rgba(255,160,0,.35)}
@@ -154,7 +155,6 @@
   </div>
 
   <div class="toolbar">
-    <input type="month" id="filtroMes"/>
     <div class="chip-row" id="chipsEmpresa"></div>
     <div class="toolbar-spacer"></div>
     <button class="btn btn-outline btn-sm" id="btnExportarCsv">Exportar CSV</button>
@@ -181,8 +181,9 @@
           <div class="gauge-info">
             <div id="statusPillBox"></div>
             <div class="orcamento-linhas">
-              <div>Gasto realizado <b id="orcGasto">–</b></div>
+              <div class="linha-destaque">Gasto realizado <b id="orcGasto">–</b></div>
               <div>Orçamento <b id="orcBudget">–</b></div>
+              <div class="linha-destaque">Saldo <b id="orcSaldo">–</b></div>
               <div>Ritmo diário <b id="orcRitmo">–</b></div>
               <div>Projeção fim do mês <b id="orcProjecao">–</b></div>
             </div>
@@ -230,6 +231,7 @@
   </div>
 
   <footer class="tool-actions">
+    <button class="btn btn-danger btn-sm" id="btnExcluirTodos">Excluir Todos os Relatórios</button>
     <button class="btn btn-danger btn-sm" id="btnResetSeed">Restaurar dados originais</button>
   </footer>
 </main>
@@ -461,16 +463,10 @@ dropzone.addEventListener('drop', e => { if (e.dataTransfer.files.length) proces
 inputArquivos.addEventListener('change', e => { if (e.target.files.length) processarArquivos(e.target.files); e.target.value = ''; });
 
 /* ═══════════════════════════ FILTROS ═══════════════════════════ */
+// sem filtro de mês de propósito: a base é zerada manualmente a cada fechamento
+// (ver excluirObra/btnResetSeed), então tudo que estiver na tela é o ciclo atual.
 function obrasFiltradas(){
-  const mes = document.getElementById('filtroMes').value; // "2026-08"
-  return TODAS_OBRAS.filter(r => {
-    if (EMPRESA_ATIVA && r.empresa !== EMPRESA_ATIVA) return false;
-    if (mes){
-      const d = parseDataBR(r.periodoIni) || parseDataBR(r.dataRelatorio);
-      if (!d || chaveMes(d) !== mes) return false;
-    }
-    return true;
-  });
+  return TODAS_OBRAS.filter(r => !EMPRESA_ATIVA || r.empresa === EMPRESA_ATIVA);
 }
 
 /* ═══════════════════════════ RENDER: stats + ranking empresas ═══════════════════════════ */
@@ -524,47 +520,44 @@ function desenharGauge(pct){
 }
 
 function renderOrcamento(){
-  const mesInput = document.getElementById('filtroMes').value;
   const hoje = new Date();
-  const usandoMesAtual = !mesInput || mesInput === chaveMes(hoje);
-  const [ano, mesIdx] = mesInput ? [Number(mesInput.slice(0,4)), Number(mesInput.slice(5,7)) - 1] : [hoje.getFullYear(), hoje.getMonth()];
-  const chave = ano + '-' + String(mesIdx+1).padStart(2,'0');
+  const ano = hoje.getFullYear(), mesIdx = hoje.getMonth();
+  const chave = chaveMes(hoje);
 
   document.getElementById('mesOrcamentoLabel').textContent = new Date(ano, mesIdx, 1).toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
 
-  // orçamento é um bolo único — soma de TODAS as prestadoras, ignora o filtro de empresa (só respeita o mês)
-  const lista = TODAS_OBRAS.filter(r => {
-    if (!isManutencao(r)) return false;
-    const d = parseDataBR(r.periodoIni) || parseDataBR(r.dataRelatorio);
-    return d && chaveMes(d) === chave;
-  });
+  // orçamento é um bolo único — soma de TODAS as prestadoras e TODOS os
+  // relatórios cadastrados na tela, ignora o filtro de empresa e a data do
+  // relatório: a base é zerada manualmente a cada fechamento de mês (ver
+  // excluirObra/btnResetSeed), então tudo que estiver aqui é o ciclo atual,
+  // ainda não pago (decidido com o Vinicius em 2026-08-15).
+  const lista = TODAS_OBRAS.filter(isManutencao);
   const gasto = lista.reduce((s,r) => s + r.totalGeral, 0);
 
   const budgets = carregarBudgets();
   const budget = Number(budgets[chave]) || 0;
   document.getElementById('inputBudget').value = budget || '';
 
+  const saldo = budget - gasto;
   const totalDias = diasNoMes(ano, mesIdx);
-  const diasDecorridos = usandoMesAtual ? Math.min(hoje.getDate(), totalDias) : totalDias;
+  const diasDecorridos = Math.min(hoje.getDate(), totalDias);
   const ritmo = diasDecorridos ? gasto / diasDecorridos : 0;
-  const projecao = usandoMesAtual ? ritmo * totalDias : gasto;
+  const projecao = ritmo * totalDias;
 
   const pct = budget ? (gasto / budget * 100) : 0;
   desenharGauge(pct);
 
   document.getElementById('orcGasto').textContent = fmtMoeda(gasto);
   document.getElementById('orcBudget').textContent = budget ? fmtMoeda(budget) : 'não definido';
+  const orcSaldoEl = document.getElementById('orcSaldo');
+  orcSaldoEl.textContent = budget ? fmtMoeda(saldo) : '—';
+  orcSaldoEl.style.color = saldo < 0 ? 'var(--red)' : 'var(--text)';
   document.getElementById('orcRitmo').textContent = fmtMoeda(ritmo) + '/dia';
-  document.getElementById('orcProjecao').textContent = usandoMesAtual ? fmtMoeda(projecao) : '—';
+  document.getElementById('orcProjecao').textContent = fmtMoeda(projecao);
 
   let statusHtml = '';
   if (!budget){
     statusHtml = '<span class="status-pill warn">Defina o orçamento do mês</span>';
-  } else if (!usandoMesAtual){
-    const pctFinal = gasto / budget * 100;
-    statusHtml = pctFinal > 100
-      ? `<span class="status-pill bad">Estourou o orçamento (${pctFinal.toFixed(0)}%)</span>`
-      : `<span class="status-pill ok">Fechou dentro do orçamento (${pctFinal.toFixed(0)}%)</span>`;
   } else if (projecao > budget){
     statusHtml = `<span class="status-pill bad">Risco de estourar — projeção ${fmtMoeda(projecao)}</span>`;
   } else if (projecao > budget * 0.9){
@@ -576,9 +569,7 @@ function renderOrcamento(){
 }
 
 document.getElementById('btnSalvarBudget').addEventListener('click', () => {
-  const mesInput = document.getElementById('filtroMes').value;
-  const hoje = new Date();
-  const chave = mesInput || chaveMes(hoje);
+  const chave = chaveMes(new Date());
   const budgets = carregarBudgets();
   budgets[chave] = Number(document.getElementById('inputBudget').value) || 0;
   salvarBudgets(budgets);
@@ -711,7 +702,12 @@ function renderChipsEmpresa(){
   });
 }
 
-document.getElementById('filtroMes').addEventListener('change', renderTudo);
+document.getElementById('btnExcluirTodos').addEventListener('click', () => {
+  if (!confirm('Isso apaga TODOS os relatórios importados nesta tela (não dá pra desfazer). Use ao fechar o mês, depois que as prestadoras forem pagas. Continuar?')) return;
+  TODAS_OBRAS = [];
+  salvarObras(TODAS_OBRAS);
+  renderTudo();
+});
 
 document.getElementById('btnResetSeed').addEventListener('click', () => {
   if (!confirm('Isso apaga tudo que foi importado neste navegador e volta só para os PDFs que já estavam anexados. Continuar?')) return;
@@ -730,8 +726,6 @@ function renderTudo(){
 }
 
 function iniciar(){
-  const hoje = new Date();
-  document.getElementById('filtroMes').value = chaveMes(hoje);
   TODAS_OBRAS = carregarObras();
   renderTudo();
 }
