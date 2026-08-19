@@ -113,6 +113,24 @@
   .status-pill.bad{background:rgba(229,57,53,.12);color:var(--red);border:1px solid rgba(229,57,53,.35)}
   .budget-edit{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--text-muted);margin-top:.7rem}
   .budget-edit input{background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--text);font-size:.78rem;padding:.35rem .5rem;width:120px;font-family:'Rajdhani',sans-serif;font-weight:700}
+  .alerta-fora-manut{margin-top:.9rem;border:1px solid rgba(255,160,0,.35);background:rgba(255,160,0,.08);border-radius:8px;padding:.6rem .8rem}
+  .alerta-fora-manut .alerta-titulo{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;color:var(--amber);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.4rem}
+  .alerta-fora-manut .alerta-item{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.75rem;color:var(--text-muted);padding:.3rem 0;border-top:1px solid rgba(255,160,0,.18)}
+  .alerta-fora-manut .alerta-item:first-of-type{border-top:none}
+  .alerta-fora-manut .alerta-item b{color:var(--text);font-family:'Rajdhani',sans-serif;font-weight:700}
+  .alerta-fora-manut .alerta-item .btn{flex-shrink:0}
+
+  /* ── contratos fixos ── */
+  .contratos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem}
+  .contrato-card{border:1px solid var(--border-hi);border-radius:8px;padding:.9rem 1rem;background:var(--surface2)}
+  .contrato-card h4{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.03em;margin-bottom:.3rem}
+  .contrato-meta{font-size:.72rem;color:var(--text-muted);margin-bottom:.6rem}
+  .contrato-var{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.75rem;padding:.4rem 0;border-top:1px solid var(--border)}
+  .contrato-var:first-of-type{border-top:none}
+  .contrato-var label{display:flex;align-items:center;gap:.5rem;cursor:pointer;color:var(--text)}
+  .contrato-var input[type=checkbox]{width:15px;height:15px;flex-shrink:0;accent-color:var(--green)}
+  .contrato-subtotal{margin-top:.7rem;padding-top:.6rem;border-top:1px solid var(--border-hi);font-family:'Rajdhani',sans-serif;font-weight:700;display:flex;justify-content:space-between;font-size:.85rem}
+  .contratos-total{margin-top:1rem;padding-top:.9rem;border-top:1px solid var(--border-hi);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;display:flex;justify-content:space-between;gap:1rem}
 
   /* ── tabelas ── */
   .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
@@ -168,8 +186,9 @@
       <div class="card-body" id="rankEmpresas"></div>
     </div>
     <div class="card">
-      <div class="card-header">Orçamento Manutenção <small id="mesOrcamentoLabel"></small></div>
+      <div class="card-header">Orçamento por Segmento <small id="mesOrcamentoLabel"></small></div>
       <div class="card-body">
+        <div class="chip-row" id="chipsSegmento" style="margin-bottom:.8rem"></div>
         <div class="gauge-card">
           <div class="gauge-svg-wrap">
             <svg class="gauge-svg" viewBox="0 0 100 100">
@@ -193,6 +212,18 @@
             </div>
           </div>
         </div>
+        <div id="alertaForaSegmentos"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="cardContratosFixos" style="display:none">
+    <div class="card-header">Contratos Fixos — Manutenção <small id="mesContratosLabel"></small></div>
+    <div class="card-body">
+      <div class="contratos-grid" id="contratosFixosBody"></div>
+      <div class="contratos-total">
+        <span>Total contratos fixos (somado no Gasto realizado de Manutenção)</span>
+        <b id="totalContratosFixos">–</b>
       </div>
     </div>
   </div>
@@ -243,6 +274,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUl
 
 const LS_KEY = 'netturbo_obras_terceirizadas_v1';
 const LS_BUDGET_KEY = 'netturbo_obras_budget_v1';
+const LS_CONTRATOS_KEY = 'netturbo_obras_contratos_fixos_v1';
 const EMPRESAS_CANONICAS = ['VAL TELECOM','SOLUTEC','OLIVEIRA TELECOM','PV TELECOM'];
 
 /* ═══════════════════════════ SEED (dados já importados dos PDFs anexados) ═══════════════════════════ */
@@ -275,6 +307,65 @@ function fmtMoeda(v){
 }
 function fmtNum(v){ return (v||0).toLocaleString('pt-BR'); }
 function isManutencao(rec){ return /MANUTEN/i.test(rec.contaDescricao || ''); }
+
+// segmentos de orçamento acompanhados na tela — cada um com sua própria conta contábil e
+// budget mensal. Melhoria REDE e Preventiva casam pelo código da conta (mais preciso que
+// texto), porque a descrição pode variar; Manutenção continua pelo texto por compatibilidade
+// com o que já estava salvo (pedido do Vinicius em 2026-08-19, vai assumir esse setor em set/2026).
+const SEGMENTOS = [
+  { id:'manutencao', label:'Manutenção', match: isManutencao },
+  { id:'melhoria_rede', label:'Melhoria REDE', codigo:'3.1.1.2.05.0103', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0103' },
+  { id:'preventiva', label:'Preventiva', codigo:'3.1.1.2.05.0101', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0101' },
+];
+let SEGMENTO_ATIVO = 'manutencao';
+function segmentoAtual(){ return SEGMENTOS.find(s => s.id === SEGMENTO_ATIVO) || SEGMENTOS[0]; }
+
+// contratos fixos (VAL NOTURNO/DIURNO): equipes pagas por contrato mensal fixo, não por
+// LPU/obra importada — por isso não aparecem em TODAS_OBRAS, e precisam entrar manualmente
+// no Gasto realizado de Manutenção pra não subestimar o orçamento (pedido do Vinicius em
+// 2026-08-19). valorFixo já é meta×valorAcionamento; guardado calculado, não recalculado,
+// pra não depender da quantidade real de acionamentos do mês.
+const CONTRATOS_FIXOS = [
+  {
+    id:'val_noturno', label:'VAL NOTURNO', metaAtividades:40, valorAcionamento:375, valorFixo:15000,
+    variaveis:[
+      { id:'plantao_fds', label:'CUMPRIR O PLANTÃO NO FIM DE SEMANA ESCALADO', valor:1000 },
+      { id:'sla_4h', label:'POR MANTER O SLA DE 4 HORAS', valor:500 },
+      { id:'sem_pendencia', label:'POR MANTER OS ATENDIMENTOS SEM NENHUMA PENDÊNCIA TÉCNICA', valor:500 },
+    ],
+  },
+  {
+    id:'val_diurno', label:'VAL DIURNO', metaAtividades:80, valorAcionamento:325, valorFixo:26000,
+    variaveis:[
+      { id:'plantao_fds', label:'CUMPRIR O PLANTÃO NO FIM DE SEMANA ESCALADO', valor:5000 },
+      { id:'sla_4h', label:'POR MANTER O SLA DE 4 HORAS', valor:1500 },
+      { id:'sem_pendencia', label:'POR MANTER OS ATENDIMENTOS SEM NENHUMA PENDÊNCIA TÉCNICA', valor:1500 },
+    ],
+  },
+];
+function carregarContratosFixos(){
+  try { return JSON.parse(localStorage.getItem(LS_CONTRATOS_KEY) || 'null') || {}; }
+  catch(e){ return {}; }
+}
+function salvarContratosFixos(obj){ localStorage.setItem(LS_CONTRATOS_KEY, JSON.stringify(obj)); }
+function variavelBatida(chave, contratoId, varId){
+  const dados = carregarContratosFixos();
+  return !!(dados[chave] && dados[chave][contratoId] && dados[chave][contratoId][varId]);
+}
+function setVariavelBatida(chave, contratoId, varId, valor){
+  const dados = carregarContratosFixos();
+  if (!dados[chave]) dados[chave] = {};
+  if (!dados[chave][contratoId]) dados[chave][contratoId] = {};
+  dados[chave][contratoId][varId] = valor;
+  salvarContratosFixos(dados);
+}
+function totalContratoFixo(chave, contrato){
+  return contrato.variaveis.reduce((s,v) => s + (variavelBatida(chave, contrato.id, v.id) ? v.valor : 0), contrato.valorFixo);
+}
+function totalContratosFixosMes(chave){
+  return CONTRATOS_FIXOS.reduce((s,c) => s + totalContratoFixo(chave, c), 0);
+}
+
 function diasNoMes(ano, mesIdx){ return new Date(ano, mesIdx + 1, 0).getDate(); }
 function chaveMes(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
 
@@ -324,10 +415,26 @@ function salvarObras(lista){
   localStorage.setItem(LS_KEY, JSON.stringify(lista));
 }
 function carregarBudgets(){
-  try { return JSON.parse(localStorage.getItem(LS_BUDGET_KEY) || 'null') || { '2026-08': 106000 }; }
-  catch(e){ return { '2026-08': 106000 }; }
+  let obj;
+  try { obj = JSON.parse(localStorage.getItem(LS_BUDGET_KEY) || 'null') || { '2026-08': { manutencao: 106000 } }; }
+  catch(e){ obj = { '2026-08': { manutencao: 106000 } }; }
+  // migração: formato antigo era { '2026-08': 106000 } (um budget só, sempre de Manutenção)
+  Object.keys(obj).forEach(chave => {
+    if (typeof obj[chave] === 'number') obj[chave] = { manutencao: obj[chave] };
+  });
+  return obj;
 }
 function salvarBudgets(obj){ localStorage.setItem(LS_BUDGET_KEY, JSON.stringify(obj)); }
+function budgetDoSegmento(chave, segId){
+  const budgets = carregarBudgets();
+  return Number(budgets[chave] && budgets[chave][segId]) || 0;
+}
+function salvarBudgetSegmento(chave, segId, valor){
+  const budgets = carregarBudgets();
+  if (!budgets[chave]) budgets[chave] = {};
+  budgets[chave][segId] = valor;
+  salvarBudgets(budgets);
+}
 
 /* ═══════════════════════════ PARSER (PDF → registro) — mesma lógica usada para gerar o SEED ═══════════════════════════ */
 async function extrairTextoPdf(arrayBuffer){
@@ -519,23 +626,71 @@ function desenharGauge(pct){
   document.getElementById('gaugeNum').textContent = Math.round(pct) + '%';
 }
 
+function renderChipsSegmento(){
+  document.getElementById('chipsSegmento').innerHTML = SEGMENTOS.map(s => `
+    <div class="chip ${s.id === SEGMENTO_ATIVO ? 'active' : ''}" data-seg="${s.id}">${s.label}</div>
+  `).join('');
+  document.querySelectorAll('#chipsSegmento .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      SEGMENTO_ATIVO = chip.dataset.seg;
+      renderOrcamento();
+    });
+  });
+}
+
+function renderContratosFixos(chave){
+  const cardEl = document.getElementById('cardContratosFixos');
+  if (SEGMENTO_ATIVO !== 'manutencao'){ cardEl.style.display = 'none'; return; }
+  cardEl.style.display = '';
+
+  document.getElementById('mesContratosLabel').textContent = document.getElementById('mesOrcamentoLabel').textContent;
+
+  document.getElementById('contratosFixosBody').innerHTML = CONTRATOS_FIXOS.map(c => `
+    <div class="contrato-card">
+      <h4>${c.label}</h4>
+      <div class="contrato-meta">Meta: ${c.metaAtividades} atividades × ${fmtMoeda(c.valorAcionamento)} = ${fmtMoeda(c.valorFixo)} (valor fixo do contrato)</div>
+      ${c.variaveis.map(v => `
+        <div class="contrato-var">
+          <label><input type="checkbox" data-contrato="${c.id}" data-var="${v.id}" ${variavelBatida(chave, c.id, v.id) ? 'checked' : ''}/> ${v.label}</label>
+          <b>${fmtMoeda(v.valor)}</b>
+        </div>
+      `).join('')}
+      <div class="contrato-subtotal"><span>Total ${c.label}</span><span>${fmtMoeda(totalContratoFixo(chave, c))}</span></div>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('#contratosFixosBody input[type=checkbox]').forEach(chk => {
+    chk.addEventListener('change', () => {
+      setVariavelBatida(chave, chk.dataset.contrato, chk.dataset.var, chk.checked);
+      renderOrcamento();
+    });
+  });
+
+  document.getElementById('totalContratosFixos').textContent = fmtMoeda(totalContratosFixosMes(chave));
+}
+
 function renderOrcamento(){
   const hoje = new Date();
   const ano = hoje.getFullYear(), mesIdx = hoje.getMonth();
   const chave = chaveMes(hoje);
+  const segmento = segmentoAtual();
 
+  renderChipsSegmento();
   document.getElementById('mesOrcamentoLabel').textContent = new Date(ano, mesIdx, 1).toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+  renderContratosFixos(chave);
 
-  // orçamento é um bolo único — soma de TODAS as prestadoras e TODOS os
-  // relatórios cadastrados na tela, ignora o filtro de empresa e a data do
-  // relatório: a base é zerada manualmente a cada fechamento de mês (ver
-  // excluirObra/btnResetSeed), então tudo que estiver aqui é o ciclo atual,
-  // ainda não pago (decidido com o Vinicius em 2026-08-15).
-  const lista = TODAS_OBRAS.filter(isManutencao);
-  const gasto = lista.reduce((s,r) => s + r.totalGeral, 0);
+  // orçamento é um bolo único por segmento — soma de TODAS as prestadoras e TODOS os
+  // relatórios cadastrados na tela que casam com a conta contábil do segmento ativo,
+  // ignora o filtro de empresa e a data do relatório: a base é zerada manualmente a
+  // cada fechamento de mês (ver excluirObra/btnResetSeed), então tudo que estiver aqui
+  // é o ciclo atual, ainda não pago (decidido com o Vinicius em 2026-08-15; segmentos
+  // Melhoria REDE e Preventiva adicionados em 2026-08-19). Manutenção também soma os
+  // contratos fixos VAL NOTURNO/DIURNO, que não vêm de PDF importado (2026-08-19).
+  const lista = TODAS_OBRAS.filter(segmento.match);
+  let gasto = lista.reduce((s,r) => s + r.totalGeral, 0);
+  if (segmento.id === 'manutencao') gasto += totalContratosFixosMes(chave);
 
-  const budgets = carregarBudgets();
-  const budget = Number(budgets[chave]) || 0;
+  const budget = budgetDoSegmento(chave, segmento.id);
   document.getElementById('inputBudget').value = budget || '';
 
   const saldo = budget - gasto;
@@ -566,13 +721,33 @@ function renderOrcamento(){
     statusHtml = `<span class="status-pill ok">Dentro da meta — projeção ${fmtMoeda(projecao)}</span>`;
   }
   document.getElementById('statusPillBox').innerHTML = statusHtml;
+
+  // alerta: obras na base que não casam com NENHUM dos segmentos rastreados (nem
+  // Manutenção, nem Melhoria REDE, nem Preventiva) — ficam escondidas no meio da lista
+  // e não entram em orçamento nenhum. Mostra aqui pra facilitar achar e excluir, e não
+  // depende do segmento selecionado no chip (é sempre "fora de tudo que é rastreado").
+  const semSegmento = TODAS_OBRAS.filter(r => !SEGMENTOS.some(s => s.match(r)));
+  const alertaEl = document.getElementById('alertaForaSegmentos');
+  if (semSegmento.length){
+    const valorFora = semSegmento.reduce((s,r) => s + r.totalGeral, 0);
+    alertaEl.innerHTML = `
+      <div class="alerta-fora-manut">
+        <div class="alerta-titulo">⚠ ${semSegmento.length} obra(s) fora dos segmentos rastreados (${fmtMoeda(valorFora)}) não contam em orçamento nenhum</div>
+        ${semSegmento.map(r => `
+          <div class="alerta-item">
+            <span><b>${r.empresa}</b> · ${r.clientePop || r.idEtiqueta || 'sem identificação'} · conta: <b>${r.contaDescricao || 'sem conta'}</b> · <b>${fmtMoeda(r.totalGeral)}</b></span>
+            <button class="btn btn-outline btn-sm" onclick="excluirObra('${r.id.replace(/'/g,"\\'")}')">Excluir</button>
+          </div>
+        `).join('')}
+      </div>`;
+  } else {
+    alertaEl.innerHTML = '';
+  }
 }
 
 document.getElementById('btnSalvarBudget').addEventListener('click', () => {
   const chave = chaveMes(new Date());
-  const budgets = carregarBudgets();
-  budgets[chave] = Number(document.getElementById('inputBudget').value) || 0;
-  salvarBudgets(budgets);
+  salvarBudgetSegmento(chave, segmentoAtual().id, Number(document.getElementById('inputBudget').value) || 0);
   renderOrcamento();
 });
 
