@@ -139,11 +139,11 @@
         </tr>
         <tr class="filtros-row">
           <th><input type="month" id="fData" oninput="renderTabela()"/></th>
-          <th><input type="text" id="fProtocolo" placeholder="Filtrar..." oninput="renderTabela()"/></th>
-          <th><input type="text" id="fCliente" placeholder="Filtrar..." oninput="renderTabela()"/></th>
-          <th><input type="text" id="fTecnico" placeholder="Filtrar..." oninput="renderTabela()"/></th>
-          <th><input type="text" id="fEmpresa" placeholder="Filtrar..." oninput="renderTabela()"/></th>
-          <th><input type="text" id="fItens" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fProtocolo" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+          <th><input type="text" id="fCliente" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+          <th><input type="text" id="fTecnico" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+          <th><input type="text" id="fEmpresa" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+          <th><input type="text" id="fItens" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
           <th>
             <select id="fStatus" oninput="renderTabela()">
               <option value="">Todos</option>
@@ -151,7 +151,7 @@
               <option value="BAIXADO">Baixado</option>
             </select>
           </th>
-          <th><input type="text" id="fBaixadoPor" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fBaixadoPor" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
           <th></th>
         </tr>
       </thead>
@@ -360,6 +360,18 @@ function renderTabela(){
     </tr>`;
   }).join('');
 }
+
+// filtros de texto disparam a cada tecla — sem atraso, reconstrói a tabela
+// inteira a cada letra digitada. Mesmo padrão de controle_atividades.html
+// (pedido do Vinicius em 2026-08-19, "não podemos ter travamento").
+function debounce(fn, atrasoMs){
+  let timer;
+  return function(...args){
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), atrasoMs);
+  };
+}
+const renderTabelaDebounced = debounce(renderTabela, 250);
 
 window.darBaixa = async function(idAtividade){
   const usuario = NetturboAuth.usuario();

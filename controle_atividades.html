@@ -183,10 +183,10 @@
               <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
             </select>
           </th>
-          <th><input type="text" id="fProtocolo" placeholder="Filtrar..." oninput="renderTabela()"/></th>
-          <th><input type="text" id="fCliente" placeholder="Filtrar..." oninput="renderTabela()"/></th>
-          <th><input type="text" id="fTecnico" placeholder="Filtrar..." oninput="renderTabela()"/></th>
-          <th><input type="text" id="fEmpresa" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fProtocolo" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+          <th><input type="text" id="fCliente" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+          <th><input type="text" id="fTecnico" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+          <th><input type="text" id="fEmpresa" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
           <th>
             <select id="fTipo" oninput="sincronizarAbaComSelect(); renderTabela();">
               <option value="">Todos</option>
@@ -199,7 +199,7 @@
               <option value="Medição">Medição</option>
             </select>
           </th>
-          <th><input type="text" id="fItens" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fItens" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
           <th>
             <select id="fStatus" oninput="renderTabela()">
               <option value="">Todos</option>
@@ -212,7 +212,7 @@
               <option value="VALIDADA">Validada</option>
             </select>
           </th>
-          <th><input type="text" id="fBaixadoPor" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fBaixadoPor" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
           <th></th>
         </tr>
       </thead>
@@ -480,6 +480,21 @@ function renderTabela(){
     </tr>`;
   }).join('');
 }
+
+// os filtros de texto (Protocolo/Cliente/Técnico/Empresa/Itens/Baixado Por)
+// disparam a cada tecla digitada — sem atraso, digitar um nome inteiro
+// reconstrói a tabela inteira a cada letra, o que trava a digitação quando o
+// histórico crescer. Os selects (Ano/Mês/Tipo/Status) continuam instantâneos,
+// só os campos de texto usam essa versão com espera (pedido do Vinicius em
+// 2026-08-19, "não podemos ter travamento").
+function debounce(fn, atrasoMs){
+  let timer;
+  return function(...args){
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), atrasoMs);
+  };
+}
+const renderTabelaDebounced = debounce(renderTabela, 250);
 
 // ── DRAWER DE DETALHAMENTO (só leitura) ──────────────────────
 window.abrirDetalhe = function(idAtividade){
