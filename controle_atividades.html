@@ -71,6 +71,7 @@
     .etiqueta-cel{font-size:.65rem;color:var(--text-dim)}
     .item-linha{font-size:.68rem;color:var(--text-dim);line-height:1.5}
     .item-linha b{color:var(--text)}
+    .itens-resumo{font-size:.7rem;color:var(--text-dim);white-space:nowrap}
     .badge-tipo{font-size:.58rem;font-weight:700;padding:.05rem .35rem;border-radius:4px;margin-right:.3rem}
     .badge-tipo.ins{background:rgba(168,201,60,.12);color:var(--accent)}
     .badge-tipo.atn{background:rgba(255,160,0,.12);color:var(--amber)}
@@ -213,7 +214,13 @@
             </select>
           </th>
           <th><input type="text" id="fBaixadoPor" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
-          <th></th>
+          <th>
+            <select id="fOrdemCiclo" oninput="renderTabela()">
+              <option value="">Padrão (Data)</option>
+              <option value="desc">Maior → Menor</option>
+              <option value="asc">Menor → Maior</option>
+            </select>
+          </th>
         </tr>
       </thead>
       <tbody id="tbodyAtividades"></tbody>
@@ -382,6 +389,19 @@ const STATUS_LABELS = {
   EM_CAMPO:'Em Campo', NAO_VALIDADA:'Não Validada', AGUARDANDO_VALIDACAO:'Aguardando Validação',
   VALIDADA:'Validada'
 };
+// A tabela mostra só um resumo de 1 linha (todas as linhas da tabela ficam do
+// mesmo tamanho) — a lista completa de itens (tipo/descrição/qtd/seriais) só
+// aparece no drawer de detalhamento, ao clicar na linha (pedido do Vinicius
+// em 2026-08-19).
+function resumoItensLinha(material){
+  if(!material || !material.itens.length) return '<span style="color:var(--text-muted)">—</span>';
+  const qtdIns = material.itens.filter(it=>it.Tipo==='INS').length;
+  const qtdAtn = material.itens.filter(it=>it.Tipo==='ATN').length;
+  const partes = [];
+  if(qtdIns) partes.push(`${qtdIns} INS`);
+  if(qtdAtn) partes.push(`${qtdAtn} ATN`);
+  return `<span class="itens-resumo">${partes.join(' · ')}</span>`;
+}
 function statusClasse(status){
   if(status === 'VALIDADA') return 'ok';
   if(status === 'AGUARDANDO_VALIDACAO' || status === 'NAO_VALIDADA') return 'warn';
@@ -441,8 +461,15 @@ function atualizarContagensTabs(){
 
 function renderTabela(){
   atualizarContagensTabs();
+  const ordemCiclo = document.getElementById('fOrdemCiclo').value;
   const linhas = TODAS_ATIVIDADES.filter(passaFiltrosColuna)
-    .sort((a,b) => (dataAtividade(b)?.getTime()||0) - (dataAtividade(a)?.getTime()||0));
+    .sort((a,b) => {
+      if(ordemCiclo === 'desc' || ordemCiclo === 'asc'){
+        const diff = (MAPA_CICLO_POR_CHAVE[chaveCiclo(a)]||1) - (MAPA_CICLO_POR_CHAVE[chaveCiclo(b)]||1);
+        if(diff !== 0) return ordemCiclo === 'desc' ? -diff : diff;
+      }
+      return (dataAtividade(b)?.getTime()||0) - (dataAtividade(a)?.getTime()||0);
+    });
 
   document.getElementById('statTotal').textContent = linhas.length;
   document.getElementById('statAguardandoValidacao').textContent = linhas.filter(a=>a['Status']==='AGUARDANDO_VALIDACAO').length;
@@ -461,9 +488,7 @@ function renderTabela(){
     const id = a['ID Atividade'];
     const protocolo = a['Protocolo O&M'] || a['Protocolo NOC'] || '—';
     const material = MAPA_MATERIAL_POR_ATIVIDADE[id];
-    const itensHtml = material ? material.itens.map(it => `
-      <div class="item-linha"><span class="badge-tipo ${it.Tipo==='ATN'?'atn':'ins'}">${it.Tipo}</span><b>${it['Descrição']}</b> · Qtd: ${it['Quantidade']}</div>
-    `).join('') : '<span style="color:var(--text-muted)">—</span>';
+    const itensHtml = resumoItensLinha(material);
     const status = a['Status']||'';
     const ciclo = MAPA_CICLO_POR_CHAVE[chaveCiclo(a)] || 1;
     return `<tr onclick="abrirDetalhe('${String(id).replace(/'/g,"\\'")}')">
