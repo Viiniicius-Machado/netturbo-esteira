@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Controle de Atividades · Netturbo Esteira</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    :root{
+      --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
+      --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+      --border:#252525;--border-hi:#353535;
+      --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+      --red:#e53935;--amber:#ffa000;--green:#8bc34a;--purple:#ab47bc;--blue:#42a5f5;
+      --radius:6px;--radius-lg:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+    .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
+    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+    .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+    .topbar-spacer{flex:1}
+
+    .page-actions{max-width:1600px;margin:0 auto;display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;padding:.9rem 1.2rem 0}
+    main{max-width:1600px;margin:0 auto;padding:1.3rem 1.2rem 0}
+
+    .toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.1rem}
+    .btn{padding:.6rem 1.1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.82rem}
+    .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+    .btn-green{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
+    .btn-sm{padding:.4rem .7rem;font-size:.68rem}
+
+    .tipo-tabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
+    .tipo-tab{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
+    .tipo-tab.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
+    .tipo-tab-count{background:rgba(0,0,0,.25);border-radius:10px;padding:.05rem .45rem;font-size:.68rem}
+    .tipo-tab.active .tipo-tab-count{background:rgba(168,201,60,.25)}
+
+    .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem;margin-bottom:1.1rem}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--border-hi);border-radius:var(--radius);padding:.6rem .8rem}
+    .stat-value{font-family:'Rajdhani',sans-serif;font-size:1.6rem;font-weight:700;color:var(--text);line-height:1.1}
+    .stat-label{font-size:.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem}
+    .stat-card.stat-accent{border-top-color:var(--amber)}
+    .stat-card.stat-accent .stat-value{color:var(--amber)}
+    .stat-card.stat-ok{border-top-color:var(--green)}
+    .stat-card.stat-ok .stat-value{color:var(--green)}
+    .stat-card.stat-blue{border-top-color:var(--blue)}
+    .stat-card.stat-blue .stat-value{color:var(--blue)}
+
+    .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
+    table{width:100%;border-collapse:collapse;font-size:.75rem}
+    thead th{text-align:left;padding:.6rem .7rem;color:var(--text-muted);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2);white-space:nowrap}
+    tbody td{padding:.5rem .7rem;border-bottom:1px solid var(--border);vertical-align:top}
+    tbody tr{cursor:pointer}
+    tbody tr:hover{background:var(--surface2)}
+    .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+
+    .filtros-row th{padding:.4rem .5rem;background:var(--surface2);position:sticky;top:33px}
+    .filtros-row input,.filtros-row select{width:100%;background:var(--surface3);border:1px solid var(--border-hi);border-radius:4px;color:var(--text);font-size:.68rem;padding:.32rem .4rem;font-family:'Inter',sans-serif}
+    .filtros-row input::placeholder{color:var(--text-muted)}
+
+    .protocolo-cel{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent)}
+    .etiqueta-cel{font-size:.65rem;color:var(--text-dim)}
+    .item-linha{font-size:.68rem;color:var(--text-dim);line-height:1.5}
+    .item-linha b{color:var(--text)}
+    .badge-tipo{font-size:.58rem;font-weight:700;padding:.05rem .35rem;border-radius:4px;margin-right:.3rem}
+    .badge-tipo.ins{background:rgba(168,201,60,.12);color:var(--accent)}
+    .badge-tipo.atn{background:rgba(255,160,0,.12);color:var(--amber)}
+    .status-pill{font-size:.62rem;font-weight:700;padding:.2rem .55rem;border-radius:20px;white-space:nowrap;display:inline-block}
+    .status-pill.ok{background:rgba(139,195,74,.12);color:var(--green);border:1px solid rgba(139,195,74,.3)}
+    .status-pill.warn{background:rgba(255,160,0,.12);color:var(--amber);border:1px solid rgba(255,160,0,.3)}
+    .status-pill.bad{background:rgba(229,57,53,.12);color:var(--red);border:1px solid rgba(229,57,53,.3)}
+    .status-pill.neutro{background:rgba(255,255,255,.06);color:var(--text-dim);border:1px solid var(--border-hi)}
+    .ciclo-cel{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.85rem;text-align:center;display:block}
+    .ciclo-cel.alerta{color:var(--amber)}
+
+    /* ── drawer de detalhamento ── */
+    .drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none}
+    .drawer-overlay.show{display:block}
+    .drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--surface);border-left:1px solid var(--border-hi);z-index:501;transform:translateX(100%);transition:transform .25s ease;overflow-y:auto}
+    .drawer.show{transform:translateX(0)}
+    .drawer-header{position:sticky;top:0;background:var(--surface2);border-bottom:1px solid var(--border);padding:1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;z-index:2}
+    .drawer-header h2{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+    .drawer-close{background:none;border:none;color:var(--text-dim);font-size:1.4rem;cursor:pointer;line-height:1}
+    .drawer-close:hover{color:var(--text)}
+    .drawer-body{padding:1.1rem 1.2rem 2rem}
+    .drawer-section{margin-bottom:1.3rem}
+    .drawer-section-title{font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);padding-bottom:.4rem;margin-bottom:.6rem}
+    .drawer-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem .9rem}
+    .drawer-field{display:flex;flex-direction:column;gap:.15rem}
+    .drawer-field label{font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
+    .drawer-field .val{font-size:.85rem;color:var(--text);font-weight:500}
+    .drawer-field .val.mono{font-family:'Rajdhani',sans-serif;font-weight:700}
+    .categoria-trilha{font-size:.8rem;color:var(--text);display:flex;flex-wrap:wrap;gap:.3rem;align-items:center}
+    .categoria-trilha span{background:var(--surface3);border:1px solid var(--border-hi);border-radius:4px;padding:.15rem .5rem}
+    .categoria-trilha .sep{color:var(--text-muted);background:none;border:none;padding:0}
+    .lpu-bloco{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:.7rem .9rem;margin-bottom:.6rem}
+    .lpu-bloco-titulo{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;color:var(--text);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em}
+    .check-linha{display:flex;align-items:center;justify-content:space-between;font-size:.76rem;padding:.25rem 0;border-top:1px solid var(--border)}
+    .check-linha:first-of-type{border-top:none}
+    .historico-item{display:flex;justify-content:space-between;gap:.6rem;font-size:.72rem;color:var(--text-dim);padding:.35rem 0;border-top:1px solid var(--border)}
+    .historico-item:first-of-type{border-top:none}
+    .historico-item b{color:var(--text)}
+    .historico-item.atual{color:var(--accent)}
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
+  <div>
+    <div class="topbar-brand">Controle de Atividades</div>
+    <div class="topbar-sub">Visão Geral · Todos os Segmentos</div>
+  </div>
+  <div class="topbar-spacer"></div>
+</header>
+
+<div class="page-actions">
+  <a href="painel.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Painel</a>
+</div>
+
+<main id="app" style="display:none">
+
+  <div class="toolbar">
+    <button class="btn btn-outline" onclick="carregarAtividades()">↻ Atualizar</button>
+    <button class="btn btn-green" onclick="exportarExcel()">Exportar Excel</button>
+  </div>
+
+  <div class="tipo-tabs" id="tiposTabs">
+    <button type="button" class="tipo-tab active" data-tipo="TODOS" onclick="selecionarTipo('TODOS')">Todos <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Manutenção" onclick="selecionarTipo('Manutenção')">Manutenção <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Preventiva" onclick="selecionarTipo('Preventiva')">Preventiva <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Transmissão" onclick="selecionarTipo('Transmissão')">Transmissão <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Implantação" onclick="selecionarTipo('Implantação')">Implantação <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="GTD" onclick="selecionarTipo('GTD')">GTD <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Pós Vendas" onclick="selecionarTipo('Pós Vendas')">Pós Vendas <span class="tipo-tab-count">0</span></button>
+    <button type="button" class="tipo-tab" data-tipo="Medição" onclick="selecionarTipo('Medição')">Medição <span class="tipo-tab-count">0</span></button>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-label">Atividades no Filtro</div>
+    </div>
+    <div class="stat-card stat-accent">
+      <div class="stat-value" id="statAguardandoValidacao">0</div>
+      <div class="stat-label">Aguardando Validação</div>
+    </div>
+    <div class="stat-card stat-blue">
+      <div class="stat-value" id="statAguardandoAprovador">0</div>
+      <div class="stat-label">LPU Aguardando Aprovador</div>
+    </div>
+    <div class="stat-card stat-ok">
+      <div class="stat-value" id="statValidadas">0</div>
+      <div class="stat-label">Validadas</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th><th>Protocolo</th><th>Cliente</th><th>Técnico</th><th>Empresa</th>
+          <th>Tipo de Solicitação</th><th>Itens</th><th>Status</th><th>Baixado Por</th><th>Nº no Ciclo</th>
+        </tr>
+        <tr class="filtros-row">
+          <th style="display:flex;flex-direction:column;gap:.25rem">
+            <select id="fAno" oninput="renderTabela()"><option value="">Todos os anos</option></select>
+            <select id="fMes" oninput="renderTabela()">
+              <option value="">Todos os meses</option>
+              <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+              <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+              <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+              <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+          </th>
+          <th><input type="text" id="fProtocolo" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fCliente" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fTecnico" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fEmpresa" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th>
+            <select id="fTipo" oninput="sincronizarAbaComSelect(); renderTabela();">
+              <option value="">Todos</option>
+              <option value="Manutenção">Manutenção</option>
+              <option value="Preventiva">Preventiva</option>
+              <option value="Transmissão">Transmissão</option>
+              <option value="Implantação">Implantação</option>
+              <option value="GTD">GTD</option>
+              <option value="Pós Vendas">Pós Vendas</option>
+              <option value="Medição">Medição</option>
+            </select>
+          </th>
+          <th><input type="text" id="fItens" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th>
+            <select id="fStatus" oninput="renderTabela()">
+              <option value="">Todos</option>
+              <option value="AGUARDANDO_DESPACHO">Aguardando Despacho</option>
+              <option value="DESPACHADA">Despachada</option>
+              <option value="INICIADA">Iniciada</option>
+              <option value="EM_CAMPO">Em Campo</option>
+              <option value="NAO_VALIDADA">Não Validada</option>
+              <option value="AGUARDANDO_VALIDACAO">Aguardando Validação</option>
+              <option value="VALIDADA">Validada</option>
+            </select>
+          </th>
+          <th><input type="text" id="fBaixadoPor" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbodyAtividades"></tbody>
+    </table>
+    <div class="empty-msg" id="msgVazio" style="display:none">Nenhuma atividade encontrada para esse filtro.</div>
+  </div>
+
+</main>
+
+<div class="drawer-overlay" id="drawerOverlay" onclick="fecharDetalhe()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <h2>Detalhamento da Atividade</h2>
+    <button class="drawer-close" onclick="fecharDetalhe()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+
+// Tela só de visualização (view-only) pra acompanhar atividades de TODOS os
+// segmentos num lugar só, com detalhamento de aprovação/LPU/conta contábil —
+// não existe nenhuma ação de escrita aqui (sem excluir linha, sem editar).
+// Fonte de dados: LISTAR_ESTEIRA sem apenasAbertas (histórico completo, todas
+// as ~90 colunas), enriquecido com LISTAR_CONTROLE_MATERIAL só pras colunas
+// Itens/Baixado Por (nem toda atividade tem material lançado — pedido do
+// Vinicius em 2026-08-19, tela pro time da Pamela).
+let TODAS_ATIVIDADES = [];
+let MAPA_MATERIAL_POR_ATIVIDADE = {};
+let MAPA_CICLO_POR_CHAVE = {};
+let toastTimer;
+
+let FILTRO_TIPO = 'TODOS';
+window.selecionarTipo = function(tipo){
+  FILTRO_TIPO = tipo;
+  document.querySelectorAll('#tiposTabs .tipo-tab').forEach(b=>b.classList.toggle('active', b.dataset.tipo===tipo));
+  document.getElementById('fTipo').value = tipo === 'TODOS' ? '' : tipo;
+  renderTabela();
+};
+// campo "Tipo de Solicitação" do cabeçalho da tabela e as abas acima fazem a
+// mesma coisa — mantém os dois sincronizados nos dois sentidos.
+window.sincronizarAbaComSelect = function(){
+  const valor = document.getElementById('fTipo').value || 'TODOS';
+  FILTRO_TIPO = valor;
+  document.querySelectorAll('#tiposTabs .tipo-tab').forEach(b=>b.classList.toggle('active', b.dataset.tipo===valor));
+};
+
+function iniciarApp(){
+  document.getElementById('app').style.display = 'block';
+  carregarAtividades();
+  carregarMaterial();
+  if(!window._ctrlAtivAutoRefresh){
+    window._ctrlAtivAutoRefresh = setInterval(() => { carregarAtividades(); carregarMaterial(); }, 20000);
+  }
+}
+
+let _ultimaChaveRenderAtividades = null;
+async function carregarAtividades(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_ESTEIRA');
+    const result = await resp.json();
+    const atividades = result.atividades || [];
+    const chave = JSON.stringify(atividades.map(a => [a['ID Atividade'], a['Status'], a['Status LPU'], a['Status LPU Apoio']]));
+    if(chave === _ultimaChaveRenderAtividades) return;
+    _ultimaChaveRenderAtividades = chave;
+    TODAS_ATIVIDADES = atividades;
+    montarMapaCiclo();
+    atualizarOpcoesAno();
+    renderTabela();
+  }catch(err){
+    console.error('Erro ao carregar LISTAR_ESTEIRA:', err);
+    showToast('Erro ao carregar as atividades.');
+  }
+}
+window.carregarAtividades = carregarAtividades;
+
+let _ultimaChaveRenderMaterial = null;
+async function carregarMaterial(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_CONTROLE_MATERIAL');
+    const result = await resp.json();
+    const itens = result.itens || [];
+    const chave = JSON.stringify(itens);
+    if(chave === _ultimaChaveRenderMaterial) return;
+    _ultimaChaveRenderMaterial = chave;
+    const mapa = {};
+    itens.forEach(item => {
+      const id = item['ID Atividade'];
+      if(!mapa[id]) mapa[id] = { itens:[], status:'BAIXADO', baixadoPor:'' };
+      mapa[id].itens.push(item);
+      if(item['Status Baixa'] !== 'BAIXADO') mapa[id].status = 'PENDENTE';
+      if(item['Baixado Por']) mapa[id].baixadoPor = item['Baixado Por'];
+    });
+    MAPA_MATERIAL_POR_ATIVIDADE = mapa;
+    renderTabela();
+  }catch(err){
+    console.error('Erro ao carregar LISTAR_CONTROLE_MATERIAL:', err);
+  }
+}
+window.carregarMaterial = carregarMaterial;
+
+// "Quantas vezes esse ID/Cliente já entrou no ciclo" — conta, no histórico
+// completo (todos os segmentos, qualquer data), quantas atividades têm a
+// mesma chave (Etiqueta; cai pra Cliente quando não tem Etiqueta). Serve pra
+// enxergar recorrência num mesmo local, não é uma métrica só do OEM.
+function chaveCiclo(a){
+  return String(a['Etiqueta']||'').trim() || String(a['Cliente']||'').trim();
+}
+function montarMapaCiclo(){
+  const mapa = {};
+  TODAS_ATIVIDADES.forEach(a => {
+    const chave = chaveCiclo(a);
+    if(!chave) return;
+    mapa[chave] = (mapa[chave]||0) + 1;
+  });
+  MAPA_CICLO_POR_CHAVE = mapa;
+}
+
+// "Timestamp Recebido" chega como Date/ISO puro; "Timestamp Despacho" (usado
+// se por algum motivo o recebido estiver vazio) vem como "dd/mm/aaaa, HH:MM:SS"
+// — mesma robustez de parseDataAmpla em dashboard_dia.html.
+function parseDataAmpla(val){
+  if(!val) return null;
+  if(val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  const m = String(val).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2})?:?(\d{2})?/);
+  if(m){
+    const d = new Date(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]||0), Number(m[5]||0));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const iso = new Date(val);
+  return isNaN(iso.getTime()) ? null : iso;
+}
+function dataAtividade(a){
+  return parseDataAmpla(a['Timestamp Recebido']) || parseDataAmpla(a['Timestamp Despacho']);
+}
+function anoAtividade(a){
+  const d = dataAtividade(a);
+  return d ? String(d.getFullYear()) : '';
+}
+function mesNumAtividade(a){
+  const d = dataAtividade(a);
+  return d ? String(d.getMonth()+1).padStart(2,'0') : '';
+}
+// select de Ano é montado dinamicamente com os anos que realmente aparecem no
+// histórico (em vez de um <input type="month">, que obrigava escolher um mês
+// específico e não deixava ver "o ano inteiro") — preserva a seleção atual se
+// ainda for uma opção válida depois de recarregar (pedido do Vinicius em
+// 2026-08-19).
+function atualizarOpcoesAno(){
+  const sel = document.getElementById('fAno');
+  const atual = sel.value;
+  const anos = [...new Set(TODAS_ATIVIDADES.map(anoAtividade).filter(Boolean))].sort((a,b) => b-a);
+  sel.innerHTML = '<option value="">Todos os anos</option>' + anos.map(a => `<option value="${a}">${a}</option>`).join('');
+  if(anos.indexOf(atual) !== -1) sel.value = atual;
+}
+function fmtDataCurta(d){
+  if(!d) return '—';
+  return d.toLocaleDateString('pt-BR');
+}
+
+const STATUS_LABELS = {
+  AGUARDANDO_DESPACHO:'Aguardando Despacho', DESPACHADA:'Despachada', INICIADA:'Iniciada',
+  EM_CAMPO:'Em Campo', NAO_VALIDADA:'Não Validada', AGUARDANDO_VALIDACAO:'Aguardando Validação',
+  VALIDADA:'Validada'
+};
+function statusClasse(status){
+  if(status === 'VALIDADA') return 'ok';
+  if(status === 'AGUARDANDO_VALIDACAO' || status === 'NAO_VALIDADA') return 'warn';
+  return 'neutro';
+}
+
+const STATUS_LPU_LABELS = {
+  PENDENTE_DECISAO:'Pendente Decisão (apoio)', SEM_COBRANCA:'Sem Cobrança',
+  PENDENTE_PREENCHIMENTO:'Pendente de Preenchimento', AGUARDANDO_APROVADOR:'Aguardando Aprovador',
+  AGUARDANDO_MEDICAO:'Aguardando Medição', APROVADO_AGUARDANDO_NF:'Aprovado — Aguardando NF', PAGO:'Pago'
+};
+function preencheuLpu(statusLpu){
+  return !!statusLpu && statusLpu !== 'PENDENTE_PREENCHIMENTO' && statusLpu !== 'PENDENTE_DECISAO';
+}
+function aprovouLpu(statusLpu){
+  return ['AGUARDANDO_MEDICAO','APROVADO_AGUARDANDO_NF','PAGO'].indexOf(statusLpu) !== -1;
+}
+
+// filtros de coluna — reaproveitado por renderTabela() e exportarExcel().
+function passaFiltrosColuna(a){
+  const fAno = document.getElementById('fAno').value;
+  const fMes = document.getElementById('fMes').value;
+  const fProtocolo = document.getElementById('fProtocolo').value.trim().toLowerCase();
+  const fCliente = document.getElementById('fCliente').value.trim().toLowerCase();
+  const fTecnico = document.getElementById('fTecnico').value.trim().toLowerCase();
+  const fEmpresa = document.getElementById('fEmpresa').value.trim().toLowerCase();
+  const fItens = document.getElementById('fItens').value.trim().toLowerCase();
+  const fStatus = document.getElementById('fStatus').value;
+  const fBaixadoPor = document.getElementById('fBaixadoPor').value.trim().toLowerCase();
+
+  const protocolo = a['Protocolo O&M'] || a['Protocolo NOC'] || '';
+  const material = MAPA_MATERIAL_POR_ATIVIDADE[a['ID Atividade']];
+
+  if(fAno && anoAtividade(a) !== fAno) return false;
+  if(fMes && mesNumAtividade(a) !== fMes) return false;
+  if(fProtocolo && !String(protocolo).toLowerCase().includes(fProtocolo)) return false;
+  if(fCliente && !String(a['Cliente']||'').toLowerCase().includes(fCliente)) return false;
+  if(fTecnico && !String(a['Técnico']||'').toLowerCase().includes(fTecnico)) return false;
+  if(fEmpresa && !String(a['Empresa']||'').toLowerCase().includes(fEmpresa)) return false;
+  if(FILTRO_TIPO !== 'TODOS' && a['Tipo de Solicitação'] !== FILTRO_TIPO) return false;
+  if(fItens && !(material && material.itens.some(it => String(it['Descrição']||'').toLowerCase().includes(fItens) || String(it['Código']||'').toLowerCase().includes(fItens)))) return false;
+  if(fStatus && a['Status'] !== fStatus) return false;
+  if(fBaixadoPor && !String((material&&material.baixadoPor)||'').toLowerCase().includes(fBaixadoPor)) return false;
+  return true;
+}
+
+function atualizarContagensTabs(){
+  document.querySelectorAll('#tiposTabs .tipo-tab').forEach(btn => {
+    const tipo = btn.dataset.tipo;
+    const badge = btn.querySelector('.tipo-tab-count');
+    if(!badge) return;
+    badge.textContent = tipo === 'TODOS'
+      ? TODAS_ATIVIDADES.length
+      : TODAS_ATIVIDADES.filter(a => a['Tipo de Solicitação'] === tipo).length;
+  });
+}
+
+function renderTabela(){
+  atualizarContagensTabs();
+  const linhas = TODAS_ATIVIDADES.filter(passaFiltrosColuna)
+    .sort((a,b) => (dataAtividade(b)?.getTime()||0) - (dataAtividade(a)?.getTime()||0));
+
+  document.getElementById('statTotal').textContent = linhas.length;
+  document.getElementById('statAguardandoValidacao').textContent = linhas.filter(a=>a['Status']==='AGUARDANDO_VALIDACAO').length;
+  document.getElementById('statAguardandoAprovador').textContent = linhas.filter(a=>a['Status LPU']==='AGUARDANDO_APROVADOR' || a['Status LPU Apoio']==='AGUARDANDO_APROVADOR').length;
+  document.getElementById('statValidadas').textContent = linhas.filter(a=>a['Status']==='VALIDADA').length;
+
+  const tbody = document.getElementById('tbodyAtividades');
+  if(!linhas.length){
+    tbody.innerHTML = '';
+    document.getElementById('msgVazio').style.display = 'block';
+    return;
+  }
+  document.getElementById('msgVazio').style.display = 'none';
+
+  tbody.innerHTML = linhas.map(a => {
+    const id = a['ID Atividade'];
+    const protocolo = a['Protocolo O&M'] || a['Protocolo NOC'] || '—';
+    const material = MAPA_MATERIAL_POR_ATIVIDADE[id];
+    const itensHtml = material ? material.itens.map(it => `
+      <div class="item-linha"><span class="badge-tipo ${it.Tipo==='ATN'?'atn':'ins'}">${it.Tipo}</span><b>${it['Descrição']}</b> · Qtd: ${it['Quantidade']}</div>
+    `).join('') : '<span style="color:var(--text-muted)">—</span>';
+    const status = a['Status']||'';
+    const ciclo = MAPA_CICLO_POR_CHAVE[chaveCiclo(a)] || 1;
+    return `<tr onclick="abrirDetalhe('${String(id).replace(/'/g,"\\'")}')">
+      <td>${fmtDataCurta(dataAtividade(a))}</td>
+      <td><div class="protocolo-cel">${protocolo}</div>${a['Etiqueta'] ? `<div class="etiqueta-cel">Etiqueta: ${a['Etiqueta']}</div>` : ''}</td>
+      <td>${a['Cliente']||'—'}</td>
+      <td>${a['Técnico']||'—'}</td>
+      <td>${a['Empresa']||'—'}</td>
+      <td>${a['Tipo de Solicitação']||'—'}</td>
+      <td>${itensHtml}</td>
+      <td><span class="status-pill ${statusClasse(status)}">${STATUS_LABELS[status]||status||'—'}</span></td>
+      <td>${(material&&material.baixadoPor)||'—'}</td>
+      <td><span class="ciclo-cel ${ciclo>1?'alerta':''}">${ciclo}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── DRAWER DE DETALHAMENTO (só leitura) ──────────────────────
+window.abrirDetalhe = function(idAtividade){
+  const a = TODAS_ATIVIDADES.find(x => String(x['ID Atividade']) === String(idAtividade));
+  if(!a){ showToast('Atividade não encontrada (pode ter saído do filtro).'); return; }
+
+  const protocolo = a['Protocolo O&M'] || a['Protocolo NOC'] || '—';
+  const material = MAPA_MATERIAL_POR_ATIVIDADE[idAtividade];
+  const status = a['Status']||'';
+
+  const categorias = [a['Categoria 1'], a['Categoria 2'], a['Categoria 3'], a['Categoria 4']].filter(Boolean);
+  const trilhaCategoria = categorias.length
+    ? categorias.map((c,i) => `<span>${c}</span>${i<categorias.length-1?'<span class="sep">›</span>':''}`).join('')
+    : '<span style="color:var(--text-muted);background:none;border:none;padding:0">Sem categoria registrada</span>';
+
+  function blocoLpu(titulo, empresa, tecnico, statusLpu){
+    if(!empresa) return '';
+    const preencheu = preencheuLpu(statusLpu);
+    const aprovou = aprovouLpu(statusLpu);
+    return `
+      <div class="lpu-bloco">
+        <div class="lpu-bloco-titulo">${titulo} — ${empresa}${tecnico?' · '+tecnico:''}</div>
+        <div class="check-linha"><span>Status LPU</span><b>${statusLpu ? (STATUS_LPU_LABELS[statusLpu]||statusLpu) : 'Sem cobrança por LPU'}</b></div>
+        <div class="check-linha"><span>Preencheu a LPU?</span><b style="color:${preencheu?'var(--green)':'var(--amber)'}">${statusLpu ? (preencheu?'Sim':'Não') : '—'}</b></div>
+        <div class="check-linha"><span>Aprovou (passou pelo aprovador)?</span><b style="color:${aprovou?'var(--green)':'var(--amber)'}">${statusLpu ? (aprovou?'Sim':'Não') : '—'}</b></div>
+      </div>`;
+  }
+
+  const chave = chaveCiclo(a);
+  const historico = chave
+    ? TODAS_ATIVIDADES.filter(x => chaveCiclo(x) === chave)
+        .sort((x,y) => (dataAtividade(y)?.getTime()||0) - (dataAtividade(x)?.getTime()||0))
+    : [a];
+
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="drawer-section">
+      <div class="drawer-section-title">Identificação</div>
+      <div class="drawer-grid">
+        <div class="drawer-field"><label>Protocolo</label><div class="val mono">${protocolo}</div></div>
+        <div class="drawer-field"><label>ID / Etiqueta</label><div class="val mono">${a['Etiqueta']||'—'}</div></div>
+        <div class="drawer-field"><label>Cliente</label><div class="val">${a['Cliente']||'—'}</div></div>
+        <div class="drawer-field"><label>Data</label><div class="val">${fmtDataCurta(dataAtividade(a))}</div></div>
+        <div class="drawer-field"><label>Empresa Prestadora</label><div class="val">${a['Empresa']||'—'}</div></div>
+        <div class="drawer-field"><label>Técnico</label><div class="val">${a['Técnico']||'—'}</div></div>
+        <div class="drawer-field"><label>Segmento (Tipo de Solicitação)</label><div class="val">${a['Tipo de Solicitação']||'—'}</div></div>
+        <div class="drawer-field"><label>Conta Contábil</label><div class="val">${a['Conta Contábil']||'—'}</div></div>
+      </div>
+      ${a['Técnico Apoio'] ? `<div class="drawer-grid" style="margin-top:.6rem"><div class="drawer-field"><label>Empresa Apoio</label><div class="val">${a['Empresa Apoio']||'—'}</div></div><div class="drawer-field"><label>Técnico Apoio</label><div class="val">${a['Técnico Apoio']||'—'}</div></div></div>` : ''}
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Categorias Editadas</div>
+      <div class="categoria-trilha">${trilhaCategoria}</div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Situação do Chamado</div>
+      <div class="check-linha"><span>Status</span><span class="status-pill ${statusClasse(status)}">${STATUS_LABELS[status]||status||'—'}</span></div>
+      <div class="check-linha"><span>Está na fila de aguardando validação?</span><b style="color:${status==='AGUARDANDO_VALIDACAO'?'var(--amber)':'var(--text)'}">${status==='AGUARDANDO_VALIDACAO'?'Sim':'Não'}</b></div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Cobrança (LPU)</div>
+      ${blocoLpu('Titular', a['Empresa'], a['Técnico'], a['Status LPU'])}
+      ${blocoLpu('Apoio', a['Empresa Apoio'], a['Técnico Apoio'], a['Status LPU Apoio'])}
+      ${!a['Status LPU'] && !a['Status LPU Apoio'] ? '<div style="font-size:.75rem;color:var(--text-muted)">Sem cobrança por LPU (mão de obra própria ou contrato fixo).</div>' : ''}
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Material Registrado</div>
+      ${material ? `
+        ${material.itens.map(it => `<div class="item-linha"><span class="badge-tipo ${it.Tipo==='ATN'?'atn':'ins'}">${it.Tipo}</span><b>${it['Descrição']}</b> · Qtd: ${it['Quantidade']}${it['Seriais']?' · SN: '+it['Seriais']:''}</div>`).join('')}
+        <div class="check-linha"><span>Status da baixa</span><span class="status-pill ${material.status==='BAIXADO'?'ok':'warn'}">${material.status==='BAIXADO'?'Baixado':'Pendente'}</span></div>
+        <div class="check-linha"><span>Baixado por</span><b>${material.baixadoPor||'—'}</b></div>
+      ` : '<div style="font-size:.75rem;color:var(--text-muted)">Nenhum material registrado para essa atividade.</div>'}
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Histórico deste ID/Cliente (${historico.length}× no ciclo)</div>
+      ${historico.map(x => {
+        const p = x['Protocolo O&M'] || x['Protocolo NOC'] || '—';
+        const ehAtual = String(x['ID Atividade']) === String(idAtividade);
+        return `<div class="historico-item ${ehAtual?'atual':''}"><span><b>${p}</b> · ${x['Tipo de Solicitação']||'—'}${ehAtual?' (esta atividade)':''}</span><span>${fmtDataCurta(dataAtividade(x))}</span></div>`;
+      }).join('')}
+    </div>
+  `;
+
+  document.getElementById('drawerOverlay').classList.add('show');
+  document.getElementById('drawer').classList.add('show');
+};
+
+window.fecharDetalhe = function(){
+  document.getElementById('drawerOverlay').classList.remove('show');
+  document.getElementById('drawer').classList.remove('show');
+};
+
+window.exportarExcel = function(){
+  const linhas = TODAS_ATIVIDADES.filter(passaFiltrosColuna).map(a => {
+    const material = MAPA_MATERIAL_POR_ATIVIDADE[a['ID Atividade']];
+    return {
+      'Data': fmtDataCurta(dataAtividade(a)),
+      'Protocolo': a['Protocolo O&M'] || a['Protocolo NOC'] || '',
+      'Etiqueta': a['Etiqueta']||'',
+      'Cliente': a['Cliente']||'',
+      'Técnico': a['Técnico']||'',
+      'Empresa': a['Empresa']||'',
+      'Tipo de Solicitação': a['Tipo de Solicitação']||'',
+      'Categoria 1': a['Categoria 1']||'',
+      'Categoria 2': a['Categoria 2']||'',
+      'Categoria 3': a['Categoria 3']||'',
+      'Categoria 4': a['Categoria 4']||'',
+      'Conta Contábil': a['Conta Contábil']||'',
+      'Status': STATUS_LABELS[a['Status']] || a['Status'] || '',
+      'Status LPU': a['Status LPU']||'',
+      'Status LPU Apoio': a['Status LPU Apoio']||'',
+      'Itens Material': material ? material.itens.map(it=>it['Descrição']).join('; ') : '',
+      'Baixado Por': (material&&material.baixadoPor)||'',
+      'Nº no Ciclo (ID/Cliente)': MAPA_CICLO_POR_CHAVE[chaveCiclo(a)] || 1
+    };
+  });
+  if(!linhas.length){ showToast('Nenhum dado pra exportar nesse filtro.'); return; }
+  const ws = XLSX.utils.json_to_sheet(linhas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Controle Atividades');
+  XLSX.writeFile(wb, `Controle_Atividades_${new Date().toISOString().slice(0,10)}.xlsx`);
+};
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:999;white-space:nowrap;display:block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.style.display='none'; }, 3200);
+}
+
+NetturboAuth.proteger({ tela:'Controle de Atividades', aoEntrar: iniciarApp });
+</script>
+</body>
+</html>

@@ -74,6 +74,11 @@
     .status-pill{font-size:.62rem;font-weight:700;padding:.2rem .55rem;border-radius:20px;white-space:nowrap}
     .status-pill.pendente{background:rgba(255,160,0,.12);color:var(--amber);border:1px solid rgba(255,160,0,.3)}
     .status-pill.baixado{background:rgba(139,195,74,.12);color:var(--green);border:1px solid rgba(139,195,74,.3)}
+
+    /* filtro por coluna — linha extra no cabeçalho da tabela */
+    .filtros-row th{padding:.4rem .5rem;background:var(--surface2)}
+    .filtros-row input,.filtros-row select{width:100%;background:var(--surface3);border:1px solid var(--border-hi);border-radius:4px;color:var(--text);font-size:.68rem;padding:.32rem .4rem;font-family:'Inter',sans-serif}
+    .filtros-row input::placeholder{color:var(--text-muted)}
   </style>
 </head>
 <body>
@@ -95,12 +100,6 @@
 <main id="app" style="display:none">
 
   <div class="toolbar">
-    <input type="month" id="mesFiltro" onchange="renderTabela()"/>
-    <select id="statusFiltro" onchange="renderTabela()">
-      <option value="">Todos os status</option>
-      <option value="PENDENTE">Pendente</option>
-      <option value="BAIXADO">Baixado</option>
-    </select>
     <button class="btn btn-outline" onclick="carregarControleMaterial()">↻ Atualizar</button>
     <button class="btn btn-green" onclick="exportarExcel()">Exportar Excel</button>
   </div>
@@ -133,10 +132,29 @@
 
   <div class="table-wrap">
     <table>
-      <thead><tr>
-        <th>Data</th><th>Protocolo</th><th>Cliente</th><th>Técnico</th><th>Empresa</th>
-        <th>Itens</th><th>Status</th><th>Baixado Por</th><th></th>
-      </tr></thead>
+      <thead>
+        <tr>
+          <th>Data</th><th>Protocolo</th><th>Cliente</th><th>Técnico</th><th>Empresa</th>
+          <th>Itens</th><th>Status</th><th>Baixado Por</th><th></th>
+        </tr>
+        <tr class="filtros-row">
+          <th><input type="month" id="fData" oninput="renderTabela()"/></th>
+          <th><input type="text" id="fProtocolo" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fCliente" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fTecnico" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fEmpresa" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th><input type="text" id="fItens" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th>
+            <select id="fStatus" oninput="renderTabela()">
+              <option value="">Todos</option>
+              <option value="PENDENTE">Pendente</option>
+              <option value="BAIXADO">Baixado</option>
+            </select>
+          </th>
+          <th><input type="text" id="fBaixadoPor" placeholder="Filtrar..." oninput="renderTabela()"/></th>
+          <th></th>
+        </tr>
+      </thead>
       <tbody id="tbodyMaterial"></tbody>
     </table>
     <div class="empty-msg" id="msgVazio" style="display:none">Nenhum registro neste período.</div>
@@ -192,7 +210,7 @@ function ehOem(){
 function iniciarApp(){
   document.getElementById('app').style.display = 'block';
   const hoje = new Date();
-  document.getElementById('mesFiltro').value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0');
+  document.getElementById('fData').value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0');
   carregarMapaTipoAtividade().then(carregarControleMaterial);
   if(!window._ctrlMatAutoRefresh){
     window._ctrlMatAutoRefresh = setInterval(carregarControleMaterial, 30000);
@@ -278,16 +296,35 @@ function agruparPorAtividade(itens){
   return Object.values(grupos).sort((a,b) => String(b.timestamp).localeCompare(String(a.timestamp)));
 }
 
+// filtros de coluna — cada célula do cabeçalho filtra o grupo (1 linha por
+// atividade) por substring (texto) ou igualdade (mês/status). Reaproveitado
+// por renderTabela() e exportarExcel(), pra exportar sempre bater com o que
+// está filtrado na tela.
+function grupoPassaFiltrosColuna(g){
+  const fData = document.getElementById('fData').value;
+  const fProtocolo = document.getElementById('fProtocolo').value.trim().toLowerCase();
+  const fCliente = document.getElementById('fCliente').value.trim().toLowerCase();
+  const fTecnico = document.getElementById('fTecnico').value.trim().toLowerCase();
+  const fEmpresa = document.getElementById('fEmpresa').value.trim().toLowerCase();
+  const fItens = document.getElementById('fItens').value.trim().toLowerCase();
+  const fStatus = document.getElementById('fStatus').value;
+  const fBaixadoPor = document.getElementById('fBaixadoPor').value.trim().toLowerCase();
+
+  if(fData && g.mes !== fData) return false;
+  if(fProtocolo && !String(g.protocolo).toLowerCase().includes(fProtocolo)) return false;
+  if(fCliente && !String(g.cliente).toLowerCase().includes(fCliente)) return false;
+  if(fTecnico && !String(g.tecnico).toLowerCase().includes(fTecnico)) return false;
+  if(fEmpresa && !String(g.empresa).toLowerCase().includes(fEmpresa)) return false;
+  if(fItens && !g.itens.some(it => String(it['Descrição']||'').toLowerCase().includes(fItens) || String(it['Código']||'').toLowerCase().includes(fItens))) return false;
+  if(fStatus && g.status !== fStatus) return false;
+  if(fBaixadoPor && !String(g.baixadoPor).toLowerCase().includes(fBaixadoPor)) return false;
+  if(!passaFiltroTipoMaterial(g.idAtividade)) return false;
+  return true;
+}
+
 function renderTabela(){
   atualizarContagensTabsMaterial();
-  const mes = document.getElementById('mesFiltro').value;
-  const statusF = document.getElementById('statusFiltro').value;
-  const grupos = agruparPorAtividade(TODOS_ITENS).filter(g => {
-    if(mes && g.mes !== mes) return false;
-    if(statusF && g.status !== statusF) return false;
-    if(!passaFiltroTipoMaterial(g.idAtividade)) return false;
-    return true;
-  });
+  const grupos = agruparPorAtividade(TODOS_ITENS).filter(grupoPassaFiltrosColuna);
 
   document.getElementById('statPendentes').textContent = grupos.filter(g=>g.status==='PENDENTE').length;
   document.getElementById('statBaixadas').textContent = grupos.filter(g=>g.status==='BAIXADO').length;
@@ -343,14 +380,8 @@ window.darBaixa = async function(idAtividade){
 };
 
 window.exportarExcel = function(){
-  const mes = document.getElementById('mesFiltro').value;
-  const statusF = document.getElementById('statusFiltro').value;
-  const linhas = TODOS_ITENS.filter(item => {
-    if(mes && mesDoRegistro(item) !== mes) return false;
-    if(statusF && item['Status Baixa'] !== statusF) return false;
-    if(!passaFiltroTipoMaterial(item['ID Atividade'])) return false;
-    return true;
-  }).map(item => ({
+  const idsVisiveis = new Set(agruparPorAtividade(TODOS_ITENS).filter(grupoPassaFiltrosColuna).map(g => g.idAtividade));
+  const linhas = TODOS_ITENS.filter(item => idsVisiveis.has(item['ID Atividade'])).map(item => ({
     'Data': String(item['Timestamp Registro']||'').split(',')[0],
     'Protocolo': item['Protocolo']||'',
     'Etiqueta': item['Etiqueta']||'',
