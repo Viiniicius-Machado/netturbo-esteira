@@ -82,6 +82,9 @@
     .status-pill.neutro{background:rgba(255,255,255,.06);color:var(--text-dim);border:1px solid var(--border-hi)}
     .ciclo-cel{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.85rem;text-align:center;display:block}
     .ciclo-cel.alerta{color:var(--amber)}
+    .metrica-cel{font-family:'Rajdhani',sans-serif;font-weight:700}
+    .metrica-cel.warn{color:var(--amber)}
+    .metrica-cel.bad{color:var(--red)}
 
     /* ── drawer de detalhamento ── */
     .drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none}
@@ -171,7 +174,7 @@
       <thead>
         <tr>
           <th>Data</th><th>Protocolo</th><th>Cliente</th><th>Técnico</th><th>Empresa</th>
-          <th>Tipo de Solicitação</th><th>Itens</th><th>Status</th><th>Baixado Por</th><th>Nº no Ciclo</th>
+          <th>Tipo de Solicitação</th><th>Itens</th><th>Status</th><th>MTTR</th><th>MTTD</th><th>TMC</th><th>Baixado Por</th><th>Nº no Ciclo</th>
         </tr>
         <tr class="filtros-row">
           <th style="display:flex;flex-direction:column;gap:.25rem">
@@ -213,6 +216,7 @@
               <option value="VALIDADA">Validada</option>
             </select>
           </th>
+          <th></th><th></th><th></th>
           <th><input type="text" id="fBaixadoPor" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
           <th>
             <select id="fOrdemCiclo" oninput="renderTabela()">
@@ -384,6 +388,29 @@ function fmtDataCurta(d){
   return d.toLocaleDateString('pt-BR');
 }
 
+// Metas de MTTR/MTTD/TMC — mesmos valores usados nos dashboards por frente
+// (dashboard_manutencao.html etc.): MTTR usa o SLA Horas da própria atividade
+// quando preenchido (matriz oficial), senão cai na meta fixa de 4h; MTTD e TMC
+// são sempre fixos (1h e 3h). "bad" = estourou mais de 15% da meta.
+const META_MTTR_MIN = 240;
+const META_MTTD_MIN = 60;
+const META_TMC_MIN = 180;
+function metaSlaMinutos(a){
+  const h = Number(a['SLA Horas']);
+  return h > 0 ? h * 60 : META_MTTR_MIN;
+}
+function paraMinutos(str){
+  const m = String(str||'').trim().match(/^(\d{1,3}):(\d{2})$/);
+  if(!m) return null;
+  return parseInt(m[1],10)*60 + parseInt(m[2],10);
+}
+function faixaMetrica(valor, meta){
+  if(valor===null || isNaN(valor)) return '';
+  if(valor <= meta) return '';
+  if(valor <= meta*1.15) return 'warn';
+  return 'bad';
+}
+
 const STATUS_LABELS = {
   AGUARDANDO_DESPACHO:'Aguardando Despacho', DESPACHADA:'Despachada', INICIADA:'Iniciada',
   EM_CAMPO:'Em Campo', NAO_VALIDADA:'Não Validada', AGUARDANDO_VALIDACAO:'Aguardando Validação',
@@ -491,6 +518,12 @@ function renderTabela(){
     const itensHtml = resumoItensLinha(material);
     const status = a['Status']||'';
     const ciclo = MAPA_CICLO_POR_CHAVE[chaveCiclo(a)] || 1;
+    const mttrMin = paraMinutos(a['MTTR']);
+    const mttdMin = paraMinutos(a['MTTD']);
+    const tmcMin = paraMinutos(a['TMC']);
+    const faixaMTTR = faixaMetrica(mttrMin, metaSlaMinutos(a));
+    const faixaMTTD = faixaMetrica(mttdMin, META_MTTD_MIN);
+    const faixaTMC = faixaMetrica(tmcMin, META_TMC_MIN);
     return `<tr onclick="abrirDetalhe('${String(id).replace(/'/g,"\\'")}')">
       <td>${fmtDataCurta(dataAtividade(a))}</td>
       <td><div class="protocolo-cel">${protocolo}</div>${a['Etiqueta'] ? `<div class="etiqueta-cel">Etiqueta: ${a['Etiqueta']}</div>` : ''}</td>
@@ -500,6 +533,9 @@ function renderTabela(){
       <td>${a['Tipo de Solicitação']||'—'}</td>
       <td>${itensHtml}</td>
       <td><span class="status-pill ${statusClasse(status)}">${STATUS_LABELS[status]||status||'—'}</span></td>
+      <td><span class="metrica-cel ${faixaMTTR}">${a['MTTR']||'—'}</span></td>
+      <td><span class="metrica-cel ${faixaMTTD}">${a['MTTD']||'—'}</span></td>
+      <td><span class="metrica-cel ${faixaTMC}">${a['TMC']||'—'}</span></td>
       <td>${(material&&material.baixadoPor)||'—'}</td>
       <td><span class="ciclo-cel ${ciclo>1?'alerta':''}">${ciclo}</span></td>
     </tr>`;
@@ -633,6 +669,9 @@ window.exportarExcel = function(){
       'Categoria 4': a['Categoria 4']||'',
       'Conta Contábil': a['Conta Contábil']||'',
       'Status': STATUS_LABELS[a['Status']] || a['Status'] || '',
+      'MTTR': a['MTTR']||'',
+      'MTTD': a['MTTD']||'',
+      'TMC': a['TMC']||'',
       'Status LPU': a['Status LPU']||'',
       'Status LPU Apoio': a['Status LPU Apoio']||'',
       'Itens Material': material ? material.itens.map(it=>it['Descrição']).join('; ') : '',

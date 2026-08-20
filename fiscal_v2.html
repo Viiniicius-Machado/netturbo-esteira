@@ -193,7 +193,7 @@ main{max-width:700px;margin:0 auto;padding:1.2rem 1rem 0}
   <section class="card">
     <div class="card-header"><h2>Ocorrências e Providências</h2></div>
     <div class="card-body">
-      <div class="field"><label>Ocorrências Identificadas</label><textarea id="ocorrencias" placeholder="Liste as irregularidades encontradas..."></textarea></div>
+      <div class="field" id="campo-ocorrencias"><label>Ocorrências Identificadas</label><textarea id="ocorrencias" placeholder="Liste as irregularidades encontradas..."></textarea></div>
       <div class="field"><label>Providências Determinadas</label><textarea id="providencias" placeholder="Quais ações foram determinadas..."></textarea></div>
       <div class="grid2">
         <div class="field"><label>Prazo para Correção</label><input type="date" id="prazo-correcao"/></div>
@@ -321,6 +321,11 @@ function onTipoChange(){
     campoModalidade.style.display = "none";
     document.getElementById("modalidade-visita").value = "";
   }
+  // Em Fiscalização de Chamado · Oportunidade só faz sentido registrar a
+  // providência tomada, não "ocorrências identificadas" (pedido do Vinicius, 2026-08-20).
+  const modalidade = document.getElementById("modalidade-visita").value;
+  const isOportunidade = tipo === "FISCALIZAÇÃO DE CHAMADO" && modalidade === "OPORTUNIDADE";
+  document.getElementById("campo-ocorrencias").style.display = isOportunidade ? "none" : "";
   checkStatus = {};
   buildChecklist(checklistTipoAtual());
 }
@@ -530,6 +535,7 @@ function buildPDFHtml(){
   const tipo = v("tipo-relatorio") || "RELATÓRIO DE FISCALIZAÇÃO";
   const modalidade = v("modalidade-visita");
   const tipoLabel = tipo === "FISCALIZAÇÃO DE CHAMADO" && modalidade ? `${tipo} · ${modalidade}` : tipo;
+  const isOportunidade = tipo === "FISCALIZAÇÃO DE CHAMADO" && modalidade === "OPORTUNIDADE";
   const checklistTipo = checklistTipoAtual();
   const dataFormatada = fmtDate(v("data-rel"));
   const stGeral = v("status-geral");
@@ -616,10 +622,10 @@ function buildPDFHtml(){
     <!-- OCORRÊNCIAS -->
     <table style="width:100%;border-collapse:separate;border-spacing:0;margin-bottom:24px;border:1px solid #d4ddd8;border-radius:6px;overflow:hidden">
       <tr><td style="background:#8CBF3F;padding:8px 12px;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #7aad35">Ocorrências e Providências</td></tr>
-      <tr><td style="background:#fff;padding:10px 12px;border-bottom:1px solid #e8efe0">
+      ${isOportunidade?"":`<tr><td style="background:#fff;padding:10px 12px;border-bottom:1px solid #e8efe0">
         <div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7585;margin-bottom:5px">Ocorrências Identificadas</div>
         <div style="font-size:11px;color:#1a1a1a;white-space:pre-wrap;min-height:40px">${v("ocorrencias")||"Nenhuma"}</div>
-      </td></tr>
+      </td></tr>`}
       <tr><td style="background:#fafcf7;padding:10px 12px${v("prazo-correcao")?";border-bottom:1px solid #e8efe0":""}">
         <div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7585;margin-bottom:5px">Providências Determinadas</div>
         <div style="font-size:11px;color:#1a1a1a;white-space:pre-wrap;min-height:40px">${v("providencias")||"—"}</div>

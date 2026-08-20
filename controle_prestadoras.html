@@ -171,7 +171,6 @@
   <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
   <div>
     <div class="topbar-brand">Controle de Obras · Prestadoras</div>
-    <div class="topbar-sub">VAL · SOLUTEC · OLIVEIRA · PV TELECOM</div>
   </div>
   <div class="topbar-spacer"></div>
   <a class="voltar-link" href="painel.html">&larr; Painel</a>
@@ -831,6 +830,7 @@ function renderEvolucaoFixo(chave, chaveFixo, segmento){
     <div class="rank-item">
       <div class="rank-main">
         <div class="rank-nome"><span>${m.label}</span><b>${fmtMoeda(m.valor)}</b></div>
+        <div class="rank-sub">&nbsp;</div>
         <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(m.valor/max*100).toFixed(1)}%;${m.atual?'opacity:.5':''}"></div></div>
       </div>
     </div>
