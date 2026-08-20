@@ -777,7 +777,14 @@ function renderContratosFixos(chave){
     });
   });
 
+  // Salva a cada tecla digitada (não só no blur/Enter) — se a pessoa sair da tela
+  // no meio da digitação, o valor já está gravado no localStorage. O recálculo visual
+  // dos totais/gauge só acontece no blur ("change"), pra não perder o foco do campo
+  // a cada tecla (renderOrcamento reconstrói o card inteiro).
   document.querySelectorAll('#contratosFixosBody input[data-excedente-contrato]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      setExcedenteAtividades(chave, inp.dataset.excedenteContrato, Math.max(0, Number(inp.value) || 0));
+    });
     inp.addEventListener('change', () => {
       setExcedenteAtividades(chave, inp.dataset.excedenteContrato, Math.max(0, Number(inp.value) || 0));
       renderOrcamento();
