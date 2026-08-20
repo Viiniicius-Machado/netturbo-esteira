@@ -107,6 +107,8 @@
   .orcamento-linhas > div{display:flex;justify-content:space-between;gap:.5rem;font-size:.74rem;color:var(--text-muted);border-top:1px solid var(--border);padding-top:.4rem}
   .orcamento-linhas b{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.85rem;color:var(--text)}
   .orcamento-linhas .linha-destaque b{font-size:1.1rem}
+  .orcamento-linhas .linha-sub{border-top:none;padding-top:0;font-size:.68rem;opacity:.8}
+  .orcamento-linhas .linha-sub b{font-size:.76rem}
   .status-pill{display:inline-block;padding:.3rem .7rem;border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.04em;text-transform:uppercase;margin-top:.5rem}
   .status-pill.ok{background:rgba(139,195,74,.12);color:var(--green);border:1px solid rgba(139,195,74,.35)}
   .status-pill.warn{background:rgba(255,160,0,.12);color:var(--amber);border:1px solid rgba(255,160,0,.35)}
@@ -120,6 +122,17 @@
   .alerta-fora-manut .alerta-item b{color:var(--text);font-family:'Rajdhani',sans-serif;font-weight:700}
   .alerta-fora-manut .alerta-item .btn{flex-shrink:0}
 
+  .evolucao-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.2rem}
+  .evolucao-titulo{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.5rem}
+  .evolucao-titulo span{color:var(--accent)}
+
+  .excluidos-fora{margin-top:.7rem;border:1px solid var(--border);background:var(--surface2);border-radius:8px;padding:.55rem .8rem}
+  .excluidos-fora summary{cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em}
+  .excluidos-fora summary:hover{color:var(--accent)}
+  .excluidos-fora .exc-item{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.72rem;color:var(--text-muted);padding:.35rem 0;border-top:1px solid var(--border)}
+  .excluidos-fora .exc-item b{color:var(--text);font-family:'Rajdhani',sans-serif;font-weight:700}
+  .excluidos-fora .exc-item span.exc-data{flex-shrink:0;color:var(--text-muted)}
+
   /* ── contratos fixos ── */
   .contratos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem}
   .contrato-card{border:1px solid var(--border-hi);border-radius:8px;padding:.9rem 1rem;background:var(--surface2)}
@@ -129,6 +142,10 @@
   .contrato-var:first-of-type{border-top:none}
   .contrato-var label{display:flex;align-items:center;gap:.5rem;cursor:pointer;color:var(--text)}
   .contrato-var input[type=checkbox]{width:15px;height:15px;flex-shrink:0;accent-color:var(--green)}
+  .contrato-excedente{display:flex;align-items:center;gap:.5rem;font-size:.72rem;padding:.5rem 0;border-top:1px solid var(--border-hi);margin-top:.2rem;color:var(--text-dim)}
+  .contrato-excedente label{flex:1;min-width:0}
+  .contrato-excedente input[type=number]{width:60px;flex-shrink:0;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--text);font-size:.8rem;padding:.3rem .4rem;font-family:'Rajdhani',sans-serif;font-weight:700}
+  .contrato-excedente b{color:var(--amber);flex-shrink:0}
   .contrato-subtotal{margin-top:.7rem;padding-top:.6rem;border-top:1px solid var(--border-hi);font-family:'Rajdhani',sans-serif;font-weight:700;display:flex;justify-content:space-between;font-size:.85rem}
   .contratos-total{margin-top:1rem;padding-top:.9rem;border-top:1px solid var(--border-hi);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;display:flex;justify-content:space-between;gap:1rem}
 
@@ -201,9 +218,11 @@
             <div id="statusPillBox"></div>
             <div class="orcamento-linhas">
               <div class="linha-destaque">Gasto realizado <b id="orcGasto">–</b></div>
+              <div class="linha-sub">↳ Contrato LPU <b id="orcLpu">–</b></div>
+              <div class="linha-sub" id="linhaContratoFixo">↳ Contrato Fixo <b id="orcFixo">–</b></div>
               <div>Orçamento <b id="orcBudget">–</b></div>
               <div class="linha-destaque">Saldo <b id="orcSaldo">–</b></div>
-              <div>Ritmo diário <b id="orcRitmo">–</b></div>
+              <div>Ritmo diário (LPU) <b id="orcRitmo">–</b></div>
               <div>Projeção fim do mês <b id="orcProjecao">–</b></div>
             </div>
             <div class="budget-edit">
@@ -213,6 +232,7 @@
           </div>
         </div>
         <div id="alertaForaSegmentos"></div>
+        <div id="excluidosForaSegmento"></div>
       </div>
     </div>
   </div>
@@ -224,6 +244,22 @@
       <div class="contratos-total">
         <span>Total contratos fixos (somado no Gasto realizado de Manutenção)</span>
         <b id="totalContratosFixos">–</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="cardEvolucaoMensal">
+    <div class="card-header">Evolução Mensal</div>
+    <div class="card-body">
+      <div class="evolucao-grid">
+        <div class="evolucao-bloco">
+          <div class="evolucao-titulo">Entregas de relatório LPU — <span id="evolucaoSegLabel"></span></div>
+          <div id="evolucaoLpuBody"></div>
+        </div>
+        <div class="evolucao-bloco" id="evolucaoFixoWrap">
+          <div class="evolucao-titulo">Contrato Fixo — <span id="evolucaoFixoLabel"></span></div>
+          <div id="evolucaoFixoBody"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -275,6 +311,8 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUl
 const LS_KEY = 'netturbo_obras_terceirizadas_v1';
 const LS_BUDGET_KEY = 'netturbo_obras_budget_v1';
 const LS_CONTRATOS_KEY = 'netturbo_obras_contratos_fixos_v1';
+const LS_HISTORICO_KEY = 'netturbo_obras_historico_lpu_v1';
+const LS_EXCLUIDOS_KEY = 'netturbo_obras_excluidos_fora_segmento_v1';
 const EMPRESAS_CANONICAS = ['VAL TELECOM','SOLUTEC','OLIVEIRA TELECOM','PV TELECOM'];
 
 /* ═══════════════════════════ SEED (dados já importados dos PDFs anexados) ═══════════════════════════ */
@@ -327,7 +365,7 @@ function segmentoAtual(){ return SEGMENTOS.find(s => s.id === SEGMENTO_ATIVO) ||
 // pra não depender da quantidade real de acionamentos do mês.
 const CONTRATOS_FIXOS = [
   {
-    id:'val_noturno', label:'VAL NOTURNO', metaAtividades:40, valorAcionamento:375, valorFixo:15000,
+    id:'val_noturno', label:'VAL NOTURNO', metaAtividades:40, valorAcionamento:375, valorFixo:15000, valorExcedente:380,
     variaveis:[
       { id:'plantao_fds', label:'CUMPRIR O PLANTÃO NO FIM DE SEMANA ESCALADO', valor:1000 },
       { id:'sla_4h', label:'POR MANTER O SLA DE 4 HORAS', valor:500 },
@@ -335,12 +373,18 @@ const CONTRATOS_FIXOS = [
     ],
   },
   {
-    id:'val_diurno', label:'VAL DIURNO', metaAtividades:80, valorAcionamento:325, valorFixo:26000,
+    id:'val_diurno', label:'VAL DIURNO', metaAtividades:80, valorAcionamento:325, valorFixo:26000, valorExcedente:380,
     variaveis:[
-      { id:'plantao_fds', label:'CUMPRIR O PLANTÃO NO FIM DE SEMANA ESCALADO', valor:5000 },
-      { id:'sla_4h', label:'POR MANTER O SLA DE 4 HORAS', valor:1500 },
-      { id:'sem_pendencia', label:'POR MANTER OS ATENDIMENTOS SEM NENHUMA PENDÊNCIA TÉCNICA', valor:1500 },
+      { id:'plantao_fds', label:'CUMPRIR O PLANTÃO NO FIM DE SEMANA ESCALADO', valor:3333.33 },
+      { id:'sla_4h', label:'POR MANTER O SLA DE 4 HORAS', valor:1000 },
+      { id:'sem_pendencia', label:'POR MANTER OS ATENDIMENTOS SEM NENHUMA PENDÊNCIA TÉCNICA', valor:1000 },
     ],
+  },
+  {
+    // sem variáveis e sem excedente configurado ainda (pedido do Vinicius em 2026-08-20) —
+    // valorExcedente:0 desliga o campo "atividades acima da meta" no card (ver renderContratosFixos).
+    id:'quality', label:'QUALITY', metaAtividades:18, valorAcionamento:555.56, valorFixo:10000, valorExcedente:0,
+    variaveis:[],
   },
 ];
 function carregarContratosFixos(){
@@ -359,8 +403,24 @@ function setVariavelBatida(chave, contratoId, varId, valor){
   dados[chave][contratoId][varId] = valor;
   salvarContratosFixos(dados);
 }
+// atividades excedentes: quando a equipe passa da meta do ciclo, cada atividade extra sai do
+// valor fixo/acionamento normal e passa a custar o valor de excedente do contrato (pedido do
+// Vinicius em 2026-08-20 — hoje R$380 tanto pro NOTURNO quanto pro DIURNO). Guardado na mesma
+// chave de ciclo (_excedenteQtd) pra também resetar quando fecha a folha, igual as variáveis.
+function excedenteAtividades(chave, contratoId){
+  const dados = carregarContratosFixos();
+  return Number(dados[chave] && dados[chave][contratoId] && dados[chave][contratoId]._excedenteQtd) || 0;
+}
+function setExcedenteAtividades(chave, contratoId, qtd){
+  const dados = carregarContratosFixos();
+  if (!dados[chave]) dados[chave] = {};
+  if (!dados[chave][contratoId]) dados[chave][contratoId] = {};
+  dados[chave][contratoId]._excedenteQtd = qtd;
+  salvarContratosFixos(dados);
+}
 function totalContratoFixo(chave, contrato){
-  return contrato.variaveis.reduce((s,v) => s + (variavelBatida(chave, contrato.id, v.id) ? v.valor : 0), contrato.valorFixo);
+  const totalVariaveis = contrato.variaveis.reduce((s,v) => s + (variavelBatida(chave, contrato.id, v.id) ? v.valor : 0), contrato.valorFixo);
+  return totalVariaveis + excedenteAtividades(chave, contrato.id) * contrato.valorExcedente;
 }
 function totalContratosFixosMes(chave){
   return CONTRATOS_FIXOS.reduce((s,c) => s + totalContratoFixo(chave, c), 0);
@@ -368,6 +428,22 @@ function totalContratosFixosMes(chave){
 
 function diasNoMes(ano, mesIdx){ return new Date(ano, mesIdx + 1, 0).getDate(); }
 function chaveMes(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+
+// contratos fixos fecham em ciclo próprio (21 a 20, pagamento dia 28) — não bate com o mês
+// calendário usado pela LPU (01 a 30, pagamento dia 15). A chave do ciclo é o mês em que ele
+// fecha/paga: de 21/ago a 20/set é rotulado "2026-09" (pedido do Vinicius em 2026-08-20).
+function chaveCicloFixo(d){
+  let ano = d.getFullYear(), mes = d.getMonth();
+  if (d.getDate() >= 21){ mes += 1; if (mes > 11){ mes = 0; ano += 1; } }
+  return ano + '-' + String(mes + 1).padStart(2,'0');
+}
+function labelCicloFixo(chave){
+  const [ano, mes] = chave.split('-').map(Number);
+  const fimCiclo = new Date(ano, mes - 1, 20);
+  const inicioCiclo = new Date(ano, mes - 2, 21);
+  const fmtDia = dt => dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+  return `${fmtDia(inicioCiclo)} a ${fmtDia(fimCiclo)} · pagamento dia 28/${String(mes).padStart(2,'0')}`;
+}
 
 function idRegistro(rec){
   // clientePop entra na chave porque em alguns relatórios (ex.: "Mão de Obra Disponível")
@@ -434,6 +510,36 @@ function salvarBudgetSegmento(chave, segId, valor){
   if (!budgets[chave]) budgets[chave] = {};
   budgets[chave][segId] = valor;
   salvarBudgets(budgets);
+}
+
+// histórico mensal (evolução das entregas de relatório LPU): como a base de obras é zerada
+// manualmente no fechamento (btnExcluirTodos), guardamos aqui um retrato de cada mês fechado
+// — sem isso não haveria como comparar mês a mês (pedido do Vinicius em 2026-08-20).
+function carregarHistorico(){
+  try { return JSON.parse(localStorage.getItem(LS_HISTORICO_KEY) || '[]') || []; }
+  catch(e){ return []; }
+}
+function salvarHistorico(lista){ localStorage.setItem(LS_HISTORICO_KEY, JSON.stringify(lista)); }
+function capturarSnapshotMes(){
+  const hoje = new Date();
+  const chave = chaveMes(hoje);
+  const chaveFixo = chaveCicloFixo(hoje);
+  const snap = { chave, fechadoEm: hoje.toISOString(), segmentos:{} };
+  SEGMENTOS.forEach(seg => {
+    const lista = TODAS_OBRAS.filter(seg.match);
+    snap.segmentos[seg.id] = {
+      lpu: lista.reduce((s,r) => s + r.totalGeral, 0),
+      qtd: lista.length,
+      fixo: seg.id === 'manutencao' ? totalContratosFixosMes(chaveFixo) : 0,
+    };
+  });
+  const historico = carregarHistorico().filter(h => h.chave !== chave);
+  historico.push(snap);
+  salvarHistorico(historico);
+}
+function labelMesChave(chave){
+  const [ano, mes] = chave.split('-').map(Number);
+  return new Date(ano, mes - 1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.', '');
 }
 
 /* ═══════════════════════════ PARSER (PDF → registro) — mesma lógica usada para gerar o SEED ═══════════════════════════ */
@@ -643,7 +749,7 @@ function renderContratosFixos(chave){
   if (SEGMENTO_ATIVO !== 'manutencao'){ cardEl.style.display = 'none'; return; }
   cardEl.style.display = '';
 
-  document.getElementById('mesContratosLabel').textContent = document.getElementById('mesOrcamentoLabel').textContent;
+  document.getElementById('mesContratosLabel').textContent = labelCicloFixo(chave);
 
   document.getElementById('contratosFixosBody').innerHTML = CONTRATOS_FIXOS.map(c => `
     <div class="contrato-card">
@@ -655,6 +761,12 @@ function renderContratosFixos(chave){
           <b>${fmtMoeda(v.valor)}</b>
         </div>
       `).join('')}
+      ${c.valorExcedente ? `
+      <div class="contrato-excedente">
+        <label>Atividades acima da meta (${fmtMoeda(c.valorExcedente)} cada)</label>
+        <input type="number" min="0" step="1" data-excedente-contrato="${c.id}" value="${excedenteAtividades(chave, c.id) || ''}" placeholder="0"/>
+        <b>${fmtMoeda(excedenteAtividades(chave, c.id) * c.valorExcedente)}</b>
+      </div>` : ''}
       <div class="contrato-subtotal"><span>Total ${c.label}</span><span>${fmtMoeda(totalContratoFixo(chave, c))}</span></div>
     </div>
   `).join('');
@@ -666,18 +778,78 @@ function renderContratosFixos(chave){
     });
   });
 
+  document.querySelectorAll('#contratosFixosBody input[data-excedente-contrato]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      setExcedenteAtividades(chave, inp.dataset.excedenteContrato, Math.max(0, Number(inp.value) || 0));
+      renderOrcamento();
+    });
+  });
+
   document.getElementById('totalContratosFixos').textContent = fmtMoeda(totalContratosFixosMes(chave));
+}
+
+function renderEvolucaoLpu(chave, segmento){
+  const listaAtual = TODAS_OBRAS.filter(segmento.match);
+  const atual = { chave, valor: listaAtual.reduce((s,r) => s + r.totalGeral, 0), qtd: listaAtual.length, atual:true };
+
+  const meses = carregarHistorico()
+    .filter(h => h.chave !== chave && h.segmentos && h.segmentos[segmento.id])
+    .sort((a,b) => a.chave.localeCompare(b.chave))
+    .slice(-5)
+    .map(h => ({ chave:h.chave, valor:h.segmentos[segmento.id].lpu, qtd:h.segmentos[segmento.id].qtd, atual:false }))
+    .concat([atual]);
+
+  document.getElementById('evolucaoSegLabel').textContent = segmento.label;
+  const max = Math.max(1, ...meses.map(m => m.valor));
+  document.getElementById('evolucaoLpuBody').innerHTML = meses.map(m => `
+    <div class="rank-item">
+      <div class="rank-main">
+        <div class="rank-nome"><span>${labelMesChave(m.chave)}${m.atual ? ' (em andamento)' : ''}</span><b>${fmtMoeda(m.valor)}</b></div>
+        <div class="rank-sub">${m.qtd} relatório(s)</div>
+        <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(m.valor/max*100).toFixed(1)}%;${m.atual?'opacity:.5':''}"></div></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderEvolucaoFixo(chave, chaveFixo, segmento){
+  const wrapEl = document.getElementById('evolucaoFixoWrap');
+  if (segmento.id !== 'manutencao'){ wrapEl.style.display = 'none'; return; }
+  wrapEl.style.display = '';
+  document.getElementById('evolucaoFixoLabel').textContent = CONTRATOS_FIXOS.map(c => c.label).join(' + ');
+
+  const atual = { label: labelCicloFixo(chaveFixo) + ' (em andamento)', valor: totalContratosFixosMes(chaveFixo), atual:true };
+  const meses = carregarHistorico()
+    .filter(h => h.chave !== chave && h.segmentos && h.segmentos.manutencao)
+    .sort((a,b) => a.chave.localeCompare(b.chave))
+    .slice(-5)
+    .map(h => ({ label: labelMesChave(h.chave), valor: h.segmentos.manutencao.fixo, atual:false }))
+    .concat([atual]);
+
+  const max = Math.max(1, ...meses.map(m => m.valor));
+  document.getElementById('evolucaoFixoBody').innerHTML = meses.map(m => `
+    <div class="rank-item">
+      <div class="rank-main">
+        <div class="rank-nome"><span>${m.label}</span><b>${fmtMoeda(m.valor)}</b></div>
+        <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(m.valor/max*100).toFixed(1)}%;${m.atual?'opacity:.5':''}"></div></div>
+      </div>
+    </div>
+  `).join('');
 }
 
 function renderOrcamento(){
   const hoje = new Date();
   const ano = hoje.getFullYear(), mesIdx = hoje.getMonth();
   const chave = chaveMes(hoje);
+  // contrato LPU fecha por mês calendário (01 a 30, pagamento dia 15); contratos fixos fecham
+  // em ciclo próprio (21 a 20, pagamento dia 28) — por isso usam chaves diferentes, senão as
+  // variáveis marcadas resetariam antes ou depois da folha de pagamento real (2026-08-20).
+  const chaveFixo = chaveCicloFixo(hoje);
   const segmento = segmentoAtual();
 
   renderChipsSegmento();
   document.getElementById('mesOrcamentoLabel').textContent = new Date(ano, mesIdx, 1).toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
-  renderContratosFixos(chave);
+  renderContratosFixos(chaveFixo);
 
   // orçamento é um bolo único por segmento — soma de TODAS as prestadoras e TODOS os
   // relatórios cadastrados na tela que casam com a conta contábil do segmento ativo,
@@ -687,8 +859,20 @@ function renderOrcamento(){
   // Melhoria REDE e Preventiva adicionados em 2026-08-19). Manutenção também soma os
   // contratos fixos VAL NOTURNO/DIURNO, que não vêm de PDF importado (2026-08-19).
   const lista = TODAS_OBRAS.filter(segmento.match);
-  let gasto = lista.reduce((s,r) => s + r.totalGeral, 0);
-  if (segmento.id === 'manutencao') gasto += totalContratosFixosMes(chave);
+  const gastoLpu = lista.reduce((s,r) => s + r.totalGeral, 0);
+  const gastoFixo = segmento.id === 'manutencao' ? totalContratosFixosMes(chaveFixo) : 0;
+  const gasto = gastoLpu + gastoFixo;
+
+  document.getElementById('orcLpu').textContent = fmtMoeda(gastoLpu);
+  const linhaFixoEl = document.getElementById('linhaContratoFixo');
+  if (segmento.id === 'manutencao'){
+    linhaFixoEl.style.display = '';
+    document.getElementById('orcFixo').textContent = fmtMoeda(gastoFixo);
+  } else {
+    linhaFixoEl.style.display = 'none';
+  }
+  renderEvolucaoLpu(chave, segmento);
+  renderEvolucaoFixo(chave, chaveFixo, segmento);
 
   const budget = budgetDoSegmento(chave, segmento.id);
   document.getElementById('inputBudget').value = budget || '';
@@ -696,8 +880,13 @@ function renderOrcamento(){
   const saldo = budget - gasto;
   const totalDias = diasNoMes(ano, mesIdx);
   const diasDecorridos = Math.min(hoje.getDate(), totalDias);
-  const ritmo = diasDecorridos ? gasto / diasDecorridos : 0;
-  const projecao = ritmo * totalDias;
+  // ritmo/projeção olham só o LPU: é o que varia dia a dia com obra nova entrando. O contrato
+  // fixo não tem "ritmo" — o valor dele já é praticamente conhecido (fixo + variáveis batidas
+  // + excedente lançado), então soma direto na projeção em vez de ser projetado por pace
+  // (pedido do Vinicius em 2026-08-20).
+  const ritmoLpu = diasDecorridos ? gastoLpu / diasDecorridos : 0;
+  const projecaoLpu = ritmoLpu * totalDias;
+  const projecao = projecaoLpu + gastoFixo;
 
   const pct = budget ? (gasto / budget * 100) : 0;
   desenharGauge(pct);
@@ -707,7 +896,7 @@ function renderOrcamento(){
   const orcSaldoEl = document.getElementById('orcSaldo');
   orcSaldoEl.textContent = budget ? fmtMoeda(saldo) : '—';
   orcSaldoEl.style.color = saldo < 0 ? 'var(--red)' : 'var(--text)';
-  document.getElementById('orcRitmo').textContent = fmtMoeda(ritmo) + '/dia';
+  document.getElementById('orcRitmo').textContent = fmtMoeda(ritmoLpu) + '/dia';
   document.getElementById('orcProjecao').textContent = fmtMoeda(projecao);
 
   let statusHtml = '';
@@ -726,6 +915,8 @@ function renderOrcamento(){
   // Manutenção, nem Melhoria REDE, nem Preventiva) — ficam escondidas no meio da lista
   // e não entram em orçamento nenhum. Mostra aqui pra facilitar achar e excluir, e não
   // depende do segmento selecionado no chip (é sempre "fora de tudo que é rastreado").
+  // São exatamente as 3 contas contábeis que o Vinicius gerencia — qualquer conta fora
+  // dessas 3 cai aqui como aviso (pedido do Vinicius em 2026-08-20).
   const semSegmento = TODAS_OBRAS.filter(r => !SEGMENTOS.some(s => s.match(r)));
   const alertaEl = document.getElementById('alertaForaSegmentos');
   if (semSegmento.length){
@@ -736,13 +927,14 @@ function renderOrcamento(){
         ${semSegmento.map(r => `
           <div class="alerta-item">
             <span><b>${r.empresa}</b> · ${r.clientePop || r.idEtiqueta || 'sem identificação'} · conta: <b>${r.contaDescricao || 'sem conta'}</b> · <b>${fmtMoeda(r.totalGeral)}</b></span>
-            <button class="btn btn-outline btn-sm" onclick="excluirObra('${r.id.replace(/'/g,"\\'")}')">Excluir</button>
+            <button class="btn btn-outline btn-sm" onclick="excluirObraForaSegmento('${r.id.replace(/'/g,"\\'")}')">Excluir</button>
           </div>
         `).join('')}
       </div>`;
   } else {
     alertaEl.innerHTML = '';
   }
+  renderExcluidosForaSegmento();
 }
 
 document.getElementById('btnSalvarBudget').addEventListener('click', () => {
@@ -806,6 +998,47 @@ function excluirObra(id){
   renderTudo();
 }
 window.excluirObra = excluirObra;
+
+// registro de exclusões de obras "fora dos segmentos" (conta contábil que não é das 3 que o
+// Vinicius gerencia): some da tela e não conta em orçamento nenhum, mas fica um histórico
+// visível de tudo que já foi excluído por esse caminho (pedido do Vinicius em 2026-08-20).
+function carregarExcluidosForaSegmento(){
+  try { return JSON.parse(localStorage.getItem(LS_EXCLUIDOS_KEY) || '[]') || []; }
+  catch(e){ return []; }
+}
+function salvarExcluidosForaSegmento(lista){ localStorage.setItem(LS_EXCLUIDOS_KEY, JSON.stringify(lista)); }
+function excluirObraForaSegmento(id){
+  const registro = TODAS_OBRAS.find(r => r.id === id);
+  if (!registro) return;
+  if (!confirm('Excluir esta obra fora dos segmentos rastreados? Ela some da tela, mas fica registrada no histórico de excluídos.')) return;
+  const excluidos = carregarExcluidosForaSegmento();
+  excluidos.push({
+    empresa: registro.empresa, clientePop: registro.clientePop, idEtiqueta: registro.idEtiqueta,
+    contaDescricao: registro.contaDescricao, totalGeral: registro.totalGeral,
+    excluidoEm: new Date().toISOString(),
+  });
+  salvarExcluidosForaSegmento(excluidos);
+  TODAS_OBRAS = TODAS_OBRAS.filter(r => r.id !== id);
+  salvarObras(TODAS_OBRAS);
+  renderTudo();
+}
+window.excluirObraForaSegmento = excluirObraForaSegmento;
+function renderExcluidosForaSegmento(){
+  const el = document.getElementById('excluidosForaSegmento');
+  const lista = carregarExcluidosForaSegmento().slice().reverse();
+  if (!lista.length){ el.innerHTML = ''; return; }
+  const total = lista.reduce((s,r) => s + r.totalGeral, 0);
+  el.innerHTML = `
+    <details class="excluidos-fora">
+      <summary>🗑 ${lista.length} excluído(s) fora dos segmentos (${fmtMoeda(total)}) — ver histórico</summary>
+      ${lista.map(r => `
+        <div class="exc-item">
+          <span><b>${r.empresa}</b> · ${r.clientePop || r.idEtiqueta || 'sem identificação'} · conta: <b>${r.contaDescricao || 'sem conta'}</b> · <b>${fmtMoeda(r.totalGeral)}</b></span>
+          <span class="exc-data">${new Date(r.excluidoEm).toLocaleDateString('pt-BR')}</span>
+        </div>
+      `).join('')}
+    </details>`;
+}
 
 function renderTabela(){
   let lista = obrasFiltradas().map(r => ({
@@ -879,6 +1112,7 @@ function renderChipsEmpresa(){
 
 document.getElementById('btnExcluirTodos').addEventListener('click', () => {
   if (!confirm('Isso apaga TODOS os relatórios importados nesta tela (não dá pra desfazer). Use ao fechar o mês, depois que as prestadoras forem pagas. Continuar?')) return;
+  capturarSnapshotMes();
   TODAS_OBRAS = [];
   salvarObras(TODAS_OBRAS);
   renderTudo();
