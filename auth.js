@@ -61,6 +61,7 @@
 .na-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
 .na-logo{width:110px;height:auto;background:#fff;border-radius:12px;padding:.5rem}
 .na-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a8c93c;text-align:center;margin:0}
+#naBrandTitle{font-weight:800;letter-spacing:0;display:inline-block;transform:skewX(-10deg);background:linear-gradient(90deg,#a8c93c,#c3e857);-webkit-background-clip:text;background-clip:text;color:transparent}
 .na-heading p{font-size:.63rem;color:#505050;letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
 .na-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
 .na-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#888}
@@ -93,7 +94,7 @@
     overlay.innerHTML = `
       <div class="na-box" id="naBoxLogin">
         <img class="na-logo" alt="Netturbo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" onerror="this.style.display='none'"/>
-        <div class="na-heading"><h2>Netturbo</h2><p>Acesso da Liderança</p></div>
+        <div class="na-heading"><h2 id="naBrandTitle">SIGONET</h2><p>Acesso da Liderança</p></div>
         <div class="na-field"><label>Nome</label><select id="naSelNome"><option value="">Carregando...</option></select></div>
         <div class="na-field"><label>PIN (fornecido pela liderança)</label><input type="password" inputmode="numeric" maxlength="6" id="naInputPin" placeholder="0000"/></div>
         <div class="na-field"><label>Complemento (sua senha pessoal)</label><input type="password" id="naInputComplemento" placeholder="Sua senha"/></div>

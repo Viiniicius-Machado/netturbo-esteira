@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Preenchimento LPU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -21,7 +24,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#ecf0eb;color:var(--g800
 .topbar{position:sticky;top:0;z-index:100;height:60px;background:#a8c93c;display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35);margin:-24px -16px 20px -16px}
 .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
 .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
-.topbar-brand{font-family:Arial,sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+.topbar-brand{font-family:'Rajdhani',Arial,sans-serif;font-size:1.05rem;font-weight:800;letter-spacing:.02em;color:#0a0a0a;text-transform:uppercase;line-height:1.1;display:inline-block;transform:skewX(-8deg)}
 .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
 .topbar-spacer{flex:1}
 .shell{max-width:960px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(26,92,55,.13);overflow:hidden}
@@ -150,6 +153,7 @@ textarea{resize:vertical;min-height:60px}
 .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;box-shadow:0 0 60px rgba(140,191,63,.08);padding:32px 28px;display:flex;flex-direction:column;align-items:center;gap:14px}
 .login-heading{text-align:center}
 .login-heading h2{font-size:19px;font-weight:700;color:var(--gd)}
+#loginBrandTitle{font-family:'Rajdhani',sans-serif;font-weight:800;letter-spacing:0;display:inline-block;transform:skewX(-10deg);background:linear-gradient(90deg,#a8c93c,#c3e857);-webkit-background-clip:text;background-clip:text;color:transparent}
 .login-heading p{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
 .login-field{width:100%;display:flex;flex-direction:column;gap:4px}
 .login-field label{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px}
@@ -176,7 +180,7 @@ textarea{resize:vertical;min-height:60px}
   <div class="login-box" id="boxLoginLpu">
     <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:110px;height:auto;background:#fff;border-radius:12px;padding:.5rem" onerror="this.style.display='none'"/>
     <div class="login-heading">
-      <h2>Netturbo</h2>
+      <h2 id="loginBrandTitle">SIGONET</h2>
       <p>Preenchimento LPU · Acesso de Prestadoras Terceiras</p>
     </div>
     <div class="login-field">
@@ -213,7 +217,7 @@ textarea{resize:vertical;min-height:60px}
   <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
   <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
   <div>
-    <div class="topbar-brand">Netturbo</div>
+    <div class="topbar-brand">SIGONET</div>
     <div class="topbar-sub">Preenchimento LPU</div>
   </div>
   <div class="topbar-spacer"></div>

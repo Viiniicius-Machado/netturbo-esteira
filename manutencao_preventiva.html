@@ -24,7 +24,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35);margin:-1.5rem -1rem 1.5rem -1rem}
 .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
 .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
-.topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;color:#0a0a0a;text-transform:uppercase;line-height:1.1}
+.topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:800;letter-spacing:.02em;color:#0a0a0a;text-transform:uppercase;line-height:1.1;display:inline-block;transform:skewX(-8deg)}
 .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
 .topbar-spacer{flex:1}
 .shell{max-width:1400px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.5);overflow:hidden}
@@ -102,6 +102,7 @@ textarea{resize:vertical;min-height:80px}
 #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
 .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
 .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);text-align:center}
+#loginBrandTitle{font-weight:800;letter-spacing:0;display:inline-block;transform:skewX(-10deg);background:linear-gradient(90deg,#a8c93c,#c3e857);-webkit-background-clip:text;background-clip:text;color:transparent}
 .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
 .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
 .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
@@ -147,7 +148,7 @@ textarea{resize:vertical;min-height:80px}
 <div id="login-overlay">
   <div class="login-box">
     <div class="login-heading">
-      <h2>Netturbo</h2>
+      <h2 id="loginBrandTitle">SIGONET</h2>
       <p>Manutenção Preventiva · Acesso do Técnico</p>
     </div>
     <div class="login-field">
@@ -178,7 +179,7 @@ textarea{resize:vertical;min-height:80px}
   <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
   <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
   <div>
-    <div class="topbar-brand">Netturbo</div>
+    <div class="topbar-brand">SIGONET</div>
     <div class="topbar-sub">Manutenção Preventiva</div>
   </div>
   <div class="topbar-spacer"></div>
