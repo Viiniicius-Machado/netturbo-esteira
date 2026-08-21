@@ -302,6 +302,10 @@ function doPost(e) {
     if (acao === 'RESET_COMPLEMENTO_LIDERANCA') return resetComplementoLideranca(ss, data);
     if (acao === 'SALVAR_CONTROLE_MATERIAL') return salvarControleMaterial(ss, data);
     if (acao === 'DAR_BAIXA_MATERIAL')    return darBaixaMaterial(ss, data);
+    if (acao === 'CRIAR_TAREFA_AGENDA')   return criarOuEditarTarefaAgenda(ss, data);
+    if (acao === 'EXCLUIR_TAREFA_AGENDA') return excluirTarefaAgenda(ss, data);
+    if (acao === 'CONCLUIR_TAREFA_AGENDA') return concluirTarefaAgenda(ss, data);
+    if (acao === 'MARCAR_TAREFA_VISTA')   return marcarTarefaVista(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -331,6 +335,8 @@ function doGet(e) {
   if (params.acao === 'LISTAR_USUARIOS_LIDERANCA') return listarUsuariosLideranca(ss);
   if (params.acao === 'LISTAR_CATALOGO_MATERIAIS') return listarCatalogoMateriais(ss);
   if (params.acao === 'LISTAR_CONTROLE_MATERIAL') return listarControleMaterial(ss);
+  if (params.acao === 'LISTAR_AGENDA_PESSOA') return listarAgendaPessoa(ss, params);
+  if (params.acao === 'CONTAR_TAREFAS_NAO_VISTAS') return contarTarefasNaoVistas(ss, params);
   return resposta('ok', { sistema: 'Netturbo Esteira de Despacho' });
 }
 
@@ -2637,6 +2643,262 @@ function darBaixaMaterial(ss, data) {
   });
 
   return resposta('ok', { atualizadas: atualizadas });
+}
+
+// ── AGENDA (calendário de tarefas com @menção — acessível pelo menu do
+// painel.html, liderança e técnico podem criar/ser marcados) ───────────────
+// Cada linha é uma tarefa de um dia. 'Mencionados'/'Vistos Por' guardam JSON
+// [{"nome":"...","tipo":"LIDERANCA|TECNICO"}] — o tipo junto do nome evita
+// colisão entre nome de líder e nome de técnico, que são dois sistemas de
+// login/sessão totalmente independentes (auth.js vs tecnico.html). 'Anexos'
+// segue o mesmo formato JSON [{"url":"...","nome":"..."}] de 'Anexos Despacho'.
+const ABA_AGENDA = 'AGENDA_TAREFAS';
+const HEADERS_AGENDA = [
+  'ID','Data','Título','Descrição','Criado Por','Criado Por Tipo',
+  'Mencionados','Anexos','Concluído','Timestamp Criação','Vistos Por'
+];
+
+function garantirAgenda(ss) {
+  return garantirAba(ss, ABA_AGENDA, HEADERS_AGENDA, '#1a1a1a', '#5aa9e6');
+}
+
+function gerarIdAgenda() {
+  return 'AGD-' + new Date().getTime();
+}
+
+function encontrarLinhaAgenda(sheet, id) {
+  const last = sheet.getLastRow();
+  if (last < 2) return null;
+  const data = sheet.getRange(2, 1, last - 1, HEADERS_AGENDA.length).getValues();
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][0]) === String(id)) return { linha: i + 2, dados: data[i] };
+  }
+  return null;
+}
+
+// Variante de autorizarAcaoQualquer que devolve o TIPO junto (LIDERANCA/
+// TECNICO) — a Agenda precisa saber de qual dos dois sistemas de sessão
+// veio o autor, não só o nome.
+function autorizarAutorAgenda(ss, data, acao, detalhe) {
+  let sess = validarSessao(ss, data.sessionToken, 'TECNICO');
+  let tipo = 'TECNICO';
+  if (!sess) { sess = validarSessao(ss, data.sessionToken, 'LIDERANCA'); tipo = 'LIDERANCA'; }
+  if (sess) {
+    const nome = tipo === 'TECNICO' ? sess.tecnico : sess.nome;
+    registrarLog(ss, acao, nome, sess.cargo, tipo, detalhe);
+    return { nome: nome, tipo: tipo };
+  }
+  if (EXIGIR_SESSAO) return null;
+  if (!data.nomeAutor || !data.tipoAutor) return null;
+  registrarLog(ss, acao, data.nomeAutor, '', data.tipoAutor, detalhe);
+  return { nome: data.nomeAutor, tipo: data.tipoAutor };
+}
+
+// Mesma ideia, só que pro lado GET (params de URL, não corpo de POST) — sem
+// log, é só leitura.
+function resolverPessoaSessaoAgenda(ss, params) {
+  let sess = validarSessao(ss, params.sessionToken, 'TECNICO');
+  if (sess) return { nome: sess.tecnico, tipo: 'TECNICO' };
+  sess = validarSessao(ss, params.sessionToken, 'LIDERANCA');
+  if (sess) return { nome: sess.nome, tipo: 'LIDERANCA' };
+  if (EXIGIR_SESSAO) return null;
+  if (params.nome && params.tipo) return { nome: params.nome, tipo: params.tipo };
+  return null;
+}
+
+function getOrCriarPastaAnexoAgenda() {
+  const NOME_PASTA = 'Netturbo Esteira - Anexos Agenda';
+  const pastas = DriveApp.getFoldersByName(NOME_PASTA);
+  if (pastas.hasNext()) return pastas.next();
+  return DriveApp.createFolder(NOME_PASTA);
+}
+
+// Cria (sem 'id') ou edita (com 'id', só adiciona/mantém — nunca apaga anexo
+// já salvo) uma tarefa. Anexos novos vêm em base64 e sobem pro Drive igual
+// salvarInfoDespacho já faz pros anexos de despacho.
+function criarOuEditarTarefaAgenda(ss, data) {
+  const autor = autorizarAutorAgenda(ss, data, 'CRIAR_TAREFA_AGENDA', data.titulo || '');
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+  if (!data.data || !data.titulo) return resposta('error', { message: 'Data e título são obrigatórios.' });
+
+  const sheet = garantirAgenda(ss);
+  const mencionados = Array.isArray(data.mencionados) ? data.mencionados.filter(m => m && m.nome && m.tipo) : [];
+
+  const novosAnexos = Array.isArray(data.anexos) ? data.anexos : [];
+  let anexosSubidos = [];
+  try {
+    novosAnexos.forEach(anexo => {
+      if (!anexo || !anexo.base64) return;
+      const bruto = String(anexo.base64);
+      const partes = bruto.split(',');
+      const base64Puro = partes.length > 1 ? partes[1] : partes[0];
+      const mimeMatch = bruto.match(/^data:([^;]+);base64,/);
+      const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+      const nomeArquivo = anexo.nome || 'anexo';
+      const bytes = Utilities.base64Decode(base64Puro);
+      const blob = Utilities.newBlob(bytes, mime, nomeArquivo);
+      const pasta = getOrCriarPastaAnexoAgenda();
+      const arquivo = pasta.createFile(blob);
+      arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      anexosSubidos.push({ url: arquivo.getUrl(), nome: nomeArquivo });
+    });
+  } catch (e) {
+    return resposta('error', { message: 'Falha ao salvar o anexo: ' + e.toString() });
+  }
+
+  if (data.id) {
+    const info = encontrarLinhaAgenda(sheet, data.id);
+    if (!info) return resposta('error', { message: 'Tarefa não encontrada.' });
+    // Só quem criou ou foi mencionado pode editar/anexar — sem isso, qualquer
+    // sessão válida (de outra pessoa qualquer) editaria uma tarefa alheia só
+    // sabendo o ID dela.
+    const criadoPorAtual = info.dados[HEADERS_AGENDA.indexOf('Criado Por')];
+    const criadoPorTipoAtual = info.dados[HEADERS_AGENDA.indexOf('Criado Por Tipo')];
+    let mencionadosAtuais = [];
+    try { mencionadosAtuais = JSON.parse(info.dados[HEADERS_AGENDA.indexOf('Mencionados')] || '[]'); } catch (e) {}
+    const podeEditar = (criadoPorAtual === autor.nome && criadoPorTipoAtual === autor.tipo) ||
+      mencionadosAtuais.some(m => m.nome === autor.nome && m.tipo === autor.tipo);
+    if (!podeEditar) return resposta('error', { message: 'Você não tem acesso a essa tarefa.' });
+
+    const idx = h => HEADERS_AGENDA.indexOf(h) + 1;
+    let anexosExistentes = [];
+    try { anexosExistentes = JSON.parse(info.dados[HEADERS_AGENDA.indexOf('Anexos')] || '[]'); } catch (e) {}
+    sheet.getRange(info.linha, idx('Data')).setValue(data.data);
+    sheet.getRange(info.linha, idx('Título')).setValue(data.titulo);
+    sheet.getRange(info.linha, idx('Descrição')).setValue(data.descricao || '');
+    // Só mexe em Mencionados se a chamada realmente mandou o campo — uma edição
+    // que só está anexando arquivo (ex.: técnico anexando foto pela agenda dele)
+    // não manda 'mencionados' e não pode apagar quem já tinha sido marcado.
+    if (Array.isArray(data.mencionados)) {
+      sheet.getRange(info.linha, idx('Mencionados')).setValue(JSON.stringify(mencionados));
+    }
+    sheet.getRange(info.linha, idx('Anexos')).setValue(JSON.stringify(anexosExistentes.concat(anexosSubidos)));
+    return resposta('ok', { id: data.id });
+  }
+
+  const id = gerarIdAgenda();
+  const row = sheet.getLastRow() + 1;
+  // Quem cria já entra em 'Vistos Por' — senão a própria tarefa apareceria como
+  // "não vista" (bolinha vermelha) pro criador dela mesma no calendário.
+  const vistosIniciais = JSON.stringify([{ nome: autor.nome, tipo: autor.tipo }]);
+  sheet.getRange(row, HEADERS_AGENDA.indexOf('Data') + 1, 1, 1).setNumberFormat('@STRING@');
+  sheet.getRange(row, 1, 1, HEADERS_AGENDA.length).setValues([[
+    id, data.data, data.titulo, data.descricao || '', autor.nome, autor.tipo,
+    JSON.stringify(mencionados), JSON.stringify(anexosSubidos), 'não',
+    new Date().toLocaleString('pt-BR'), vistosIniciais
+  ]]);
+  return resposta('ok', { id: id });
+}
+
+// Só quem criou pode excluir.
+function excluirTarefaAgenda(ss, data) {
+  const autor = autorizarAutorAgenda(ss, data, 'EXCLUIR_TAREFA_AGENDA', data.id || '');
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+  const sheet = garantirAgenda(ss);
+  const info = encontrarLinhaAgenda(sheet, data.id);
+  if (!info) return resposta('error', { message: 'Tarefa não encontrada.' });
+  const criadoPor = info.dados[HEADERS_AGENDA.indexOf('Criado Por')];
+  const criadoPorTipo = info.dados[HEADERS_AGENDA.indexOf('Criado Por Tipo')];
+  if (criadoPor !== autor.nome || criadoPorTipo !== autor.tipo) {
+    return resposta('error', { message: 'Só quem criou a tarefa pode excluí-la.' });
+  }
+  sheet.deleteRow(info.linha);
+  return resposta('ok', {});
+}
+
+// Criador ou qualquer mencionado pode marcar como concluída/reabrir.
+function concluirTarefaAgenda(ss, data) {
+  const autor = autorizarAutorAgenda(ss, data, 'CONCLUIR_TAREFA_AGENDA', data.id || '');
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+  const sheet = garantirAgenda(ss);
+  const info = encontrarLinhaAgenda(sheet, data.id);
+  if (!info) return resposta('error', { message: 'Tarefa não encontrada.' });
+
+  const criadoPor = info.dados[HEADERS_AGENDA.indexOf('Criado Por')];
+  const criadoPorTipo = info.dados[HEADERS_AGENDA.indexOf('Criado Por Tipo')];
+  let mencionados = [];
+  try { mencionados = JSON.parse(info.dados[HEADERS_AGENDA.indexOf('Mencionados')] || '[]'); } catch (e) {}
+  const souCriador = criadoPor === autor.nome && criadoPorTipo === autor.tipo;
+  const souMencionado = mencionados.some(m => m.nome === autor.nome && m.tipo === autor.tipo);
+  if (!souCriador && !souMencionado) return resposta('error', { message: 'Você não tem acesso a essa tarefa.' });
+
+  sheet.getRange(info.linha, HEADERS_AGENDA.indexOf('Concluído') + 1).setValue(data.concluido === false ? 'não' : 'sim');
+  return resposta('ok', {});
+}
+
+// Adiciona a pessoa logada em 'Vistos Por' — silencia o sininho pra ela
+// nessa tarefa específica. Idempotente (não duplica se já tinha visto).
+function marcarTarefaVista(ss, data) {
+  const autor = autorizarAutorAgenda(ss, data, 'MARCAR_TAREFA_VISTA', data.id || '');
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+  const sheet = garantirAgenda(ss);
+  const info = encontrarLinhaAgenda(sheet, data.id);
+  if (!info) return resposta('error', { message: 'Tarefa não encontrada.' });
+  let vistos = [];
+  try { vistos = JSON.parse(info.dados[HEADERS_AGENDA.indexOf('Vistos Por')] || '[]'); } catch (e) {}
+  if (!vistos.some(v => v.nome === autor.nome && v.tipo === autor.tipo)) {
+    vistos.push({ nome: autor.nome, tipo: autor.tipo });
+    sheet.getRange(info.linha, HEADERS_AGENDA.indexOf('Vistos Por') + 1).setValue(JSON.stringify(vistos));
+  }
+  return resposta('ok', {});
+}
+
+// Tarefas de um mês (params.mes = 'YYYY-MM') onde a pessoa logada é criadora
+// OU mencionada — nunca devolve tarefa de terceiros (agenda é privada por
+// pessoa, não um calendário de time).
+function listarAgendaPessoa(ss, params) {
+  const pessoa = resolverPessoaSessaoAgenda(ss, params);
+  if (!pessoa) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+  const sheet = garantirAgenda(ss);
+  if (sheet.getLastRow() < 2) return resposta('ok', { tarefas: [] });
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS_AGENDA.length).getValues();
+  const mes = String(params.mes || '');
+  const tarefas = [];
+  data.forEach(row => {
+    const obj = {};
+    HEADERS_AGENDA.forEach((h, i) => obj[h] = row[i]);
+    if (mes && String(obj['Data']).slice(0, 7) !== mes) return;
+    let mencionados = [];
+    try { mencionados = JSON.parse(obj['Mencionados'] || '[]'); } catch (e) {}
+    const souCriador = obj['Criado Por'] === pessoa.nome && obj['Criado Por Tipo'] === pessoa.tipo;
+    const souMencionado = mencionados.some(m => m.nome === pessoa.nome && m.tipo === pessoa.tipo);
+    if (!souCriador && !souMencionado) return;
+    let vistos = [];
+    try { vistos = JSON.parse(obj['Vistos Por'] || '[]'); } catch (e) {}
+    let anexos = [];
+    try { anexos = JSON.parse(obj['Anexos'] || '[]'); } catch (e) {}
+    tarefas.push({
+      id: obj['ID'], data: obj['Data'], titulo: obj['Título'], descricao: obj['Descrição'],
+      criadoPor: obj['Criado Por'], criadoPorTipo: obj['Criado Por Tipo'],
+      mencionados: mencionados, anexos: anexos, concluido: obj['Concluído'] === 'sim',
+      visto: vistos.some(v => v.nome === pessoa.nome && v.tipo === pessoa.tipo),
+      timestamp: obj['Timestamp Criação']
+    });
+  });
+  return resposta('ok', { tarefas: tarefas });
+}
+
+// Endpoint leve pro polling do sininho — só o número de menções ainda não
+// vistas (nunca conta tarefa que a própria pessoa criou, só as em que foi
+// marcada por outra pessoa).
+function contarTarefasNaoVistas(ss, params) {
+  const pessoa = resolverPessoaSessaoAgenda(ss, params);
+  if (!pessoa) return resposta('ok', { naoVistas: 0 });
+  const sheet = garantirAgenda(ss);
+  if (sheet.getLastRow() < 2) return resposta('ok', { naoVistas: 0 });
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS_AGENDA.length).getValues();
+  let count = 0;
+  data.forEach(row => {
+    const obj = {};
+    HEADERS_AGENDA.forEach((h, i) => obj[h] = row[i]);
+    let mencionados = [];
+    try { mencionados = JSON.parse(obj['Mencionados'] || '[]'); } catch (e) {}
+    if (!mencionados.some(m => m.nome === pessoa.nome && m.tipo === pessoa.tipo)) return;
+    let vistos = [];
+    try { vistos = JSON.parse(obj['Vistos Por'] || '[]'); } catch (e) {}
+    if (!vistos.some(v => v.nome === pessoa.nome && v.tipo === pessoa.tipo)) count++;
+  });
+  return resposta('ok', { naoVistas: count });
 }
 
 // ══════════════════════════════════════════════════════════════

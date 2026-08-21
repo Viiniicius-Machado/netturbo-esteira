@@ -59,10 +59,12 @@
   const CSS = `
 #na-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;font-family:'Inter',sans-serif}
 .na-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
-.na-logo{width:110px;height:auto;background:#fff;border-radius:12px;padding:.5rem}
+.na-logo{width:110px;height:auto}
 .na-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a8c93c;text-align:center;margin:0}
-#naBrandTitle{font-weight:800;letter-spacing:0;display:inline-block;transform:skewX(-10deg);background:linear-gradient(90deg,#a8c93c,#c3e857);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sigonet-mark{font-weight:800;letter-spacing:0;display:inline-block;transform:skewX(-10deg);background:linear-gradient(90deg,#a8c93c,#c3e857);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sigonet-n{display:inline-block;vertical-align:-.12em;flex-shrink:0;transform:skewX(-10deg)}
 .na-heading p{font-size:.63rem;color:#505050;letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
+.sigonet-full{font-size:.6rem;color:#6b7a5a;letter-spacing:.04em;text-transform:none;margin-top:.15rem;text-align:center}
 .na-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
 .na-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#888}
 .na-field select,.na-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:#e8e8e8;font-size:.92rem;padding:.7rem .9rem;width:100%;font-family:inherit}
@@ -76,6 +78,12 @@
 #na-chip{display:flex;align-items:center;gap:.5rem;font-size:.72rem;color:#0a0a0a;font-weight:600;font-family:'Inter',sans-serif}
 #na-chip button{-webkit-appearance:none;appearance:none;box-sizing:border-box;font-family:inherit;line-height:1;background:rgba(0,0,0,.12);border:1px solid rgba(0,0,0,.22);border-radius:20px;color:#0a0a0a;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:.35rem .75rem;cursor:pointer;transition:background .15s ease}
 #na-chip button:hover{background:rgba(0,0,0,.2)}
+#naBell{position:relative;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;padding:0;flex-shrink:0}
+#naBell svg{width:14px;height:14px}
+#naBell .na-bell-count{position:absolute;top:-4px;right:-4px;background:#e53935;color:#fff;font-size:.55rem;font-weight:700;border-radius:10px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;text-transform:none;letter-spacing:0}
+#naBell.na-bell-empty .na-bell-count{display:none}
+#na-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:#181818;border:1px solid #6b8a1f;border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:#a8c93c;box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:9998;white-space:nowrap;cursor:pointer}
+#na-toast.show{transform:translateX(-50%) translateY(0)}
 `;
 
   function injetarEstilo() {
@@ -94,7 +102,7 @@
     overlay.innerHTML = `
       <div class="na-box" id="naBoxLogin">
         <img class="na-logo" alt="Netturbo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" onerror="this.style.display='none'"/>
-        <div class="na-heading"><h2 id="naBrandTitle">SIGONET</h2><p>Acesso da Liderança</p></div>
+        <div class="na-heading"><h2><span class="sigonet-mark">SIGO</span><svg class="sigonet-n" viewBox="0 0 100 100" width="1em" height="1em"><path d="M18 20 A42 42 0 0 1 82 30" fill="none" stroke="#a8c93c" stroke-width="11" stroke-linecap="round"/><circle cx="50" cy="52" r="42" fill="none" stroke="#9a9a9a" stroke-width="4"/><path d="M27 76 L27 28 L73 72 L73 24" fill="none" stroke="#9a9a9a" stroke-width="10" stroke-linecap="square"/></svg><span class="sigonet-mark">ET</span></h2><p class="sigonet-full">Sistema Integrado de Gestão Operacional Netturbo</p><p>Acesso da Liderança</p></div>
         <div class="na-field"><label>Nome</label><select id="naSelNome"><option value="">Carregando...</option></select></div>
         <div class="na-field"><label>PIN (fornecido pela liderança)</label><input type="password" inputmode="numeric" maxlength="6" id="naInputPin" placeholder="0000"/></div>
         <div class="na-field"><label>Complemento (sua senha pessoal)</label><input type="password" id="naInputComplemento" placeholder="Sua senha"/></div>
@@ -144,9 +152,55 @@
     if (document.getElementById('na-chip')) return;
     const spacer = document.querySelector('.topbar-spacer');
     if (!spacer) return;
-    spacer.insertAdjacentHTML('afterend', `<div id="na-chip">Olá, ${sessao.nome}<button id="naBtnSair">Sair</button></div>`);
+    spacer.insertAdjacentHTML('afterend', `<div id="na-chip">` +
+      `<button id="naBell" class="na-bell-empty" title="Agenda">` +
+      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>` +
+      `<span class="na-bell-count">0</span></button>` +
+      `Olá, ${sessao.nome}<button id="naBtnSair">Sair</button></div>`);
     const btn = document.getElementById('naBtnSair');
     if (btn) btn.onclick = sair;
+    const bell = document.getElementById('naBell');
+    if (bell) bell.onclick = () => { location.href = 'painel.html?agenda=1'; };
+    iniciarPollingAgenda(sessao);
+  }
+
+  // ── Sininho da Agenda (menções pendentes) — poll leve (endpoint dedicado,
+  // só o número) igual às outras listas "lentas" do app, ver README ──
+  let agendaPollTimer = null;
+  function iniciarPollingAgenda(sessao) {
+    if (agendaPollTimer) return;
+    atualizarContadorAgenda(sessao);
+    agendaPollTimer = setInterval(() => atualizarContadorAgenda(sessao), 90000);
+  }
+
+  async function atualizarContadorAgenda(sessao) {
+    try {
+      const url = APPS_SCRIPT_URL + '?acao=CONTAR_TAREFAS_NAO_VISTAS&sessionToken=' +
+        encodeURIComponent(sessao.token || '') + '&nome=' + encodeURIComponent(sessao.nome) + '&tipo=LIDERANCA';
+      const resp = await fetch(url);
+      const result = await resp.json();
+      const count = Number(result.naoVistas) || 0;
+      const bell = document.getElementById('naBell');
+      if (bell) {
+        const badge = bell.querySelector('.na-bell-count');
+        if (badge) badge.textContent = count;
+        bell.classList.toggle('na-bell-empty', count === 0);
+      }
+      return count;
+    } catch (e) { return 0; }
+  }
+
+  function mostrarAvisoAgenda(count) {
+    let toast = document.getElementById('na-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'na-toast';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = 'Você tem ' + count + (count > 1 ? ' avisos novos' : ' aviso novo') + ' na agenda';
+    toast.onclick = () => { location.href = 'painel.html?agenda=1'; };
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 5000);
   }
 
   function mostrarBloqueado(tela) {
@@ -197,6 +251,7 @@
 
         overlay.style.display = 'none';
         injetarChip(sessao);
+        atualizarContadorAgenda(sessao).then(count => { if (count > 0) mostrarAvisoAgenda(count); });
         aoEntrar();
       } catch (e) {
         mostrarErro('naErro', 'Erro ao conectar com o servidor.');

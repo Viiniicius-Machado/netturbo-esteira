@@ -21,10 +21,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#ecf0eb;color:var(--g800
 /* Barra igual a de todas as outras telas (cor fixa em hex — esta página usa uma
    paleta clara própria, sem a variável --accent do resto do site). Margens
    negativas cancelam o padding do body pra ficar coladinha nas bordas/topo. */
-.topbar{position:sticky;top:0;z-index:100;height:60px;background:#a8c93c;display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35);margin:-24px -16px 20px -16px}
+.topbar{position:sticky;top:0;z-index:100;height:60px;background:linear-gradient(120deg,#3d4f11,#8bc34a,#a8c93c);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35);margin:-24px -16px 20px -16px}
 .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
-.topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
-.topbar-brand{font-family:'Rajdhani',Arial,sans-serif;font-size:1.05rem;font-weight:800;letter-spacing:.02em;color:#0a0a0a;text-transform:uppercase;line-height:1.1;display:inline-block;transform:skewX(-8deg)}
+.topbar-brand{font-family:'Rajdhani',Arial,sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:.02em;color:#0a0a0a;text-transform:uppercase;line-height:1.1;display:inline-block;transform:skewX(-8deg)}
 .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
 .topbar-spacer{flex:1}
 .shell{max-width:960px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(26,92,55,.13);overflow:hidden}
@@ -153,7 +152,10 @@ textarea{resize:vertical;min-height:60px}
 .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;box-shadow:0 0 60px rgba(140,191,63,.08);padding:32px 28px;display:flex;flex-direction:column;align-items:center;gap:14px}
 .login-heading{text-align:center}
 .login-heading h2{font-size:19px;font-weight:700;color:var(--gd)}
-#loginBrandTitle{font-family:'Rajdhani',sans-serif;font-weight:800;letter-spacing:0;display:inline-block;transform:skewX(-10deg);background:linear-gradient(90deg,#a8c93c,#c3e857);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sigonet-mark{font-family:'Rajdhani',sans-serif;font-weight:800;letter-spacing:0;display:inline-block;transform:skewX(-10deg);background:linear-gradient(90deg,#a8c93c,#c3e857);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sigonet-n{display:inline-block;vertical-align:-.12em;flex-shrink:0;transform:skewX(-10deg)}
+.topbar-n{display:inline-block;vertical-align:-.12em;flex-shrink:0}
+.sigonet-full{font-family:'Rajdhani',sans-serif;font-size:11px;color:#888;letter-spacing:.02em;margin-top:2px;text-align:center}
 .login-heading p{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
 .login-field{width:100%;display:flex;flex-direction:column;gap:4px}
 .login-field label{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px}
@@ -178,9 +180,10 @@ textarea{resize:vertical;min-height:60px}
      restrito a prestadoras terceiras, NETTURBO não pode preencher LPU -->
 <div id="login-overlay">
   <div class="login-box" id="boxLoginLpu">
-    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:110px;height:auto;background:#fff;border-radius:12px;padding:.5rem" onerror="this.style.display='none'"/>
+    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:110px;height:auto" onerror="this.style.display='none'"/>
     <div class="login-heading">
-      <h2 id="loginBrandTitle">SIGONET</h2>
+      <h2 id="loginBrandTitle"><span class="sigonet-mark">SIGO</span><svg class="sigonet-n" viewBox="0 0 100 100" width="1em" height="1em"><path d="M18 20 A42 42 0 0 1 82 30" fill="none" stroke="#a8c93c" stroke-width="11" stroke-linecap="round"/><circle cx="50" cy="52" r="42" fill="none" stroke="#9a9a9a" stroke-width="4"/><path d="M27 76 L27 28 L73 72 L73 24" fill="none" stroke="#9a9a9a" stroke-width="10" stroke-linecap="square"/></svg><span class="sigonet-mark">ET</span></h2>
+      <p class="sigonet-full">Sistema Integrado de Gestão Operacional Netturbo</p>
       <p>Preenchimento LPU · Acesso de Prestadoras Terceiras</p>
     </div>
     <div class="login-field">
@@ -204,7 +207,7 @@ textarea{resize:vertical;min-height:60px}
     <button class="login-btn" onclick="fazerLogin()">Entrar</button>
   </div>
   <div class="login-box" id="boxBloqueado" style="display:none">
-    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:110px;height:auto;background:#fff;border-radius:12px;padding:.5rem" onerror="this.style.display='none'"/>
+    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:110px;height:auto" onerror="this.style.display='none'"/>
     <div class="login-heading">
       <h2>Acesso Restrito</h2>
     </div>
@@ -215,9 +218,8 @@ textarea{resize:vertical;min-height:60px}
 <div id="app" style="display:none">
 <header class="topbar">
   <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
-  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
   <div>
-    <div class="topbar-brand">SIGONET</div>
+    <div class="topbar-brand">SIGO<svg class="topbar-n" viewBox="0 0 100 100" width="1em" height="1em"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="6"/><path d="M30 75 L30 32 L70 70 L70 27" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/></svg>ET</div>
     <div class="topbar-sub">Preenchimento LPU</div>
   </div>
   <div class="topbar-spacer"></div>

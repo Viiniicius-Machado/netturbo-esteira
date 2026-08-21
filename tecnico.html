@@ -21,9 +21,13 @@
 
     #login-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
     .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
+    .login-heading{text-align:center}
     .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);text-align:center}
-    #tituloEmpresa{font-weight:800;letter-spacing:0;display:inline-block;transform:skewX(-10deg);background:linear-gradient(90deg,#a8c93c,#c3e857);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .sigonet-mark{font-weight:800;letter-spacing:0;display:inline-block;transform:skewX(-10deg);background:linear-gradient(90deg,#a8c93c,#c3e857);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .sigonet-n{display:inline-block;vertical-align:-.12em;flex-shrink:0;transform:skewX(-10deg)}
+    .topbar-n{display:inline-block;vertical-align:-.12em;flex-shrink:0}
     .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
+    .sigonet-full{font-size:.58rem;color:var(--text-muted);letter-spacing:.03em;text-transform:none;margin-top:.15rem;text-align:center}
     .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
     .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
     .login-field select,.login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.92rem;padding:.7rem .9rem;width:100%}
@@ -35,10 +39,9 @@
     .login-info.visible{display:block}
     .link-esqueci{font-size:.72rem;color:var(--accent);cursor:pointer;text-align:center;text-decoration:underline;margin-top:-.4rem}
 
-    .topbar{position:sticky;top:0;z-index:100;height:60px;background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar{position:sticky;top:0;z-index:100;height:60px;background:linear-gradient(120deg,#3d4f11,#8bc34a,#a8c93c);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
     .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
-    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
-    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:800;letter-spacing:.02em;color:#0a0a0a;text-transform:uppercase;line-height:1.1;display:inline-block;transform:skewX(-8deg)}
+        .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:.02em;color:#0a0a0a;text-transform:uppercase;line-height:1.1;display:inline-block;transform:skewX(-8deg)}
     .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
     .topbar-spacer{flex:1}
 
@@ -155,6 +158,38 @@
     details summary::-webkit-details-marker{color:var(--text-muted)}
     #toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--accent-dark);border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap}
     #toast.show{transform:translateX(-50%) translateY(0)}
+
+    /* ── AGENDA do técnico (sininho + lista simplificada, sem grid de mês —
+       ver painel.html pro lado da liderança, que tem o calendário completo) ── */
+    #tecBell{position:relative;display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.1);border:1px solid rgba(0,0,0,.2);color:#0a0a0a;cursor:pointer;flex-shrink:0;-webkit-appearance:none;appearance:none;padding:0}
+    #tecBell:hover{background:rgba(0,0,0,.18)}
+    #tecBell svg{width:16px;height:16px}
+    #tecBell .tec-bell-count{position:absolute;top:-4px;right:-4px;background:#e53935;color:#fff;font-size:.55rem;font-weight:700;border-radius:10px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1}
+    #tecBell.tec-bell-empty .tec-bell-count{display:none}
+
+    .tec-ag-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none}
+    .tec-ag-overlay.show{display:block}
+    .tec-ag-drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,100%);background:var(--surface);border-left:1px solid var(--border-hi);z-index:501;transform:translateX(100%);transition:transform .25s ease;overflow-y:auto;display:flex;flex-direction:column}
+    .tec-ag-drawer.show{transform:translateX(0)}
+    .tec-ag-header{position:sticky;top:0;background:var(--surface2);border-bottom:1px solid var(--border);padding:1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;z-index:2}
+    .tec-ag-header h2{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+    .tec-ag-close{background:none;border:none;color:var(--text-dim);font-size:1.4rem;cursor:pointer;line-height:1}
+    .tec-ag-body{padding:1.1rem 1.2rem 2rem;flex:1}
+    .tec-ag-date{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);margin:1.1rem 0 .5rem}
+    .tec-ag-date:first-child{margin-top:0}
+    .tec-ag-task{background:var(--surface3);border:1px solid var(--border-hi);border-radius:10px;padding:.75rem .85rem;margin-bottom:.6rem}
+    .tec-ag-task.tec-ag-concluido{opacity:.55}
+    .tec-ag-task.tec-ag-unseen{border-color:var(--accent)}
+    .tec-ag-task-title{font-weight:700;font-size:.88rem;display:flex;align-items:center;gap:.45rem}
+    .tec-ag-task-title input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;flex-shrink:0}
+    .tec-ag-task-desc{font-size:.78rem;color:var(--text-dim);margin-top:.3rem;line-height:1.5;white-space:pre-line}
+    .tec-ag-task-meta{font-size:.65rem;color:var(--text-muted);margin-top:.4rem;display:flex;flex-wrap:wrap;gap:.4rem}
+    .tec-ag-mention-pill{background:rgba(168,201,60,.12);color:var(--accent);border-radius:10px;padding:.05rem .5rem}
+    .tec-ag-task-anexos{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+    .tec-ag-task-anexos a{font-size:.68rem;color:var(--accent);text-decoration:none;background:rgba(168,201,60,.08);border:1px solid var(--border-hi);border-radius:6px;padding:.25rem .5rem}
+    .tec-ag-anexar{margin-top:.55rem;font-size:.68rem;color:var(--text-dim);border:1px dashed var(--border-hi);border-radius:6px;padding:.35rem .6rem;display:inline-flex;align-items:center;gap:.3rem;cursor:pointer}
+    .tec-ag-anexar:hover{border-color:var(--accent);color:var(--accent)}
+    .tec-ag-empty{font-size:.8rem;color:var(--text-muted);padding:1rem 0;text-align:center}
   </style>
 </head>
 <body>
@@ -162,9 +197,10 @@
 <!-- TELA DE LOGIN -->
 <div id="login-overlay">
   <div class="login-box" id="boxLogin">
-    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:110px;height:auto;background:#fff;border-radius:12px;padding:.5rem" onerror="this.style.display='none'"/>
+    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:110px;height:auto" onerror="this.style.display='none'"/>
     <div class="login-heading">
-      <h2 id="tituloEmpresa">SIGONET</h2>
+      <h2 id="tituloEmpresa"><span class="sigonet-mark">SIGO</span><svg class="sigonet-n" viewBox="0 0 100 100" width="1em" height="1em"><path d="M18 20 A42 42 0 0 1 82 30" fill="none" stroke="#a8c93c" stroke-width="11" stroke-linecap="round"/><circle cx="50" cy="52" r="42" fill="none" stroke="#9a9a9a" stroke-width="4"/><path d="M27 76 L27 28 L73 72 L73 24" fill="none" stroke="#9a9a9a" stroke-width="10" stroke-linecap="square"/></svg><span class="sigonet-mark">ET</span></h2>
+      <p class="sigonet-full" id="sigonetFull">Sistema Integrado de Gestão Operacional Netturbo</p>
       <p>Minhas Atividades · Acesso do Técnico</p>
     </div>
     <div class="login-field">
@@ -220,13 +256,25 @@
 <!-- APP -->
 <header id="headerApp" class="topbar" style="display:none">
   <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
-  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
   <div>
-    <div class="topbar-brand">SIGONET</div>
+    <div class="topbar-brand">SIGO<svg class="topbar-n" viewBox="0 0 100 100" width="1em" height="1em"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="6"/><path d="M30 75 L30 32 L70 70 L70 27" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/></svg>ET</div>
     <div class="topbar-sub">Minhas Atividades</div>
   </div>
   <div class="topbar-spacer"></div>
+  <button id="tecBell" class="tec-bell-empty" title="Agenda" onclick="abrirAgendaTecnico()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span class="tec-bell-count">0</span>
+  </button>
 </header>
+
+<div class="tec-ag-overlay" id="tecAgOverlay" onclick="fecharAgendaTecnico()"></div>
+<aside class="tec-ag-drawer" id="tecAgDrawer">
+  <div class="tec-ag-header">
+    <h2>Agenda</h2>
+    <button class="tec-ag-close" onclick="fecharAgendaTecnico()">&times;</button>
+  </div>
+  <div class="tec-ag-body" id="tecAgBody"></div>
+</aside>
 
 <div class="page-actions" id="pageActions" style="display:none">
   <a id="linkFechamentoLpu" class="btn btn-outline" style="text-decoration:none;display:none;align-items:center" href="fechamento_lpu.html">Fechamento LPU</a>
@@ -366,7 +414,9 @@ window.atualizarTecnicosLogin = function(){
   const empresa = document.getElementById('selEmpresa').value;
   const nomes = TECH_MAP[empresa] || [];
   document.getElementById('selTecnico').innerHTML = '<option value="">Selecione...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
-  document.getElementById('tituloEmpresa').textContent = empresa || 'NETTURBO';
+  document.getElementById('tituloEmpresa').textContent = empresa || 'SIGONET';
+  const legenda = document.getElementById('sigonetFull');
+  if (legenda) legenda.style.display = empresa ? 'none' : '';
 };
 
 window.atualizarTecnicosReset = function(){
@@ -427,6 +477,8 @@ async function fazerLogin(){
     carregarAtividades();
     inicializarResumoDiario();
     iniciarAutoRefresh();
+    iniciarPollingAgendaTecnico();
+    atualizarSininhoAgendaTecnico().then(count => { if(count > 0) showToast('Você tem ' + count + (count > 1 ? ' avisos novos' : ' aviso novo') + ' na agenda'); });
   }catch(err){
     console.error(err);
     mostrarErroLogin('Erro ao conectar com o servidor.');
@@ -457,9 +509,138 @@ window.fazerLogin = fazerLogin;
       carregarAtividades();
       inicializarResumoDiario();
       iniciarAutoRefresh();
+      iniciarPollingAgendaTecnico();
     }, 0);
   }
 })();
+
+// ══════════════════════════════════════════════════════════════
+//  AGENDA do técnico — sininho + lista simplificada (sem grid de mês, ver
+//  painel.html pro lado da liderança). Mostra tarefas em que o técnico foi
+//  mencionado ou que ele mesmo criou (nenhuma tela aqui cria — só visualiza,
+//  marca como visto/feito e anexa foto/arquivo). tipo é sempre 'TECNICO'.
+// ══════════════════════════════════════════════════════════════
+let tecAgTarefas = [];
+let tecAgPollTimer = null;
+
+function tecAgEsc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function iniciarPollingAgendaTecnico(){
+  if(tecAgPollTimer) return;
+  atualizarSininhoAgendaTecnico();
+  tecAgPollTimer = setInterval(atualizarSininhoAgendaTecnico, 90000);
+}
+
+async function atualizarSininhoAgendaTecnico(){
+  try{
+    const url = APPS_SCRIPT_URL + '?acao=CONTAR_TAREFAS_NAO_VISTAS&sessionToken='+encodeURIComponent(TECNICO_TOKEN)+
+      '&nome='+encodeURIComponent(TECNICO_LOGADO)+'&tipo=TECNICO';
+    const resp = await fetch(url);
+    const result = await resp.json();
+    const count = Number(result.naoVistas) || 0;
+    const bell = document.getElementById('tecBell');
+    if(bell){
+      const badge = bell.querySelector('.tec-bell-count');
+      if(badge) badge.textContent = count;
+      bell.classList.toggle('tec-bell-empty', count === 0);
+    }
+    return count;
+  }catch(e){ return 0; }
+}
+
+async function abrirAgendaTecnico(){
+  document.getElementById('tecAgOverlay').classList.add('show');
+  document.getElementById('tecAgDrawer').classList.add('show');
+  await tecAgCarregar();
+}
+
+function fecharAgendaTecnico(){
+  document.getElementById('tecAgOverlay').classList.remove('show');
+  document.getElementById('tecAgDrawer').classList.remove('show');
+}
+
+async function tecAgCarregar(){
+  const cont = document.getElementById('tecAgBody');
+  cont.innerHTML = '<div class="tec-ag-empty">Carregando...</div>';
+  try{
+    const url = APPS_SCRIPT_URL + '?acao=LISTAR_AGENDA_PESSOA&sessionToken='+encodeURIComponent(TECNICO_TOKEN)+
+      '&nome='+encodeURIComponent(TECNICO_LOGADO)+'&tipo=TECNICO';
+    const resp = await fetch(url);
+    const result = await resp.json();
+    tecAgTarefas = (result.tarefas || []).sort((a,b) => String(a.data).localeCompare(String(b.data)));
+  }catch(e){ tecAgTarefas = []; }
+
+  // marca como vistas (silencioso) as que me mencionam e eu ainda não vi
+  const pendentes = tecAgTarefas.filter(t => !t.visto && t.mencionados.some(m => m.nome === TECNICO_LOGADO && m.tipo === 'TECNICO'));
+  if(pendentes.length){
+    await Promise.all(pendentes.map(t => fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'MARCAR_TAREFA_VISTA', sessionToken: TECNICO_TOKEN, id: t.id })
+    }).catch(()=>{})));
+    atualizarSininhoAgendaTecnico();
+  }
+
+  tecAgRender();
+}
+
+function tecAgRender(){
+  const cont = document.getElementById('tecAgBody');
+  if(!tecAgTarefas.length){ cont.innerHTML = '<div class="tec-ag-empty">Nenhuma tarefa por aqui ainda.</div>'; return; }
+
+  const porData = {};
+  tecAgTarefas.forEach(t => { (porData[t.data] = porData[t.data] || []).push(t); });
+
+  let html = '';
+  Object.keys(porData).sort().forEach(data => {
+    const [ano, mes, dia] = data.split('-');
+    html += `<div class="tec-ag-date">${dia}/${mes}/${ano}</div>`;
+    porData[data].forEach(t => {
+      html += `<div class="tec-ag-task ${t.concluido ? 'tec-ag-concluido' : ''} ${!t.visto ? 'tec-ag-unseen' : ''}">
+        <div class="tec-ag-task-title"><input type="checkbox" ${t.concluido ? 'checked' : ''} onchange="tecAgConcluir('${t.id}', this.checked)"/> ${tecAgEsc(t.titulo)}</div>
+        ${t.descricao ? `<div class="tec-ag-task-desc">${tecAgEsc(t.descricao)}</div>` : ''}
+        <div class="tec-ag-task-meta">
+          <span>${tecAgEsc(t.criadoPor)}</span>
+          ${t.mencionados.map(m => `<span class="tec-ag-mention-pill">@${tecAgEsc(m.nome)}</span>`).join('')}
+        </div>
+        ${t.anexos.length ? `<div class="tec-ag-task-anexos">${t.anexos.map(a => `<a href="${a.url}" target="_blank" rel="noopener">${tecAgEsc(a.nome)}</a>`).join('')}</div>` : ''}
+        <label class="tec-ag-anexar">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          Anexar foto ou arquivo
+          <input type="file" accept="image/*,.pdf" style="display:none" onchange="tecAgAnexar('${t.id}', this)"/>
+        </label>
+      </div>`;
+    });
+  });
+  cont.innerHTML = html;
+}
+
+async function tecAgConcluir(id, concluido){
+  try{
+    await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'CONCLUIR_TAREFA_AGENDA', sessionToken: TECNICO_TOKEN, id, concluido }) });
+    await tecAgCarregar();
+  }catch(e){}
+}
+
+function tecAgAnexar(id, input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try{
+      await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+        body: JSON.stringify({ acao:'CRIAR_TAREFA_AGENDA', sessionToken: TECNICO_TOKEN, id,
+          data: (tecAgTarefas.find(t=>t.id===id)||{}).data, titulo: (tecAgTarefas.find(t=>t.id===id)||{}).titulo,
+          anexos: [{ nome: file.name, base64: reader.result }] }) });
+      showToast('Anexo enviado!');
+      await tecAgCarregar();
+    }catch(e){ showToast('Erro ao enviar o anexo.'); }
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
 
 // Atualiza sozinho a cada 20s — mas pula o ciclo se tiver algum formulário de
 // ocorrência aberto na tela (EM_CAMPO ou NAO_VALIDADA), pra nunca apagar o que

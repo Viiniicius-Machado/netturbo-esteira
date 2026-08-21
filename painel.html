@@ -21,11 +21,11 @@
     svg{display:block}
 
     /* ── TOPBAR ── */
-    .topbar{position:sticky;top:0;z-index:50;height:var(--topbar-h);background:var(--accent);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topbar{position:sticky;top:0;z-index:50;height:var(--topbar-h);background:linear-gradient(120deg,#3d4f11,#8bc34a,#a8c93c);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
     .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0;cursor:pointer}
     .topbar-menu:hover{background:rgba(0,0,0,.08)}
-    .topbar-logo{height:32px;width:auto;background:#fff;border-radius:6px;padding:.2rem .4rem;flex-shrink:0}
-    .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:800;letter-spacing:.02em;color:#0a0a0a;text-transform:uppercase;line-height:1.1;display:inline-block;transform:skewX(-8deg)}
+        .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:.02em;color:#0a0a0a;text-transform:uppercase;line-height:1.1;display:inline-block;transform:skewX(-8deg)}
+        .topbar-n{display:inline-block;vertical-align:-.12em;flex-shrink:0}
     .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
     .topbar-spacer{flex:1}
 
@@ -67,6 +67,70 @@
 
     .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
 
+    /* ── AGENDA (drawer aberto pelo ícone do menu no cabeçalho) ── */
+    .ag-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none}
+    .ag-overlay.show{display:block}
+    .ag-drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,100%);background:var(--surface);border-left:1px solid var(--border-hi);z-index:501;transform:translateX(100%);transition:transform .25s ease;overflow-y:auto;display:flex;flex-direction:column}
+    .ag-drawer.show{transform:translateX(0)}
+    .ag-header{position:sticky;top:0;background:var(--surface2);border-bottom:1px solid var(--border);padding:1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;z-index:2}
+    .ag-header h2{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+    .ag-close{background:none;border:none;color:var(--text-dim);font-size:1.4rem;cursor:pointer;line-height:1}
+    .ag-close:hover{color:var(--text)}
+    .ag-body{padding:1.1rem 1.2rem 2rem;flex:1}
+
+    .ag-cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+    .ag-cal-nav button{background:var(--surface3);border:1px solid var(--border-hi);border-radius:8px;color:var(--text);width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem}
+    .ag-cal-nav button:hover{border-color:var(--accent);color:var(--accent)}
+    .ag-cal-mes{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;text-transform:uppercase;letter-spacing:.04em}
+
+    .ag-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+    .ag-dow{font-size:.58rem;color:var(--text-muted);text-transform:uppercase;text-align:center;padding-bottom:.3rem}
+    .ag-day{position:relative;aspect-ratio:1;border-radius:8px;background:var(--surface3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.78rem;color:var(--text-dim);cursor:pointer}
+    .ag-day:hover{border-color:var(--accent)}
+    .ag-day.ag-out{visibility:hidden;cursor:default}
+    .ag-day.ag-today{border-color:var(--accent);color:var(--text);font-weight:700}
+    .ag-day.ag-has-task::after{content:'';position:absolute;bottom:4px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+    .ag-day.ag-has-unseen::after{background:#e53935}
+
+    .ag-day-view{margin-top:1.1rem;border-top:1px solid var(--border);padding-top:1rem}
+    .ag-day-title{font-family:'Rajdhani',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text);margin-bottom:.7rem}
+    .ag-back{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.75rem;margin-bottom:.7rem;padding:0}
+    .ag-back:hover{color:var(--accent)}
+
+    .ag-task{background:var(--surface3);border:1px solid var(--border-hi);border-radius:10px;padding:.75rem .85rem;margin-bottom:.6rem}
+    .ag-task.ag-concluido{opacity:.55}
+    .ag-task-title{font-weight:700;font-size:.88rem;display:flex;align-items:center;gap:.45rem}
+    .ag-task-title input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;flex-shrink:0}
+    .ag-task-desc{font-size:.78rem;color:var(--text-dim);margin-top:.3rem;line-height:1.5;white-space:pre-line}
+    .ag-task-meta{font-size:.65rem;color:var(--text-muted);margin-top:.4rem;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+    .ag-mention-pill{background:rgba(168,201,60,.12);color:var(--accent);border-radius:10px;padding:.05rem .5rem}
+    .ag-task-anexos{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+    .ag-task-anexos a{font-size:.68rem;color:var(--accent);text-decoration:none;background:rgba(168,201,60,.08);border:1px solid var(--border-hi);border-radius:6px;padding:.25rem .5rem}
+    .ag-task-actions{display:flex;gap:.5rem;margin-top:.55rem}
+    .ag-task-actions button{background:none;border:1px solid var(--border-hi);color:var(--text-dim);border-radius:6px;padding:.3rem .6rem;font-size:.65rem;cursor:pointer}
+    .ag-task-actions button:hover{border-color:var(--accent);color:var(--accent)}
+
+    .ag-form{margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem;display:flex;flex-direction:column;gap:.6rem}
+    .ag-form input[type=text],.ag-form textarea{background:var(--surface3);border:1px solid var(--border-hi);border-radius:8px;color:var(--text);font-size:.85rem;padding:.6rem .7rem;width:100%;font-family:'Inter',sans-serif}
+    .ag-form textarea{min-height:60px;resize:vertical}
+    .ag-mention-wrap{position:relative}
+    .ag-mention-list{position:absolute;top:100%;left:0;right:0;background:var(--surface2);border:1px solid var(--border-hi);border-radius:8px;margin-top:.2rem;max-height:160px;overflow-y:auto;z-index:5;display:none}
+    .ag-mention-list.show{display:block}
+    .ag-mention-item{padding:.5rem .7rem;font-size:.8rem;cursor:pointer}
+    .ag-mention-item:hover{background:var(--surface3)}
+    .ag-mention-item small{color:var(--text-muted);margin-left:.3rem}
+    .ag-mention-tags{display:flex;flex-wrap:wrap;gap:.35rem}
+    .ag-mention-tag{background:rgba(168,201,60,.12);color:var(--accent);border-radius:10px;padding:.2rem .55rem;font-size:.7rem;display:flex;align-items:center;gap:.3rem}
+    .ag-mention-tag button{background:none;border:none;color:inherit;cursor:pointer;font-size:.85rem;line-height:1;padding:0}
+    .ag-file-label{background:var(--surface3);border:1px dashed var(--border-hi);border-radius:8px;padding:.6rem;text-align:center;font-size:.75rem;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.35rem}
+    .ag-file-label:hover{border-color:var(--accent);color:var(--accent)}
+    .ag-file-list{display:flex;flex-wrap:wrap;gap:.35rem}
+    .ag-file-chip{background:var(--surface3);border:1px solid var(--border-hi);border-radius:6px;padding:.25rem .5rem;font-size:.68rem;display:flex;align-items:center;gap:.3rem}
+    .ag-file-chip button{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.8rem;line-height:1;padding:0}
+    .ag-empty{font-size:.78rem;color:var(--text-muted);padding:.5rem 0}
+    .ag-form-msg{font-size:.72rem;color:#e53935;display:none}
+    .ag-btn-salvar{background:linear-gradient(135deg,var(--accent-dark),var(--accent));color:#0a0a0a;border:none;border-radius:8px;padding:.65rem;font-family:'Rajdhani',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:.8rem;cursor:pointer}
+
     @media (max-width:680px){
       :root{--sidebar-w:0px}
       .sidebar{display:none}
@@ -77,13 +141,12 @@
 <body>
 
 <header class="topbar">
-  <div class="topbar-menu">
+  <div class="topbar-menu" onclick="abrirAgenda()" title="Agenda">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </div>
-  <img class="topbar-logo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" onerror="this.style.display='none'"/>
   <div>
-    <div class="topbar-brand">SIGONET</div>
-    <div class="topbar-sub">Painel · Esteira de Despacho</div>
+    <div class="topbar-brand">SIGO<svg class="topbar-n" viewBox="0 0 100 100" width="1em" height="1em"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="6"/><path d="M30 75 L30 32 L70 70 L70 27" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/></svg>ET</div>
+    <div class="topbar-sub">Sistema Integrado de Gestão Operacional Netturbo</div>
   </div>
   <div class="topbar-spacer"></div>
 </header>
@@ -117,6 +180,23 @@
   <div id="secoes"></div>
   <div class="empty-msg" id="msgVazio" style="display:none">Nenhuma tela encontrada.</div>
 </main>
+
+<div class="ag-overlay" id="agOverlay" onclick="fecharAgenda()"></div>
+<aside class="ag-drawer" id="agDrawer">
+  <div class="ag-header">
+    <h2>Agenda</h2>
+    <button class="ag-close" onclick="fecharAgenda()">&times;</button>
+  </div>
+  <div class="ag-body">
+    <div class="ag-cal-nav">
+      <button onclick="agMudarMes(-1)">&lsaquo;</button>
+      <span class="ag-cal-mes" id="agMesLabel"></span>
+      <button onclick="agMudarMes(1)">&rsaquo;</button>
+    </div>
+    <div class="ag-grid" id="agGrid"></div>
+    <div id="agDayView"></div>
+  </div>
+</aside>
 
 <script>
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
@@ -244,6 +324,330 @@ const observer = new IntersectionObserver(entries => {
 function iniciarPainel(){
   renderSecoes();
   document.querySelectorAll('.section').forEach(sec => observer.observe(sec));
+  if(new URLSearchParams(location.search).get('agenda') === '1') abrirAgenda();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  AGENDA — calendário do mês aberto pelo ícone do menu no cabeçalho.
+//  Cada tarefa é do dia + @menção (liderança ou técnico) + anexo opcional.
+//  Privada por pessoa: só aparece pra quem criou ou foi mencionado (ver
+//  LISTAR_AGENDA_PESSOA no backend). tipo é sempre 'LIDERANCA' aqui porque
+//  quem loga no painel.html é sempre pelo lado de liderança — o lado
+//  técnico tem sua própria agenda em tecnico.html.
+// ══════════════════════════════════════════════════════════════
+let agPessoasList = [];
+let agPessoasCarregadas = false;
+let agMesAtual = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let agTarefasDoMes = [];
+let agDiaSelecionado = null;
+let agFormMencoes = [];
+let agFormAnexos = [];
+
+function agEsc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function agFmtData(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+async function agCarregarPessoas(){
+  if(agPessoasCarregadas) return;
+  agPessoasCarregadas = true;
+  try{
+    const [respLid, respTec] = await Promise.all([
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_USUARIOS_LIDERANCA'),
+      fetch(APPS_SCRIPT_URL + '?acao=LISTAR_TECNICOS')
+    ]);
+    const [jLid, jTec] = await Promise.all([respLid.json(), respTec.json()]);
+    const lid = (jLid.usuarios || []).map(u => ({ nome:u.nome, tipo:'LIDERANCA' }));
+    const tec = [];
+    Object.values(jTec.empresas || {}).forEach(nomes => nomes.forEach(n => tec.push({ nome:n, tipo:'TECNICO' })));
+    agPessoasList = lid.concat(tec).sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }catch(e){ agPessoasList = []; }
+}
+
+async function agCarregarMes(){
+  const mes = agMesAtual.getFullYear()+'-'+String(agMesAtual.getMonth()+1).padStart(2,'0');
+  try{
+    const url = APPS_SCRIPT_URL + '?acao=LISTAR_AGENDA_PESSOA&mes='+mes+
+      '&sessionToken='+encodeURIComponent(NetturboAuth.token())+
+      '&nome='+encodeURIComponent(NetturboAuth.usuario().nome)+'&tipo=LIDERANCA';
+    const resp = await fetch(url);
+    const result = await resp.json();
+    agTarefasDoMes = result.tarefas || [];
+  }catch(e){ agTarefasDoMes = []; }
+  agRenderGrid();
+}
+
+function agMudarMes(delta){
+  agMesAtual = new Date(agMesAtual.getFullYear(), agMesAtual.getMonth()+delta, 1);
+  agDiaSelecionado = null;
+  agCarregarMes();
+  agRenderDayView();
+}
+
+function agRenderGrid(){
+  const ano = agMesAtual.getFullYear(), mes = agMesAtual.getMonth();
+  document.getElementById('agMesLabel').textContent =
+    agMesAtual.toLocaleDateString('pt-BR', { month:'long', year:'numeric' }).toUpperCase();
+  const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+  const diasNoMes = new Date(ano, mes+1, 0).getDate();
+  const hojeStr = agFmtData(new Date());
+  const porDia = {};
+  agTarefasDoMes.forEach(t => { (porDia[t.data] = porDia[t.data] || []).push(t); });
+
+  let html = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => `<div class="ag-dow">${d}</div>`).join('');
+  for(let i=0; i<primeiroDiaSemana; i++) html += `<div class="ag-day ag-out"></div>`;
+  for(let d=1; d<=diasNoMes; d++){
+    const dataStr = ano+'-'+String(mes+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const tarefas = porDia[dataStr] || [];
+    const classes = ['ag-day'];
+    if(dataStr === hojeStr) classes.push('ag-today');
+    if(tarefas.length) classes.push('ag-has-task');
+    if(tarefas.some(t => !t.visto)) classes.push('ag-has-unseen');
+    html += `<div class="${classes.join(' ')}" onclick="agSelecionarDia('${dataStr}')">${d}</div>`;
+  }
+  document.getElementById('agGrid').innerHTML = html;
+}
+
+// Ao abrir um dia, silenciosamente marca como vistas as tarefas em que fui
+// mencionado (não as que eu mesmo criei — essas já nascem vistas, ver
+// criarOuEditarTarefaAgenda no backend) e atualiza o sininho do cabeçalho.
+async function agSelecionarDia(dataStr){
+  agDiaSelecionado = dataStr;
+  agRenderDayView();
+  const meuNome = NetturboAuth.usuario().nome;
+  const pendentes = agTarefasDoMes.filter(t => t.data === dataStr && !t.visto &&
+    t.mencionados.some(m => m.nome === meuNome && m.tipo === 'LIDERANCA'));
+  if(!pendentes.length) return;
+  await Promise.all(pendentes.map(t => agMarcarVista(t.id)));
+  pendentes.forEach(t => t.visto = true);
+  agRenderGrid();
+  agRenderDayView();
+  agAtualizarSininho();
+}
+
+function agFecharDia(){
+  agDiaSelecionado = null;
+  agRenderDayView();
+}
+
+function agRenderDayView(){
+  const cont = document.getElementById('agDayView');
+  if(!agDiaSelecionado){ cont.innerHTML = ''; return; }
+  const tarefas = agTarefasDoMes.filter(t => t.data === agDiaSelecionado)
+    .sort((a,b) => String(a.timestamp).localeCompare(String(b.timestamp)));
+  const [ano, mes, dia] = agDiaSelecionado.split('-');
+  const meuNome = NetturboAuth.usuario().nome;
+
+  let html = `<div class="ag-day-view">
+    <button class="ag-back" onclick="agFecharDia()">&larr; Voltar pro mês</button>
+    <div class="ag-day-title">${dia}/${mes}/${ano}</div>`;
+
+  if(!tarefas.length) html += `<div class="ag-empty">Nenhuma tarefa neste dia ainda.</div>`;
+
+  tarefas.forEach(t => {
+    const souCriador = t.criadoPor === meuNome && t.criadoPorTipo === 'LIDERANCA';
+    html += `<div class="ag-task ${t.concluido ? 'ag-concluido' : ''}">
+      <div class="ag-task-title"><input type="checkbox" ${t.concluido ? 'checked' : ''} onchange="agConcluir('${t.id}', this.checked)"/> ${agEsc(t.titulo)}</div>
+      ${t.descricao ? `<div class="ag-task-desc">${agEsc(t.descricao)}</div>` : ''}
+      <div class="ag-task-meta">
+        <span>${agEsc(t.criadoPor)}</span>
+        ${t.mencionados.map(m => `<span class="ag-mention-pill">@${agEsc(m.nome)}</span>`).join('')}
+      </div>
+      ${t.anexos.length ? `<div class="ag-task-anexos">${t.anexos.map(a => `<a href="${a.url}" target="_blank" rel="noopener">${agEsc(a.nome)}</a>`).join('')}</div>` : ''}
+      ${souCriador ? `<div class="ag-task-actions"><button onclick="agExcluir('${t.id}')">Excluir</button></div>` : ''}
+    </div>`;
+  });
+
+  html += `<div class="ag-form">
+    <div class="ag-day-title" style="margin-top:.3rem">+ Nova tarefa</div>
+    <input type="text" id="agTitulo" placeholder="O que fazer?"/>
+    <textarea id="agDescricao" placeholder="Detalhes (opcional)"></textarea>
+    <div class="ag-mention-wrap">
+      <input type="text" id="agMencaoInput" placeholder="@ marcar alguém..." autocomplete="off"/>
+      <div class="ag-mention-list" id="agMencaoList"></div>
+    </div>
+    <div class="ag-mention-tags" id="agMencaoTags"></div>
+    <label class="ag-file-label" for="agFileInput">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      Anexar foto ou arquivo
+      <input type="file" id="agFileInput" multiple accept="image/*,.pdf,.kmz,.kml" style="display:none"/>
+    </label>
+    <div class="ag-file-list" id="agFileList"></div>
+    <div class="ag-form-msg" id="agFormMsg"></div>
+    <button class="ag-btn-salvar" onclick="agSalvarTarefa()">Salvar tarefa</button>
+  </div></div>`;
+
+  cont.innerHTML = html;
+  agLigarFormNovaTarefa();
+}
+
+function agLigarFormNovaTarefa(){
+  agFormMencoes = [];
+  agFormAnexos = [];
+  agRenderMencaoTags();
+  agRenderFileList();
+
+  const inputMencao = document.getElementById('agMencaoInput');
+  const lista = document.getElementById('agMencaoList');
+
+  inputMencao.addEventListener('input', () => {
+    agCarregarPessoas(); // idempotente — só busca na 1ª vez
+    const q = inputMencao.value.replace(/^@/, '').trim().toLowerCase();
+    if(!q){ lista.classList.remove('show'); lista.innerHTML = ''; return; }
+    const opcoes = agPessoasList.filter(p =>
+      p.nome.toLowerCase().includes(q) && !agFormMencoes.some(m => m.nome === p.nome && m.tipo === p.tipo)
+    ).slice(0, 8);
+    if(!opcoes.length){ lista.classList.remove('show'); lista.innerHTML = ''; return; }
+    lista.innerHTML = opcoes.map(p =>
+      `<div class="ag-mention-item" data-nome="${agEsc(p.nome)}" data-tipo="${p.tipo}">${agEsc(p.nome)}<small>${p.tipo === 'TECNICO' ? 'Técnico' : 'Liderança'}</small></div>`
+    ).join('');
+    lista.classList.add('show');
+  });
+  inputMencao.addEventListener('blur', () => setTimeout(() => lista.classList.remove('show'), 150));
+  lista.addEventListener('click', e => {
+    const item = e.target.closest('.ag-mention-item');
+    if(!item) return;
+    agEscolherMencao(item.dataset.nome, item.dataset.tipo);
+  });
+
+  document.getElementById('agFileInput').addEventListener('change', agAdicionarArquivos);
+}
+
+function agEscolherMencao(nome, tipo){
+  agFormMencoes.push({ nome, tipo });
+  agRenderMencaoTags();
+  const input = document.getElementById('agMencaoInput');
+  input.value = '';
+  document.getElementById('agMencaoList').classList.remove('show');
+  input.focus();
+}
+
+function agRemoverMencao(idx){
+  agFormMencoes.splice(idx, 1);
+  agRenderMencaoTags();
+}
+
+function agRenderMencaoTags(){
+  const cont = document.getElementById('agMencaoTags');
+  if(!cont) return;
+  cont.innerHTML = agFormMencoes.map((m, i) =>
+    `<span class="ag-mention-tag">@${agEsc(m.nome)}<button onclick="agRemoverMencao(${i})">&times;</button></span>`
+  ).join('');
+}
+
+function agAdicionarArquivos(){
+  const input = document.getElementById('agFileInput');
+  Array.from(input.files || []).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      agFormAnexos.push({ nome: file.name, base64: reader.result });
+      agRenderFileList();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function agRemoverArquivo(idx){
+  agFormAnexos.splice(idx, 1);
+  agRenderFileList();
+}
+
+function agRenderFileList(){
+  const cont = document.getElementById('agFileList');
+  if(!cont) return;
+  cont.innerHTML = agFormAnexos.map((a, i) =>
+    `<span class="ag-file-chip">${agEsc(a.nome)}<button onclick="agRemoverArquivo(${i})">&times;</button></span>`
+  ).join('');
+}
+
+function agMsg(texto){
+  const el = document.getElementById('agFormMsg');
+  if(!el) return;
+  el.textContent = texto;
+  el.style.display = texto ? 'block' : 'none';
+}
+
+async function agSalvarTarefa(){
+  const titulo = document.getElementById('agTitulo').value.trim();
+  if(!titulo){ agMsg('Digite o que precisa ser feito.'); return; }
+  agMsg('');
+  const descricao = document.getElementById('agDescricao').value.trim();
+  const body = {
+    acao: 'CRIAR_TAREFA_AGENDA', sessionToken: NetturboAuth.token(),
+    data: agDiaSelecionado, titulo, descricao,
+    mencionados: agFormMencoes, anexos: agFormAnexos
+  };
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ agMsg(result.message || 'Não foi possível salvar.'); return; }
+    await agCarregarMes();
+    agRenderDayView();
+  }catch(e){ agMsg('Erro ao conectar com o servidor.'); }
+}
+
+async function agMarcarVista(id){
+  try{
+    await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'MARCAR_TAREFA_VISTA', sessionToken: NetturboAuth.token(), id }) });
+  }catch(e){}
+}
+
+async function agConcluir(id, concluido){
+  try{
+    await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'CONCLUIR_TAREFA_AGENDA', sessionToken: NetturboAuth.token(), id, concluido }) });
+    await agCarregarMes();
+    agRenderDayView();
+  }catch(e){}
+}
+
+async function agExcluir(id){
+  if(!confirm('Excluir esta tarefa?')) return;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'EXCLUIR_TAREFA_AGENDA', sessionToken: NetturboAuth.token(), id }) });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ agMsg(result.message || 'Não foi possível excluir.'); return; }
+    await agCarregarMes();
+    agRenderDayView();
+  }catch(e){}
+}
+
+// Re-checa o contador do sininho no cabeçalho (injetado pelo auth.js) depois
+// de uma ação que muda quantas tarefas estão não vistas — duplica o fetch já
+// feito em auth.js de propósito (mesmo padrão de duplicação do showToast em
+// vez de um módulo JS compartilhado, que este projeto não usa).
+async function agAtualizarSininho(){
+  try{
+    const url = APPS_SCRIPT_URL + '?acao=CONTAR_TAREFAS_NAO_VISTAS&sessionToken='+encodeURIComponent(NetturboAuth.token())+
+      '&nome='+encodeURIComponent(NetturboAuth.usuario().nome)+'&tipo=LIDERANCA';
+    const resp = await fetch(url);
+    const result = await resp.json();
+    const count = Number(result.naoVistas) || 0;
+    const bell = document.getElementById('naBell');
+    if(bell){
+      const badge = bell.querySelector('.na-bell-count');
+      if(badge) badge.textContent = count;
+      bell.classList.toggle('na-bell-empty', count === 0);
+    }
+  }catch(e){}
+}
+
+function abrirAgenda(){
+  document.getElementById('agOverlay').classList.add('show');
+  document.getElementById('agDrawer').classList.add('show');
+  agCarregarPessoas();
+  agCarregarMes();
+}
+
+function fecharAgenda(){
+  document.getElementById('agOverlay').classList.remove('show');
+  document.getElementById('agDrawer').classList.remove('show');
 }
 
 NetturboAuth.proteger({ tela:'painel', aoEntrar: iniciarPainel });
