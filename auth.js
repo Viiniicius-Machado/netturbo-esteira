@@ -119,7 +119,7 @@
       <div class="na-box na-box--split" id="naBoxLogin">
         <div class="na-box-brand">
           <img class="na-logo-mark" alt="SigoNet" src="IMAGENS/sigonet-logo-sm.png"/>
-          <p class="sigonet-full">Sistema Integrado de Gestão da Netturbo</p>
+          <p class="sigonet-full">Sistema Integrado de Gestão Operacional da Netturbo</p>
         </div>
         <div class="na-box-form">
           <p class="na-form-title">Acesso da Liderança</p>
