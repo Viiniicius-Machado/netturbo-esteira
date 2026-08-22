@@ -23,11 +23,9 @@
     .login-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
     .login-heading{text-align:center}
     .login-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);text-align:center}
-    .sigonet-mark{font-weight:800;letter-spacing:0;display:inline-block;transform:skewX(-10deg);background:linear-gradient(90deg,#a8c93c,#c3e857);-webkit-background-clip:text;background-clip:text;color:transparent}
-    .sigonet-n{display:inline-block;vertical-align:-.12em;flex-shrink:0;transform:skewX(-10deg)}
-    .topbar-n{display:inline-block;vertical-align:-.12em;flex-shrink:0}
+    .login-logo-mark{height:44px;width:auto;background:#0a0a0a;border-radius:8px;padding:.4rem .75rem;display:block;margin:0 auto}
     .login-heading p{font-size:.63rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
-    .sigonet-full{font-size:.58rem;color:var(--text-muted);letter-spacing:.03em;text-transform:none;margin-top:.15rem;text-align:center}
+    .sigonet-full{font-size:.7rem;color:var(--accent);font-weight:600;letter-spacing:.03em;text-transform:none;margin-top:.15rem;text-align:center}
     .login-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
     .login-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim)}
     .login-field select,.login-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:var(--text);font-size:.92rem;padding:.7rem .9rem;width:100%}
@@ -41,7 +39,7 @@
 
     .topbar{position:sticky;top:0;z-index:100;height:60px;background:linear-gradient(120deg,#3d4f11,#8bc34a,#a8c93c);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
     .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
-        .topbar-brand{font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:.02em;color:#0a0a0a;text-transform:uppercase;line-height:1.1;display:inline-block;transform:skewX(-8deg)}
+        .topbar-logo{height:36px;width:auto;display:block;flex-shrink:0}
     .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
     .topbar-spacer{flex:1}
 
@@ -197,10 +195,9 @@
 <!-- TELA DE LOGIN -->
 <div id="login-overlay">
   <div class="login-box" id="boxLogin">
-    <img src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" alt="Netturbo" style="width:110px;height:auto" onerror="this.style.display='none'"/>
+    <img class="login-logo-mark" src="IMAGENS/sigonet-logo-sm.png" alt="SigoNet"/>
     <div class="login-heading">
-      <h2 id="tituloEmpresa"><span class="sigonet-mark">SIGO</span><svg class="sigonet-n" viewBox="0 0 100 100" width="1em" height="1em"><path d="M18 20 A42 42 0 0 1 82 30" fill="none" stroke="#a8c93c" stroke-width="11" stroke-linecap="round"/><circle cx="50" cy="52" r="42" fill="none" stroke="#9a9a9a" stroke-width="4"/><path d="M27 76 L27 28 L73 72 L73 24" fill="none" stroke="#9a9a9a" stroke-width="10" stroke-linecap="square"/></svg><span class="sigonet-mark">ET</span></h2>
-      <p class="sigonet-full" id="sigonetFull">Sistema Integrado de Gestão Operacional Netturbo</p>
+      <p class="sigonet-full">Sistema Integrado de Gestão da Netturbo</p>
       <p>Minhas Atividades · Acesso do Técnico</p>
     </div>
     <div class="login-field">
@@ -257,7 +254,7 @@
 <header id="headerApp" class="topbar" style="display:none">
   <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
   <div>
-    <div class="topbar-brand">SIGO<svg class="topbar-n" viewBox="0 0 100 100" width="1em" height="1em"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="6"/><path d="M30 75 L30 32 L70 70 L70 27" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/></svg>ET</div>
+    <img class="topbar-logo" src="IMAGENS/sigonet-logo-transparent-sm.png" alt="SIGONET">
     <div class="topbar-sub">Minhas Atividades</div>
   </div>
   <div class="topbar-spacer"></div>
@@ -414,9 +411,6 @@ window.atualizarTecnicosLogin = function(){
   const empresa = document.getElementById('selEmpresa').value;
   const nomes = TECH_MAP[empresa] || [];
   document.getElementById('selTecnico').innerHTML = '<option value="">Selecione...</option>' + nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
-  document.getElementById('tituloEmpresa').textContent = empresa || 'SIGONET';
-  const legenda = document.getElementById('sigonetFull');
-  if (legenda) legenda.style.display = empresa ? 'none' : '';
 };
 
 window.atualizarTecnicosReset = function(){

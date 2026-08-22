@@ -59,16 +59,30 @@
   const CSS = `
 #na-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#0d1a06,#080808);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;font-family:'Inter',sans-serif}
 .na-box{width:100%;max-width:360px;background:linear-gradient(160deg,#131a10,#0f0f0f);border:1px solid #1a2a12;border-radius:20px;padding:2.2rem 2rem;display:flex;flex-direction:column;align-items:center;gap:1.1rem}
-.na-logo{width:110px;height:auto}
+.na-box--split{max-width:820px;padding:0;flex-direction:row;align-items:stretch}
+.na-box-brand{flex:0 0 40%;background:#050505;border-right:1px solid #1a2a12;border-radius:20px 0 0 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;padding:2.4rem 1.6rem}
+.na-box-form{flex:1;min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:1.05rem;padding:2.4rem 2.2rem}
+.na-logo-mark{height:44px;width:auto;background:#0a0a0a;border-radius:8px;padding:.4rem .75rem;display:block}
+.na-box-brand .na-logo-mark{height:auto;width:100%;max-width:190px;background:none;padding:0}
+.na-form-title{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a8c93c;margin:0}
 .na-heading h2{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a8c93c;text-align:center;margin:0}
-.sigonet-mark{font-weight:800;letter-spacing:0;display:inline-block;transform:skewX(-10deg);background:linear-gradient(90deg,#a8c93c,#c3e857);-webkit-background-clip:text;background-clip:text;color:transparent}
-.sigonet-n{display:inline-block;vertical-align:-.12em;flex-shrink:0;transform:skewX(-10deg)}
 .na-heading p{font-size:.63rem;color:#505050;letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem;text-align:center}
-.sigonet-full{font-size:.6rem;color:#6b7a5a;letter-spacing:.04em;text-transform:none;margin-top:.15rem;text-align:center}
+.sigonet-full{font-size:.7rem;color:#a8c93c;font-weight:600;letter-spacing:.03em;text-transform:none;margin-top:.15rem;text-align:center}
 .na-field{width:100%;display:flex;flex-direction:column;gap:.3rem}
 .na-field label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#888}
 .na-field select,.na-field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:#e8e8e8;font-size:.92rem;padding:.7rem .9rem;width:100%;font-family:inherit}
 .na-field select:focus,.na-field input:focus{outline:none;border-color:#a8c93c}
+.na-input-wrap{position:relative;display:flex;align-items:center}
+.na-input-wrap select,.na-input-wrap input{padding-left:2.5rem}
+.na-input-icon{position:absolute;left:.85rem;width:16px;height:16px;color:#5a6650;pointer-events:none}
+.na-eye-toggle{position:absolute;right:.5rem;background:none;border:none;padding:.35rem;color:#5a6650;cursor:pointer;display:flex;line-height:0}
+.na-eye-toggle svg{width:16px;height:16px}
+.na-eye-toggle:hover,.na-eye-toggle.na-eye-active{color:#a8c93c}
+@media (max-width:680px){
+  .na-box--split{flex-direction:column;max-width:400px}
+  .na-box-brand{border-right:none;border-bottom:1px solid #1a2a12;border-radius:20px 20px 0 0;padding:1.8rem 1.6rem 1.4rem}
+  .na-box-brand .na-logo-mark{max-width:150px}
+}
 .na-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#6b8a1f,#a8c93c);border:none;border-radius:8px;color:#050505;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
 .na-error{font-size:.75rem;color:#e53935;background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:.5rem .75rem;width:100%;text-align:center;display:none}
 .na-error.visible{display:block}
@@ -79,7 +93,9 @@
 #na-chip button{-webkit-appearance:none;appearance:none;box-sizing:border-box;font-family:inherit;line-height:1;background:rgba(0,0,0,.12);border:1px solid rgba(0,0,0,.22);border-radius:20px;color:#0a0a0a;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:.35rem .75rem;cursor:pointer;transition:background .15s ease}
 #na-chip button:hover{background:rgba(0,0,0,.2)}
 #naBell{position:relative;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;padding:0;flex-shrink:0}
-#naBell svg{width:14px;height:14px}
+#na-chip button#naBell{padding:0;border-radius:50%;cursor:default}
+#na-chip button#naBell:hover{background:rgba(0,0,0,.12)}
+#naBell svg{width:14px;height:14px;overflow:visible}
 #naBell .na-bell-count{position:absolute;top:-4px;right:-4px;background:#e53935;color:#fff;font-size:.55rem;font-weight:700;border-radius:10px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;text-transform:none;letter-spacing:0}
 #naBell.na-bell-empty .na-bell-count{display:none}
 #na-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:#181818;border:1px solid #6b8a1f;border-radius:30px;padding:.6rem 1.2rem;font-size:.78rem;color:#a8c93c;box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:9998;white-space:nowrap;cursor:pointer}
@@ -100,16 +116,21 @@
     overlay = document.createElement('div');
     overlay.id = 'na-overlay';
     overlay.innerHTML = `
-      <div class="na-box" id="naBoxLogin">
-        <img class="na-logo" alt="Netturbo" src="https://netturbo.com.br/wp-content/uploads/2021/04/LOGO-1-768x230.png.webp" onerror="this.style.display='none'"/>
-        <div class="na-heading"><h2><span class="sigonet-mark">SIGO</span><svg class="sigonet-n" viewBox="0 0 100 100" width="1em" height="1em"><path d="M18 20 A42 42 0 0 1 82 30" fill="none" stroke="#a8c93c" stroke-width="11" stroke-linecap="round"/><circle cx="50" cy="52" r="42" fill="none" stroke="#9a9a9a" stroke-width="4"/><path d="M27 76 L27 28 L73 72 L73 24" fill="none" stroke="#9a9a9a" stroke-width="10" stroke-linecap="square"/></svg><span class="sigonet-mark">ET</span></h2><p class="sigonet-full">Sistema Integrado de Gestão Operacional Netturbo</p><p>Acesso da Liderança</p></div>
-        <div class="na-field"><label>Nome</label><select id="naSelNome"><option value="">Carregando...</option></select></div>
-        <div class="na-field"><label>PIN (fornecido pela liderança)</label><input type="password" inputmode="numeric" maxlength="6" id="naInputPin" placeholder="0000"/></div>
-        <div class="na-field"><label>Complemento (sua senha pessoal)</label><input type="password" id="naInputComplemento" placeholder="Sua senha"/></div>
-        <div class="na-info" id="naInfo">Primeiro acesso: o complemento que você digitar agora vai virar sua senha pessoal daqui pra frente.</div>
-        <div class="na-error" id="naErro"></div>
-        <button class="na-btn" id="naBtnEntrar">Entrar</button>
-        <div class="na-link" id="naLinkReset">Esqueci meu complemento</div>
+      <div class="na-box na-box--split" id="naBoxLogin">
+        <div class="na-box-brand">
+          <img class="na-logo-mark" alt="SigoNet" src="IMAGENS/sigonet-logo-sm.png"/>
+          <p class="sigonet-full">Sistema Integrado de Gestão da Netturbo</p>
+        </div>
+        <div class="na-box-form">
+          <p class="na-form-title">Acesso da Liderança</p>
+          <div class="na-field"><label>Nome</label><div class="na-input-wrap"><svg class="na-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><select id="naSelNome"><option value="">Carregando...</option></select></div></div>
+          <div class="na-field"><label>PIN (fornecido pela liderança)</label><div class="na-input-wrap"><svg class="na-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><input type="password" inputmode="numeric" maxlength="6" id="naInputPin" placeholder="0000"/><button type="button" class="na-eye-toggle" data-target="naInputPin" aria-label="Mostrar PIN"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+          <div class="na-field"><label>Complemento (sua senha pessoal)</label><div class="na-input-wrap"><svg class="na-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><input type="password" id="naInputComplemento" placeholder="Sua senha"/><button type="button" class="na-eye-toggle" data-target="naInputComplemento" aria-label="Mostrar senha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+          <div class="na-info" id="naInfo">Primeiro acesso: o complemento que você digitar agora vai virar sua senha pessoal daqui pra frente.</div>
+          <div class="na-error" id="naErro"></div>
+          <button class="na-btn" id="naBtnEntrar">Entrar</button>
+          <div class="na-link" id="naLinkReset">Esqueci meu complemento</div>
+        </div>
       </div>
       <div class="na-box" id="naBoxReset" style="display:none">
         <div class="na-heading"><h2>Redefinir Complemento</h2><p>Informe seu PIN pra criar uma senha nova</p></div>
@@ -125,6 +146,15 @@
         <a class="na-btn" href="painel.html" style="text-decoration:none;display:block;text-align:center;box-sizing:border-box">Voltar ao Painel</a>
       </div>`;
     document.body.appendChild(overlay);
+    overlay.querySelectorAll('.na-eye-toggle').forEach(btn => {
+      btn.onclick = () => {
+        const input = document.getElementById(btn.dataset.target);
+        if (!input) return;
+        const mostrando = input.type === 'text';
+        input.type = mostrando ? 'password' : 'text';
+        btn.classList.toggle('na-eye-active', !mostrando);
+      };
+    });
     return overlay;
   }
 
@@ -148,19 +178,33 @@
     }
   }
 
-  function injetarChip(sessao) {
+  // Deixa o ícone de menu (3 pontinhos) do topbar abrindo a Agenda em toda tela
+  // protegida por auth.js, SEM navegar pra longe da tela atual — abre painel.html
+  // numa aba nova (a Agenda só existe implementada lá, é um drawer inteiro com
+  // calendário/tarefas/menções). painel.html já abre a agenda no próprio lugar
+  // (abrirAgenda(), via onclick inline no HTML) então não mexe lá.
+  function configurarMenuAgenda(tela) {
+    if (tela === 'painel') return;
+    const menu = document.querySelector('.topbar-menu');
+    if (!menu || menu.dataset.agendaConfigurada) return;
+    menu.dataset.agendaConfigurada = '1';
+    menu.title = 'Agenda';
+    menu.style.cursor = 'pointer';
+    menu.onclick = () => { window.open('painel.html?agenda=1', '_blank'); };
+  }
+
+  function injetarChip(sessao, tela) {
+    configurarMenuAgenda(tela);
     if (document.getElementById('na-chip')) return;
     const spacer = document.querySelector('.topbar-spacer');
     if (!spacer) return;
     spacer.insertAdjacentHTML('afterend', `<div id="na-chip">` +
-      `<button id="naBell" class="na-bell-empty" title="Agenda">` +
+      `<button id="naBell" class="na-bell-empty" title="Notificações da agenda" tabindex="-1">` +
       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>` +
       `<span class="na-bell-count">0</span></button>` +
       `Olá, ${sessao.nome}<button id="naBtnSair">Sair</button></div>`);
     const btn = document.getElementById('naBtnSair');
     if (btn) btn.onclick = sair;
-    const bell = document.getElementById('naBell');
-    if (bell) bell.onclick = () => { location.href = 'painel.html?agenda=1'; };
     iniciarPollingAgenda(sessao);
   }
 
@@ -250,7 +294,7 @@
         if (!temAcessoTela(sessao, tela)) { mostrarBloqueado(tela); return; }
 
         overlay.style.display = 'none';
-        injetarChip(sessao);
+        injetarChip(sessao, tela);
         atualizarContadorAgenda(sessao).then(count => { if (count > 0) mostrarAvisoAgenda(count); });
         aoEntrar();
       } catch (e) {
@@ -292,7 +336,7 @@
     const sessao = lerSessao();
     if (sessao) {
       if (temAcessoTela(sessao, tela)) {
-        injetarChip(sessao);
+        injetarChip(sessao, tela);
         aoEntrar();
         return;
       }
