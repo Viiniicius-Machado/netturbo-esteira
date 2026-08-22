@@ -491,7 +491,22 @@ function carregarObras(){
   return raw;
 }
 function salvarObras(lista){
-  localStorage.setItem(LS_KEY, JSON.stringify(lista));
+  // Nunca falhou até hoje (2026-08-22 o armazenamento deste navegador tinha só
+  // ~100KB usados, bem longe do limite de ~5-10MB do localStorage), mas se um dia
+  // faltar espaço isso lançava uma exceção sem aviso nenhum pro usuário — os dados
+  // ficavam certos na tela (na memória) mas nunca eram gravados de verdade, e
+  // sumiam ao recarregar a página. Agora avisa alto (log de importação + alert)
+  // em vez de falhar em silêncio.
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(lista));
+    return true;
+  } catch(e){
+    console.error('Falha ao salvar obras no localStorage:', e);
+    const msg = '⚠ ATENÇÃO: os dados NÃO foram salvos neste navegador (armazenamento cheio ou bloqueado). O que está na tela agora ainda está certo, mas vai se perder se você recarregar a página. Exporte um CSV AGORA (botão "Exportar CSV") antes de fazer qualquer outra coisa, e chame o suporte.';
+    if (typeof logImport === 'function') logImport(msg, 'err');
+    alert(msg);
+    return false;
+  }
 }
 function carregarBudgets(){
   let obj;
@@ -995,11 +1010,37 @@ function renderOrcamento(){
   renderExcluidosForaSegmento();
 }
 
-document.getElementById('btnSalvarBudget').addEventListener('click', () => {
+// Orçamento tinha só "digitar + clicar Salvar", sem nenhum aviso se a pessoa
+// esquecesse de clicar — o número digitado sumia silenciosamente ao recarregar a
+// página, voltando pro último valor salvo (ou pro fallback fixo de 2026-08 =
+// R$106.000, se nunca tivesse salvo nada). Vinicius caiu nisso em 2026-08-22
+// (achou que tinha perdido as obras importadas — as obras em si nunca saíram do
+// ar, só o orçamento não persistia). Agora salva sozinho ao digitar (debounce,
+// mesmo padrão de Contratos Fixos) e ao teclar Enter, além do botão continuar
+// funcionando — e o botão pisca "✓ Salvo" pra confirmar visualmente.
+function debounce(fn, atrasoMs){
+  let timer;
+  return function(...args){
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), atrasoMs);
+  };
+}
+function salvarBudgetAtual(mostrarFeedback){
   const chave = chaveMes(new Date());
   salvarBudgetSegmento(chave, segmentoAtual().id, Number(document.getElementById('inputBudget').value) || 0);
   renderOrcamento();
-});
+  if (mostrarFeedback){
+    const btn = document.getElementById('btnSalvarBudget');
+    const original = btn.textContent;
+    btn.textContent = '✓ Salvo';
+    clearTimeout(btn._salvoTimer);
+    btn._salvoTimer = setTimeout(() => { btn.textContent = original; }, 1500);
+  }
+}
+const salvarBudgetDebounced = debounce(() => salvarBudgetAtual(true), 600);
+document.getElementById('btnSalvarBudget').addEventListener('click', () => salvarBudgetAtual(true));
+document.getElementById('inputBudget').addEventListener('input', salvarBudgetDebounced);
+document.getElementById('inputBudget').addEventListener('keydown', e => { if (e.key === 'Enter') salvarBudgetAtual(true); });
 
 /* ═══════════════════════════ RENDER: ranking de descrições SEV ═══════════════════════════ */
 function renderRankingSev(){
