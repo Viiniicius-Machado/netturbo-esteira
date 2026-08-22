@@ -246,8 +246,13 @@
   </div>
 
   <div class="card" id="cardEvolucaoMensal">
-    <div class="card-header">Evolução Mensal</div>
+    <div class="card-header">Evolução Mensal
+      <select id="selMesHistorico" onchange="renderResumoMesHistorico()" style="margin-left:auto;font-size:.75rem">
+        <option value="">Mês atual (ao vivo)</option>
+      </select>
+    </div>
     <div class="card-body">
+      <div id="resumoMesHistorico" style="display:none"></div>
       <div class="evolucao-grid">
         <div class="evolucao-bloco">
           <div class="evolucao-titulo">Entregas de relatório LPU — <span id="evolucaoSegLabel"></span></div>
@@ -537,6 +542,51 @@ function capturarSnapshotMes(){
 function labelMesChave(chave){
   const [ano, mes] = chave.split('-').map(Number);
   return new Date(ano, mes - 1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.', '');
+}
+function labelMesChaveLongo(chave){
+  const [ano, mes] = chave.split('-').map(Number);
+  return new Date(ano, mes - 1, 1).toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+}
+
+// Seletor de mês/ano em "Evolução Mensal" — pra quando vira o mês (base de obras é
+// zerada no fechamento, ver capturarSnapshotMes acima) dar pra olhar o resumo por
+// segmento de um mês já fechado, não só os últimos 5 nas barras (pedido do Vinicius
+// em 2026-08-22). Só o resumo agregado (LPU/Qtd/Fixo/Orçamento) — o detalhe por
+// prestadora não é guardado no fechamento, então não dá pra reconstruir aqui.
+function popularSelMesHistorico(){
+  const sel = document.getElementById('selMesHistorico');
+  const atual = sel.value;
+  const chaves = carregarHistorico().map(h => h.chave).sort().reverse();
+  sel.innerHTML = '<option value="">Mês atual (ao vivo)</option>' +
+    chaves.map(c => `<option value="${c}">${labelMesChaveLongo(c)}</option>`).join('');
+  if(chaves.includes(atual)) sel.value = atual;
+}
+
+function renderResumoMesHistorico(){
+  const chave = document.getElementById('selMesHistorico').value;
+  const el = document.getElementById('resumoMesHistorico');
+  if(!chave){ el.style.display = 'none'; return; }
+
+  const snap = carregarHistorico().find(h => h.chave === chave);
+  const segmento = segmentoAtual();
+  const dadosSeg = snap && snap.segmentos ? snap.segmentos[segmento.id] : null;
+  el.style.display = 'block';
+  if(!dadosSeg){
+    el.innerHTML = `<div class="empty-msg">Sem fechamento registrado pra ${segmento.label} em ${labelMesChaveLongo(chave)}.</div>`;
+    return;
+  }
+  const budget = budgetDoSegmento(chave, segmento.id);
+  const gasto = dadosSeg.lpu + (dadosSeg.fixo||0);
+  const saldo = budget - gasto;
+  el.innerHTML = `
+    <div class="evolucao-titulo" style="margin-bottom:.5rem">${segmento.label} — ${labelMesChaveLongo(chave)} (fechado em ${new Date(snap.fechadoEm).toLocaleDateString('pt-BR')})</div>
+    <div class="orcamento-linhas">
+      <div class="linha-destaque">Gasto realizado <b>${fmtMoeda(gasto)}</b></div>
+      <div class="linha-sub">↳ Contrato LPU <b>${fmtMoeda(dadosSeg.lpu)}</b> (${dadosSeg.qtd} relatório(s))</div>
+      ${segmento.id === 'manutencao' ? `<div class="linha-sub">↳ Contrato Fixo <b>${fmtMoeda(dadosSeg.fixo||0)}</b></div>` : ''}
+      <div>Orçamento <b>${budget ? fmtMoeda(budget) : '—'}</b></div>
+      <div>Saldo <b style="color:${saldo>=0?'var(--green)':'var(--red)'}">${budget ? fmtMoeda(saldo) : '—'}</b></div>
+    </div>`;
 }
 
 /* ═══════════════════════════ PARSER (PDF → registro) — mesma lógica usada para gerar o SEED ═══════════════════════════ */
@@ -855,6 +905,8 @@ function renderOrcamento(){
   renderChipsSegmento();
   document.getElementById('mesOrcamentoLabel').textContent = new Date(ano, mesIdx, 1).toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
   renderContratosFixos(chaveFixo);
+  popularSelMesHistorico();
+  renderResumoMesHistorico();
 
   // orçamento é um bolo único por segmento — soma de TODAS as prestadoras e TODOS os
   // relatórios cadastrados na tela que casam com a conta contábil do segmento ativo,

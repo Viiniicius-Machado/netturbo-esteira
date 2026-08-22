@@ -48,6 +48,9 @@
     .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
     table{width:100%;border-collapse:collapse;font-size:.75rem}
     thead th{text-align:left;padding:.6rem .7rem;color:var(--text-muted);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2)}
+    .filtros-row th{padding:.4rem .5rem;background:var(--surface2);position:sticky;top:29px}
+    .filtros-row input{width:100%;background:var(--surface3);border:1px solid var(--border-hi);border-radius:4px;color:var(--text);font-size:.68rem;padding:.32rem .4rem;font-family:'Inter',sans-serif}
+    .filtros-row input::placeholder{color:var(--text-muted)}
     tbody td{padding:.5rem .7rem;border-bottom:1px solid var(--border)}
     tbody tr:hover{background:var(--surface2)}
     .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
@@ -109,7 +112,17 @@
     <div class="card-body">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Data</th><th>Prestadora</th><th>Técnico</th><th>Cliente</th><th style="text-align:right">Valor</th></tr></thead>
+          <thead>
+            <tr><th>Data</th><th>Prestadora</th><th>Técnico</th><th>Etiqueta</th><th>Cliente</th><th style="text-align:right">Valor</th></tr>
+            <tr class="filtros-row">
+              <th><input type="text" id="fData" placeholder="Filtrar..." oninput="renderDashboardDebounced()"/></th>
+              <th><input type="text" id="fPrestadora" placeholder="Filtrar..." oninput="renderDashboardDebounced()"/></th>
+              <th><input type="text" id="fTecnico" placeholder="Filtrar..." oninput="renderDashboardDebounced()"/></th>
+              <th><input type="text" id="fEtiqueta" placeholder="Filtrar..." oninput="renderDashboardDebounced()"/></th>
+              <th><input type="text" id="fCliente" placeholder="Filtrar..." oninput="renderDashboardDebounced()"/></th>
+              <th><input type="text" id="fValor" placeholder="Filtrar..." oninput="renderDashboardDebounced()"/></th>
+            </tr>
+          </thead>
           <tbody id="tbodyAtividades"></tbody>
         </table>
       </div>
@@ -466,8 +479,29 @@ function renderDashboard(){
 
   // Tabela detalhada de atividades
   const tbAt = document.getElementById('tbodyAtividades');
+  const fData = document.getElementById('fData').value.trim().toLowerCase();
+  const fPrestadora = document.getElementById('fPrestadora').value.trim().toLowerCase();
+  const fTecnico = document.getElementById('fTecnico').value.trim().toLowerCase();
+  const fEtiqueta = document.getElementById('fEtiqueta').value.trim().toLowerCase();
+  const fCliente = document.getElementById('fCliente').value.trim().toLowerCase();
+  const fValor = document.getElementById('fValor').value.trim().toLowerCase();
   const ordenadas = [...doMes].sort((a,b) => String(campoLpu(a,'Timestamp Preenchimento')).localeCompare(String(campoLpu(b,'Timestamp Preenchimento'))));
-  tbAt.innerHTML = ordenadas.length ? ordenadas.map(a => {
+  const filtradas = ordenadas.filter(a => {
+    const empresaFallback = a.tipoLpu === 'apoio' ? a['Empresa Apoio'] : a['Empresa'];
+    const tecnicoFallback = a.tipoLpu === 'apoio' ? a['Técnico Apoio'] : a['Técnico'];
+    const data = String(campoLpu(a,'Timestamp Preenchimento')||'').split(',')[0];
+    const prestadora = campoLpu(a,'Empresa Prestadora')||empresaFallback||'';
+    const tecnico = campoLpu(a,'Técnicos')||tecnicoFallback||'';
+    const valor = fmtMoeda(Number(campoLpu(a,'Total')||0));
+    if(fData && !data.toLowerCase().includes(fData)) return false;
+    if(fPrestadora && !String(prestadora).toLowerCase().includes(fPrestadora)) return false;
+    if(fTecnico && !String(tecnico).toLowerCase().includes(fTecnico)) return false;
+    if(fEtiqueta && !String(a['Etiqueta']||'').toLowerCase().includes(fEtiqueta)) return false;
+    if(fCliente && !String(a['Cliente']||'').toLowerCase().includes(fCliente)) return false;
+    if(fValor && !valor.toLowerCase().includes(fValor)) return false;
+    return true;
+  });
+  tbAt.innerHTML = filtradas.length ? filtradas.map(a => {
     const empresaFallback = a.tipoLpu === 'apoio' ? a['Empresa Apoio'] : a['Empresa'];
     const tecnicoFallback = a.tipoLpu === 'apoio' ? a['Técnico Apoio'] : a['Técnico'];
     const badgeApoio = a.tipoLpu === 'apoio' ? ' (Apoio)' : '';
@@ -476,11 +510,23 @@ function renderDashboard(){
       <td>${String(campoLpu(a,'Timestamp Preenchimento')||'').split(',')[0]}</td>
       <td>${(campoLpu(a,'Empresa Prestadora')||empresaFallback||'—') + badgeApoio}</td>
       <td>${campoLpu(a,'Técnicos')||tecnicoFallback||'—'}</td>
+      <td>${a['Etiqueta']||'—'}</td>
       <td>${a['Cliente']||'—'}</td>
       <td style="text-align:right">${fmtMoeda(Number(campoLpu(a,'Total')||0))}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="5" class="empty-msg">Sem LPUs geradas neste mês.</td></tr>';
+  }).join('') : '<tr><td colspan="6" class="empty-msg">Sem LPUs geradas neste mês.</td></tr>';
 }
+
+// Filtros de coluna usam debounce (250ms) pra não travar a digitação — mesmo padrão
+// de controle_atividades.html.
+function debounce(fn, atrasoMs){
+  let timer;
+  return function(...args){
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), atrasoMs);
+  };
+}
+const renderDashboardDebounced = debounce(renderDashboard, 250);
 
 // Exporta o Descritivo das Atividades (mesma lista da tabela, já filtrada pelo mês).
 window.exportarExcel = function(){
@@ -501,6 +547,7 @@ window.exportarExcel = function(){
       'Data': String(campoLpu(a,'Timestamp Preenchimento')||'').split(',')[0],
       'Prestadora': (campoLpu(a,'Empresa Prestadora')||empresaFallback||'') + (a.tipoLpu==='apoio' ? ' (Apoio)' : ''),
       'Técnico': campoLpu(a,'Técnicos')||tecnicoFallback||'',
+      'Etiqueta': a['Etiqueta']||'',
       'Cliente': a['Cliente']||'',
       'Descrição Contábil': campoLpu(a,'Descrição Contábil')||'',
       'Status': (a[a.tipoLpu==='apoio' ? 'Status LPU Apoio' : 'Status LPU'])||'',

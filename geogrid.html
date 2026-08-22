@@ -164,6 +164,14 @@ let TODOS_ITENS = [];
 // consultado item a item na hora de filtrar (mesmo padrão de filtro por tipo
 // já usado na Esteira de Despacho, index.html).
 let MAPA_TIPO_POR_ATIVIDADE = {};
+
+// Material (INS) que o técnico registrou pra atividade, pra o líder saber que
+// caixa/emenda foi usada em campo antes de validar o diagrama (pedido do
+// Vinicius em 2026-08-22) — mesma fonte (LISTAR_CONTROLE_MATERIAL) e mesmo
+// agrupamento por 'ID Atividade' de controle_atividades.html/controle_material.html.
+// Só INS entra aqui (insumo — material de fusão/caixa); ATN é patrimônio (ferramenta
+// com número de série), não é o que o líder precisa ver nessa validação.
+let MAPA_MATERIAL_POR_ATIVIDADE = {};
 let FILTRO_TIPO_GEOGRID = 'TODOS';
 window.selecionarFiltroGeogrid = function(tipo){
   FILTRO_TIPO_GEOGRID = tipo;
@@ -236,9 +244,10 @@ async function carregarGeogrid(){
   // atividade é só pro filtro por setor; se ele falhar ou demorar, a fila do
   // GEOGRID não pode travar por causa disso, só fica temporariamente sem efeito
   // o filtro por setor.
-  const [resGeogrid, resMapa] = await Promise.allSettled([
+  const [resGeogrid, resMapa, resMaterial] = await Promise.allSettled([
     fetch(APPS_SCRIPT_URL + '?acao=LISTAR_GEOGRID').then(r=>r.json()),
-    fetch(APPS_SCRIPT_URL + '?acao=LISTAR_MAPA_TIPO_ATIVIDADE').then(r=>r.json())
+    fetch(APPS_SCRIPT_URL + '?acao=LISTAR_MAPA_TIPO_ATIVIDADE').then(r=>r.json()),
+    fetch(APPS_SCRIPT_URL + '?acao=LISTAR_CONTROLE_MATERIAL').then(r=>r.json())
   ]);
 
   if(resGeogrid.status === 'fulfilled'){
@@ -252,6 +261,19 @@ async function carregarGeogrid(){
     MAPA_TIPO_POR_ATIVIDADE = resMapa.value.mapa || {};
   } else {
     console.error('Erro ao carregar LISTAR_MAPA_TIPO_ATIVIDADE (filtro por setor fica sem efeito):', resMapa.reason);
+  }
+
+  if(resMaterial.status === 'fulfilled'){
+    const mapa = {};
+    (resMaterial.value.itens || []).forEach(item => {
+      if(item.Tipo !== 'INS') return; // só insumo — ATN (patrimônio/série) não interessa aqui
+      const id = item['ID Atividade'];
+      if(!mapa[id]) mapa[id] = [];
+      mapa[id].push(item);
+    });
+    MAPA_MATERIAL_POR_ATIVIDADE = mapa;
+  } else {
+    console.error('Erro ao carregar LISTAR_CONTROLE_MATERIAL (material da emenda fica sem efeito):', resMaterial.reason);
   }
 
   renderGeogrid();
@@ -326,6 +348,18 @@ function blocoCeoSemFusao(d){
   return `<div class="fusao-item-bloco">
     <div class="fusao-item-titulo">CEO Nº${d.numeroCeo||'?'} · ${d.nomenclaturaA||'?'}${infoGps}</div>
     <div class="fusao-item-rodape">Caixa nova — cadastro no GEOGRID (sem fusão fora do padrão)</div>
+  </div>`;
+}
+
+// Material (insumo) que o técnico registrou pra essa atividade em campo — ajuda
+// o líder a saber qual emenda/caixa foi usada antes de validar o diagrama, já
+// que cada material tem um cadastro diferente pra editar no GEOGRID de verdade.
+function blocoMaterialInsumo(item){
+  const insumos = MAPA_MATERIAL_POR_ATIVIDADE[item['ID Atividade']];
+  if(!insumos || !insumos.length) return '';
+  return `<div class="fusao-item-bloco">
+    <div class="fusao-item-titulo">Material (insumo) registrado pelo técnico</div>
+    ${insumos.map(it => `<div class="fusao-item-rodape">${it['Descrição']||it['Código']||'—'} · Qtd: ${it['Quantidade']||'—'}</div>`).join('')}
   </div>`;
 }
 
@@ -833,6 +867,7 @@ function renderValidacaoLider(){
       <div class="atv-card-body">
         <div class="meta">${item['Endereço']||''}<br>Fusionou todas: ${item['Fusionou Todas']||'—'}<br>Registrado em ${item['Timestamp Registro']||'—'}</div>
         ${blocoRecusa}
+        ${blocoMaterialInsumo(item)}
         ${corpo}
         <div class="acoes">
           <button class="btn btn-accent" style="padding:.45rem .8rem;font-size:.75rem" onclick="aprovarValidacaoLider(${item.rowIndex})">Aprovar</button>

@@ -444,6 +444,9 @@ function preencheuLpu(statusLpu){
 function aprovouLpu(statusLpu){
   return ['AGUARDANDO_MEDICAO','APROVADO_AGUARDANDO_NF','PAGO'].indexOf(statusLpu) !== -1;
 }
+function recebidoMedicao(statusLpu){
+  return ['APROVADO_AGUARDANDO_NF','PAGO'].indexOf(statusLpu) !== -1;
+}
 
 // filtros de coluna — reaproveitado por renderTabela() e exportarExcel().
 function passaFiltrosColuna(a){
@@ -573,12 +576,14 @@ window.abrirDetalhe = function(idAtividade){
     if(!empresa) return '';
     const preencheu = preencheuLpu(statusLpu);
     const aprovou = aprovouLpu(statusLpu);
+    const recebido = recebidoMedicao(statusLpu);
     return `
       <div class="lpu-bloco">
         <div class="lpu-bloco-titulo">${titulo} — ${empresa}${tecnico?' · '+tecnico:''}</div>
         <div class="check-linha"><span>Status LPU</span><b>${statusLpu ? (STATUS_LPU_LABELS[statusLpu]||statusLpu) : 'Sem cobrança por LPU'}</b></div>
         <div class="check-linha"><span>Preencheu a LPU?</span><b style="color:${preencheu?'var(--green)':'var(--amber)'}">${statusLpu ? (preencheu?'Sim':'Não') : '—'}</b></div>
         <div class="check-linha"><span>Aprovou (passou pelo aprovador)?</span><b style="color:${aprovou?'var(--green)':'var(--amber)'}">${statusLpu ? (aprovou?'Sim':'Não') : '—'}</b></div>
+        <div class="check-linha"><span>Recebido pela Medição?</span><b style="color:${recebido?'var(--green)':'var(--amber)'}">${statusLpu ? (recebido?'Sim':'Não') : '—'}</b></div>
       </div>`;
   }
 

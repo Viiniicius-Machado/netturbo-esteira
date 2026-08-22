@@ -77,6 +77,9 @@
     <select id="selDescContabil" onchange="aoMudarFiltroContabil()">
       <option value="TODAS">Todas as Descrições Contábeis</option>
     </select>
+    <select id="selPrestador" onchange="aoMudarFiltroContabil()">
+      <option value="TODAS">Todas as Prestadoras</option>
+    </select>
     <button class="btn btn-outline" onclick="carregarAprovacao()">↻ Atualizar</button>
   </div>
 
@@ -131,6 +134,23 @@ function popularDescricoes(){
     DESCRICOES_CONTABEIS.map(d => `<option value="${d.replace(/"/g,'&quot;')}">${d}</option>`).join('');
 }
 
+// Empresa/prestadora de cada item (titular ou apoio, conforme tipoLpu) — mesmo campo
+// já usado como fallback em renderFila/renderPendentesPreenchimento, aqui reaproveitado
+// pra listar as prestadoras únicas que têm algo na fila (aprovação ou preenchimento).
+function empresaDoItem(a){ return a.tipoLpu === 'apoio' ? a['Empresa Apoio'] : a['Empresa']; }
+
+function popularPrestadores(){
+  const sel = document.getElementById('selPrestador');
+  const atual = sel.value || 'TODAS';
+  const nomes = new Set();
+  montarPendentes().forEach(a => { const e = empresaDoItem(a); if(e) nomes.add(e); });
+  montarPendentesPreenchimento().forEach(a => { const e = empresaDoItem(a); if(e) nomes.add(e); });
+  const lista = Array.from(nomes).sort((a,b) => a.localeCompare(b,'pt-BR'));
+  sel.innerHTML = '<option value="TODAS">Todas as Prestadoras</option>' +
+    lista.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  if(lista.includes(atual)) sel.value = atual;
+}
+
 // Quem está aprovando cada LPU, pra ficar registrado — antes era um seletor manual
 // (senha compartilhada entre gestores); agora vem direto do login por PIN.
 let APROVADOR_ATUAL = '';
@@ -164,6 +184,7 @@ async function carregarAprovacao(){
     if(chave === _ultimaChaveRenderAprov) return;
     _ultimaChaveRenderAprov = chave;
     TODAS_ATIVIDADES = atividades;
+    popularPrestadores();
     renderFila();
     renderPendentesPreenchimento();
   }catch(err){
@@ -191,8 +212,10 @@ function campoLpu(a, campo){ return a[pfxLpu(a) + campo]; }
 
 function renderFila(){
   const filtro = document.getElementById('selDescContabil').value || 'TODAS';
+  const filtroPrestador = document.getElementById('selPrestador').value || 'TODAS';
   let pendentes = montarPendentes();
   if(filtro !== 'TODAS') pendentes = pendentes.filter(a => campoLpu(a,'Descrição Contábil') === filtro);
+  if(filtroPrestador !== 'TODAS') pendentes = pendentes.filter(a => empresaDoItem(a) === filtroPrestador);
   document.getElementById('countFila').textContent = pendentes.length;
 
   const col = document.getElementById('colFila');
@@ -256,8 +279,10 @@ function montarPendentesPreenchimento(){
 
 function renderPendentesPreenchimento(){
   const filtro = document.getElementById('selDescContabil').value || 'TODAS';
+  const filtroPrestador = document.getElementById('selPrestador').value || 'TODAS';
   let pendentes = montarPendentesPreenchimento();
   if(filtro !== 'TODAS') pendentes = pendentes.filter(a => a['Conta Contábil'] === filtro);
+  if(filtroPrestador !== 'TODAS') pendentes = pendentes.filter(a => empresaDoItem(a) === filtroPrestador);
   document.getElementById('countPendentePreenchimento').textContent = pendentes.length;
 
   const col = document.getElementById('colPendentePreenchimento');

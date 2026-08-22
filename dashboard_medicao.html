@@ -121,6 +121,11 @@
       <div class="card-header">Gasto por Semana</div>
       <div class="card-body"><div id="rankSemanas"></div></div>
     </div>
+
+    <div class="card">
+      <div class="card-header">LPU por Região<small>RMC/RMJ/RMP/Baixada Santista, pelo município da falha</small></div>
+      <div class="card-body"><div id="rankRegiao"></div></div>
+    </div>
   </div>
 
   <div class="card">
@@ -268,6 +273,14 @@ function renderDashboardMedicao(){
     porSemana[chave] = (porSemana[chave]||0) + Number(campoLpu(a,'Total')||0);
   });
   renderRankingSemanas('rankSemanas', porSemana);
+
+  const porRegiao = {}, qtdPorRegiao = {};
+  itens.forEach(a => {
+    const regiao = regiaoDaCidade(a['Cidade Falha']);
+    porRegiao[regiao] = (porRegiao[regiao]||0) + Number(campoLpu(a,'Total')||0);
+    qtdPorRegiao[regiao] = (qtdPorRegiao[regiao]||0) + 1;
+  });
+  renderRankingValor('rankRegiao', porRegiao, qtdPorRegiao);
 
   renderPlanoVoo();
   renderSaldoProjecaoTabela();
@@ -528,6 +541,33 @@ function renderContagemHtml(mapaContagem){
 // também a contagem de atividades num badge à esquerda (mesma leitura do gráfico
 // de referência: soma de valor + contagem lado a lado) e o ticket médio (valor
 // total ÷ quantidade de obras) embaixo do nome.
+// Município (de 'Cidade Falha', capturado por reverse-geocode em tecnico.html) →
+// região, pra saber quanto de LPU foi realizado/pago em cada uma. Listas oficiais
+// do Estado de SP (pedido do Vinicius em 2026-08-22): RMC (LC 870/2000, 20
+// municípios), Baixada Santista (LC 815/1996, 9 municípios), Região Metropolitana
+// de Jundiaí (ex-Aglomeração Urbana, LC 1146/2011, 7 municípios) e Região
+// Metropolitana de Piracicaba (ex-Aglomeração Urbana, LC 1178/2012, 24
+// municípios). Cidade fora dessas 4 listas (ou sem 'Cidade Falha' registrada —
+// nem toda atividade tem GPS de falha) entra em "Outros".
+const REGIOES_MUNICIPIOS = {
+  'RMC': ['Americana','Artur Nogueira','Campinas','Cosmópolis','Engenheiro Coelho','Holambra','Hortolândia','Indaiatuba','Itatiba','Jaguariúna','Monte Mor','Morungaba','Nova Odessa','Paulínia','Pedreira',"Santa Bárbara d'Oeste",'Santo Antônio de Posse','Sumaré','Valinhos','Vinhedo'],
+  'RMJ': ['Cabreúva','Campo Limpo Paulista','Itupeva','Jarinu','Jundiaí','Louveira','Várzea Paulista'],
+  'RMP': ['Águas de São Pedro','Analândia','Araras','Capivari','Charqueada','Conchal','Cordeirópolis','Corumbataí','Elias Fausto','Ipeúna','Iracemápolis','Leme','Limeira','Mombuca','Piracicaba','Pirassununga','Rafard','Rio Claro','Rio das Pedras','Saltinho','Santa Cruz da Conceição','Santa Gertrudes','Santa Maria da Serra','São Pedro'],
+  'Baixada Santista': ['Bertioga','Cubatão','Guarujá','Itanhaém','Mongaguá','Peruíbe','Praia Grande','Santos','São Vicente'],
+};
+const ACENTOS_CIDADE = { 'á':'a','à':'a','ã':'a','â':'a','ä':'a','é':'e','ê':'e','è':'e','ë':'e','í':'i','ì':'i','î':'i','ï':'i','ó':'o','ò':'o','õ':'o','ô':'o','ö':'o','ú':'u','ù':'u','û':'u','ü':'u','ç':'c' };
+function normalizarCidade(s){
+  return String(s||'').trim().toLowerCase().split('').map(ch => ACENTOS_CIDADE[ch] || ch).join('');
+}
+const MAPA_CIDADE_REGIAO = {};
+Object.entries(REGIOES_MUNICIPIOS).forEach(([regiao, municipios]) => {
+  municipios.forEach(m => { MAPA_CIDADE_REGIAO[normalizarCidade(m)] = regiao; });
+});
+function regiaoDaCidade(cidade){
+  if(!cidade) return 'Outros';
+  return MAPA_CIDADE_REGIAO[normalizarCidade(cidade)] || 'Outros';
+}
+
 function renderRankingValor(elId, mapaValores, qtdMap){
   const el = document.getElementById(elId);
   const entradas = Object.entries(mapaValores).sort((a,b) => b[1]-a[1]);
