@@ -479,16 +479,31 @@ function normalizarRegistroSeed(r){
 }
 
 /* ═══════════════════════════ PERSISTÊNCIA (localStorage) ═══════════════════════════ */
+// BUG CORRIGIDO em 2026-08-22: a versão antiga reidratava do SEED sempre que a lista
+// vinha vazia (`!raw.length`), sem distinguir "nunca abriu essa tela neste navegador"
+// (chave nem existe) de "fechou o mês de propósito" (chave existe, valor é `[]` —
+// estado normal logo depois de "Excluir Todos os Relatórios"). Resultado: fechar o
+// mês e depois só recarregar a página já bastava pra reviver os 108 registros
+// antigos do SEED por cima de qualquer obra nova importada — o Vinicius importou
+// várias obras reais, alguma recarga no meio do caminho resetou tudo pro SEED
+// congelado, e as obras novas somem sem nenhum aviso (mesmo já tendo sido salvas
+// certinho por um instante). Agora só reidrata quando a chave nunca existiu de
+// verdade (1º acesso genuíno); dado corrompido vira lista vazia, nunca mais SEED.
 function carregarObras(){
-  let raw = null;
-  try { raw = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch(e){ raw = null; }
-  if (!raw || !Array.isArray(raw) || !raw.length) {
-    // hidrata a partir do SEED na 1ª vez que a tela é aberta neste navegador
-    raw = SEED_DATA.map(normalizarRegistroSeed);
+  const bruto = localStorage.getItem(LS_KEY);
+  if (bruto === null) {
+    const raw = SEED_DATA.map(normalizarRegistroSeed);
     raw.forEach(r => r.id = idRegistro(r));
     salvarObras(raw);
+    return raw;
   }
-  return raw;
+  try {
+    const raw = JSON.parse(bruto);
+    return Array.isArray(raw) ? raw : [];
+  } catch(e){
+    console.error('Dado de obras corrompido no localStorage — mantendo vazio em vez de reidratar do SEED:', e);
+    return [];
+  }
 }
 function salvarObras(lista){
   // Nunca falhou até hoje (2026-08-22 o armazenamento deste navegador tinha só
