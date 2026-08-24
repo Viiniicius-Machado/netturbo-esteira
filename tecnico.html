@@ -1209,6 +1209,8 @@ function renderClassificacaoChips(rowIndex){
 
   rows = st.cat1 ? rows.filter(r=>r.cat1===st.cat1) : rows;
   const op2 = st.cat1 ? [...new Set(rows.map(r=>r.cat2).filter(Boolean))] : [];
+  const campoCat2 = document.getElementById('classCampoCat2-'+rowIndex);
+  if(campoCat2) campoCat2.style.display = op2.length ? 'block' : 'none';
   if(op2.indexOf(st.cat2)===-1) st.cat2 = op2[0] || '';
   renderChipGroup(rowIndex, 'classCat2', op2, st.cat2, 'cat2');
 
@@ -1737,7 +1739,16 @@ function renderCamposPreventiva(a){
 function renderFormOcorrenciaNovo(a){
   const tipoSolicitacao = a['Tipo de Solicitação'];
   const ceoAtual = CEO_LABELS_REVERSA[a['CEO']] || a['CEO'] || '';
-  const isFibra = TIPOS_COM_FUSAO.includes(tipoSolicitacao);
+  // Preventiva tem 2 formatos bem diferentes de RFO: "rota" (KMZ, os 5 campos de
+  // renderCamposPreventiva) e "Acompanhamento" (Categoria 1, ex.: troca de poste
+  // da CPFL) — esse último é uma visita normal, não uma rota inteira, então a
+  // RFO precisa ser igual à dos outros segmentos (Local da Falha, Solução,
+  // CEO/fusão se for o caso). Categoria 1 não é editável pelo técnico (só
+  // despacho define), então dá pra confiar no valor já salvo em `a`. Pedido do
+  // Vinicius em 2026-08-25.
+  const ehPreventivaAcompanhamento = tipoSolicitacao === 'Preventiva' && a['Categoria 1'] === 'Acompanhamento';
+  const ehPreventivaRota = tipoSolicitacao === 'Preventiva' && !ehPreventivaAcompanhamento;
+  const isFibra = TIPOS_COM_FUSAO.includes(tipoSolicitacao) || ehPreventivaAcompanhamento;
   return `
     <div class="form-ocorrencia" id="form-${a.rowIndex}">
       <div>
@@ -1748,7 +1759,7 @@ function renderFormOcorrenciaNovo(a){
         <label>Categoria 1</label>
         <div class="causa-grid" id="classCat1-${a.rowIndex}"></div>
       </div>
-      <div style="display:none">
+      <div id="classCampoCat2-${a.rowIndex}" style="display:none">
         <label>Categoria 2</label>
         <div class="causa-grid" id="classCat2-${a.rowIndex}"></div>
       </div>
@@ -1760,7 +1771,7 @@ function renderFormOcorrenciaNovo(a){
         <label>Categoria 4</label>
         <div class="causa-grid" id="classCat4-${a.rowIndex}"></div>
       </div>
-      <div id="local-falha-${a.rowIndex}" style="display:${tipoSolicitacao === 'Preventiva' ? 'none' : ''}">
+      <div id="local-falha-${a.rowIndex}" style="display:${ehPreventivaRota ? 'none' : ''}">
         <label>Local da Falha</label>
         ${gpsWidget(a.rowIndex,'falha', a['GPS Falha']||'')}
       </div>
@@ -1783,8 +1794,8 @@ function renderFormOcorrenciaNovo(a){
         </div>
         <div id="listamat-${a.rowIndex}"></div>
       </div>
-      ${tipoSolicitacao === 'Preventiva' ? renderCamposPreventiva(a) : ''}
-      <div id="solucao-block-${a.rowIndex}" style="display:${tipoSolicitacao === 'Preventiva' ? 'none' : ''}">
+      ${ehPreventivaRota ? renderCamposPreventiva(a) : ''}
+      <div id="solucao-block-${a.rowIndex}" style="display:${ehPreventivaRota ? 'none' : ''}">
         <label>Solução Realizada</label>
         <textarea id="solucao-${a.rowIndex}" placeholder="O que foi feito para resolver...">${a['Solução']||''}</textarea>
       </div>
@@ -1813,7 +1824,7 @@ function renderFormMedicaoSimples(a){
         <label>Categoria 1</label>
         <div class="causa-grid" id="classCat1-${a.rowIndex}"></div>
       </div>
-      <div style="display:none">
+      <div id="classCampoCat2-${a.rowIndex}" style="display:none">
         <label>Categoria 2</label>
         <div class="causa-grid" id="classCat2-${a.rowIndex}"></div>
       </div>
@@ -2762,7 +2773,11 @@ window.solicitarValidacao = async function(rowIndex){
   const tipoSolicitacao = atividadeAtual['Tipo de Solicitação'] || '';
   const usaModeloNovo = !!tipoSolicitacao;
   const isMedicao = tipoSolicitacao === 'Medição';
-  const isPreventiva = tipoSolicitacao === 'Preventiva';
+  // Preventiva + Categoria 1 "Acompanhamento" usa a RFO padrão (igual aos
+  // outros segmentos), não os 5 campos de rota — ver mesma lógica em
+  // renderFormOcorrenciaNovo (ehPreventivaRota). Categoria 1 não é editável
+  // pelo técnico, então o valor já salvo na atividade é confiável aqui.
+  const isPreventiva = tipoSolicitacao === 'Preventiva' && atividadeAtual['Categoria 1'] !== 'Acompanhamento';
 
   let tipo, causa, categorias = null;
   if(usaModeloNovo){
@@ -2811,7 +2826,7 @@ window.solicitarValidacao = async function(rowIndex){
     }
   }
 
-  const isFibra = usaModeloNovo ? TIPOS_COM_FUSAO.includes(tipoSolicitacao) : (tipo === 'ROMPIMENTO' || tipo === 'MASSIVA');
+  const isFibra = usaModeloNovo ? (TIPOS_COM_FUSAO.includes(tipoSolicitacao) || (tipoSolicitacao === 'Preventiva' && atividadeAtual['Categoria 1'] === 'Acompanhamento')) : (tipo === 'ROMPIMENTO' || tipo === 'MASSIVA');
   let ceo = '';
   if(isFibra){
     ceo = CEO_STATE[rowIndex];
@@ -2925,10 +2940,11 @@ function copiarRelatorioWhats(rowIndex, campos){
   if(campos.cidadeFalha) t += 'CIDADE: ' + campos.cidadeFalha + '\n';
   t += '\n';
   t += '*OCORRÊNCIA:* ' + campos.tipo + '\n';
-  // Categoria 1/2 não aparecem mais pro técnico escolher (ver classCat1/classCat2
-  // com display:none em renderFormOcorrenciaNovo/renderFormMedicaoSimples — quem
-  // define é o despacho e trava), mas seguem vindo do despacho e precisam continuar
-  // aparecendo no relatório do WhatsApp mesmo assim.
+  // Categoria 1 não aparece pro técnico escolher (ver classCat1 com display:none
+  // em renderFormOcorrenciaNovo/renderFormMedicaoSimples — só o despacho define);
+  // Categoria 2 e 3 o técnico pode ajustar (liberado em 2026-08-25 — sem isso ele
+  // não conseguia marcar Improdutiva quando a categoria produtiva escolhida no
+  // despacho não bate com o que aconteceu de verdade em campo).
   if(campos.categoria1) t += '*CATEGORIA 1:* ' + campos.categoria1 + '\n';
   if(campos.categoria2) t += '*CATEGORIA 2:* ' + campos.categoria2 + '\n';
   if(campos.causa) t += '*CAUSA:* ' + campos.causa + '\n';
