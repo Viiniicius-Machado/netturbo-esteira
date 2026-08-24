@@ -1147,8 +1147,10 @@ const MATRIZ_SLA = [
 
 // Tipos de Solicitação em que o bloco de CEO + "Perguntas rápidas de fusão"
 // aparece — antes o gatilho era Ocorrência ROMPIMENTO/MASSIVA, agora é o Tipo
-// de Solicitação (fixo, escolhido no despacho) pros modelos novos.
-const TIPOS_COM_FUSAO = ['Manutenção','Preventiva','Transmissão','Implantação'];
+// de Solicitação (fixo, escolhido no despacho) pros modelos novos. Preventiva
+// saiu daqui em 2026-08-24 (pedido do Vinicius): não fusiona CEO, percorre uma
+// rota inteira e reporta os 5 campos de renderCamposPreventiva em vez disso.
+const TIPOS_COM_FUSAO = ['Manutenção','Transmissão','Implantação'];
 
 let CLASSIFICACAO_STATE = {}; // rowIndex -> {tipo,cat1,cat2,cat3,cat4} (modelo novo)
 
@@ -1701,6 +1703,37 @@ function renderFormOcorrenciaAntigo(a){
   `;
 }
 
+// Preventiva percorre uma rota inteira (KMZ) em vez de atender um ponto só —
+// não fusiona CEO (ver TIPOS_COM_FUSAO), mas precisa desses 5 números pra
+// fechar a RFO. Pré-preenche se a atividade já tinha isso salvo (reenvio depois
+// de "Motivo Não Validado", por exemplo). LPU continua normal depois, sem
+// mudança nenhuma — isso aqui é só a RFO (pedido do Vinicius em 2026-08-24).
+function renderCamposPreventiva(a){
+  const rowIndex = a.rowIndex;
+  return `
+    <div id="preventiva-block-${rowIndex}">
+      <label>Rota percorrido (metros)</label>
+      <input type="number" step="1" min="0" id="prevRota-${rowIndex}" placeholder="Ex: 1756" value="${a['Rota Percorrida']||''}"/>
+    </div>
+    <div>
+      <label>Quantidade Poste Equipado</label>
+      <input type="number" step="1" min="0" id="prevPoste-${rowIndex}" value="${a['Poste Equipado']||''}"/>
+    </div>
+    <div>
+      <label>Cordoalha Lançada</label>
+      <input type="number" step="1" min="0" id="prevCordoalha-${rowIndex}" value="${a['Cordoalha Lançada']||''}"/>
+    </div>
+    <div>
+      <label>Quantidade de Plaquetas</label>
+      <input type="number" step="1" min="0" id="prevPlaquetas-${rowIndex}" value="${a['Plaquetas Adicionadas']||''}"/>
+    </div>
+    <div>
+      <label>CEO/CTO Regularizadas</label>
+      <input type="number" step="1" min="0" id="prevCaixas-${rowIndex}" value="${a['Caixas Regularizadas']||''}"/>
+    </div>
+  `;
+}
+
 function renderFormOcorrenciaNovo(a){
   const tipoSolicitacao = a['Tipo de Solicitação'];
   const ceoAtual = CEO_LABELS_REVERSA[a['CEO']] || a['CEO'] || '';
@@ -1727,7 +1760,7 @@ function renderFormOcorrenciaNovo(a){
         <label>Categoria 4</label>
         <div class="causa-grid" id="classCat4-${a.rowIndex}"></div>
       </div>
-      <div id="local-falha-${a.rowIndex}">
+      <div id="local-falha-${a.rowIndex}" style="display:${tipoSolicitacao === 'Preventiva' ? 'none' : ''}">
         <label>Local da Falha</label>
         ${gpsWidget(a.rowIndex,'falha', a['GPS Falha']||'')}
       </div>
@@ -1750,7 +1783,8 @@ function renderFormOcorrenciaNovo(a){
         </div>
         <div id="listamat-${a.rowIndex}"></div>
       </div>
-      <div>
+      ${tipoSolicitacao === 'Preventiva' ? renderCamposPreventiva(a) : ''}
+      <div id="solucao-block-${a.rowIndex}" style="display:${tipoSolicitacao === 'Preventiva' ? 'none' : ''}">
         <label>Solução Realizada</label>
         <textarea id="solucao-${a.rowIndex}" placeholder="O que foi feito para resolver...">${a['Solução']||''}</textarea>
       </div>
@@ -2728,6 +2762,7 @@ window.solicitarValidacao = async function(rowIndex){
   const tipoSolicitacao = atividadeAtual['Tipo de Solicitação'] || '';
   const usaModeloNovo = !!tipoSolicitacao;
   const isMedicao = tipoSolicitacao === 'Medição';
+  const isPreventiva = tipoSolicitacao === 'Preventiva';
 
   let tipo, causa, categorias = null;
   if(usaModeloNovo){
@@ -2760,8 +2795,21 @@ window.solicitarValidacao = async function(rowIndex){
   if(!isMedicao && (!estadoMat || estadoMat.usaMat === null || estadoMat.usaMat === undefined)){
     showToast('Informe se houve uso de material.'); return;
   }
-  if(!solucao){ showToast(isMedicao ? 'Preencha a Observação.' : 'Preencha a Solução Realizada.'); return; }
+  if(!isPreventiva && !solucao){ showToast(isMedicao ? 'Preencha a Observação.' : 'Preencha a Solução Realizada.'); return; }
   if(!isMedicao && !melhoria){ showToast('Preencha a Melhoria de Rede.'); return; }
+
+  const camposPreventiva = { rotaPercorrida:'', posteEquipado:'', cordoalhaLancada:'', plaquetasAdicionadas:'', caixasRegularizadas:'' };
+  if(isPreventiva){
+    camposPreventiva.rotaPercorrida = document.getElementById('prevRota-'+rowIndex).value.trim();
+    camposPreventiva.posteEquipado = document.getElementById('prevPoste-'+rowIndex).value.trim();
+    camposPreventiva.cordoalhaLancada = document.getElementById('prevCordoalha-'+rowIndex).value.trim();
+    camposPreventiva.plaquetasAdicionadas = document.getElementById('prevPlaquetas-'+rowIndex).value.trim();
+    camposPreventiva.caixasRegularizadas = document.getElementById('prevCaixas-'+rowIndex).value.trim();
+    if(Object.values(camposPreventiva).some(v => v === '')){
+      showToast('Preencha os 5 campos da Preventiva (Rota Percorrida, Poste Equipado, Cordoalha, Plaquetas, Caixas Regularizadas).');
+      return;
+    }
+  }
 
   const isFibra = usaModeloNovo ? TIPOS_COM_FUSAO.includes(tipoSolicitacao) : (tipo === 'ROMPIMENTO' || tipo === 'MASSIVA');
   let ceo = '';
@@ -2840,7 +2888,7 @@ window.solicitarValidacao = async function(rowIndex){
   }));
   const fusaoPareamento = diagramasSerializados.length ? JSON.stringify(diagramasSerializados) : '';
 
-  const payloadBase = { acao:'SALVAR_OCORRENCIA', sessionToken: TECNICO_TOKEN, rowIndex, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, nomenclaturaCeoA, nomenclaturaCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, fusaoPareamento, quantidadeCeo };
+  const payloadBase = { acao:'SALVAR_OCORRENCIA', sessionToken: TECNICO_TOKEN, rowIndex, solucao, materiais, melhoria, ceo: (CEO_LABELS[ceo] || ceo), gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, nomenclaturaCeoA, nomenclaturaCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, fusaoPareamento, quantidadeCeo, ...camposPreventiva };
   const payload = usaModeloNovo ? { ...payloadBase, ...categorias } : { ...payloadBase, ocorrencia: tipo, causa };
 
   try{
@@ -2855,7 +2903,7 @@ window.solicitarValidacao = async function(rowIndex){
       enviarControleMaterial(atividadeAtual['ID Atividade'], atividadeAtual['Protocolo O&M']||atividadeAtual['Protocolo NOC']||'', atividadeAtual['Etiqueta']||'', atividadeAtual['Cliente']||'', atividadeAtual['Técnico']||'', atividadeAtual['Empresa']||'', montarItensMateriaisPayload(rowIndex));
     }
 
-    copiarRelatorioWhats(rowIndex, { tipo, categoria1: categorias ? categorias.categoria1 : '', categoria2: categorias ? categorias.categoria2 : '', causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, quantidadeCeo, diagramas: diagramasSerializados });
+    copiarRelatorioWhats(rowIndex, { tipo, categoria1: categorias ? categorias.categoria1 : '', categoria2: categorias ? categorias.categoria2 : '', causa, solucao, materiais, melhoria, ceo, gpsFalha, gpsCeoA, gpsCeoB, numeroCeoA, numeroCeoB, cidadeFalha, tipoCaboFusionado, fusionouTodas, quantidadeCeo, diagramas: diagramasSerializados, ...camposPreventiva });
     limparRascunho(rowIndex);
     showToast('Enviado e copiado! Cole no grupo do WhatsApp.');
     carregarAtividades();
@@ -2892,11 +2940,16 @@ function copiarRelatorioWhats(rowIndex, campos){
   if(campos.numeroCeoB) t += '*Nº CEO B:* ' + campos.numeroCeoB + '\n';
   if(campos.quantidadeCeo) t += '*QUANTIDADE DE CEO TRABALHADAS:* ' + campos.quantidadeCeo + '\n';
   if(campos.tipoCaboFusionado) t += '*CABO FUSIONADO:* ' + campos.tipoCaboFusionado + '\n';
+  if(campos.rotaPercorrida) t += '*ROTA PERCORRIDA (METROS):* ' + campos.rotaPercorrida + '\n';
+  if(campos.posteEquipado) t += '*POSTE EQUIPADO:* ' + campos.posteEquipado + '\n';
+  if(campos.cordoalhaLancada) t += '*CORDOALHA LANÇADA:* ' + campos.cordoalhaLancada + '\n';
+  if(campos.plaquetasAdicionadas) t += '*PLAQUETAS ADICIONADAS:* ' + campos.plaquetasAdicionadas + '\n';
+  if(campos.caixasRegularizadas) t += '*CEO/CTO REGULARIZADAS:* ' + campos.caixasRegularizadas + '\n';
   // Detalhe de cada fusão (pares de fibra, splitters, nomenclatura por CEO) fica
   // só no GEOGRID/relatório interno — no texto pro WhatsApp isso saía como uma
   // escrita confusa e não é necessário (pedido do usuário).
   t += '\n*MATERIAIS:*\n' + campos.materiais + '\n';
-  t += '\n*SOLUÇÃO:*\n' + campos.solucao + '\n';
+  if(campos.solucao) t += '\n*SOLUÇÃO:*\n' + campos.solucao + '\n';
   t += '\n*MELHORIA NA REDE:*\n' + campos.melhoria;
 
   try{

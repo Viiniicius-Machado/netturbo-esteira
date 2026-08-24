@@ -129,11 +129,19 @@
       <div style="flex:1"></div>
     </div>
     <div class="card-body">
-      <label style="font-size:.68rem;color:var(--text-muted);display:block;margin-bottom:.4rem">Cole aqui a mensagem recebida do NOC no WhatsApp:</label>
-      <textarea id="maskInput" placeholder="Solicitação de deslocamento:&#10;Motivo: ...&#10;Cliente: ...&#10;Endereço: ...&#10;..."></textarea>
-      <div style="margin-top:.6rem">
-        <button class="btn btn-accent" onclick="processarMascara()">Processar</button>
-        <button class="btn btn-outline" onclick="limparMascara()">Limpar</button>
+      <div id="blocoMascaraNoc">
+        <label style="font-size:.68rem;color:var(--text-muted);display:block;margin-bottom:.4rem">Cole aqui a mensagem recebida do NOC no WhatsApp:</label>
+        <textarea id="maskInput" placeholder="Solicitação de deslocamento:&#10;Motivo: ...&#10;Cliente: ...&#10;Endereço: ...&#10;..."></textarea>
+        <div style="margin-top:.6rem">
+          <button class="btn btn-accent" onclick="processarMascara()">Processar</button>
+          <button class="btn btn-outline" onclick="limparMascara()">Limpar</button>
+        </div>
+      </div>
+      <div id="avisoPreventiva" style="display:none;font-size:.72rem;color:var(--text-muted);background:var(--surface3);border:1px solid var(--border-hi);border-radius:6px;padding:.7rem .9rem">
+        Preventiva não usa mensagem de NOC — preencha a rota abaixo e confirme. Depois de adicionar à esteira, anexe o KMZ da rota no card criado (📎 Projeto / Medição), no mesmo lugar de sempre.
+      </div>
+      <div id="avisoNotificacaoCpfl" style="display:none;font-size:.72rem;color:var(--accent);background:var(--accent-dim);border:1px solid var(--border-hi);border-radius:6px;padding:.7rem .9rem">
+        📋 Notificação da Companhia Elétrica carregada de "Acompanhamento Camp. Elétrica" — confira os campos abaixo e confirme. Quando o técnico for validado, essa notificação fecha sozinha lá como Concluído.
       </div>
 
       <!-- CLASSIFICAÇÃO DA SOLICITAÇÃO (matriz oficial do setor) — define o SLA/prazo
@@ -170,19 +178,19 @@
       <div id="reviewBox">
         <div style="margin-top:1rem;font-size:.68rem;color:var(--text-muted)">Confira e corrija antes de adicionar à esteira — o texto do NOC nem sempre segue o mesmo formato:</div>
         <div class="field-grid">
-          <div class="field"><label>Motivo</label><input id="f_motivo"/></div>
-          <div class="field"><label>Cliente</label><input id="f_cliente"/></div>
-          <div class="field"><label>Etiqueta / ID</label><input id="f_etiqueta"/></div>
-          <div class="field full"><label>Endereço</label><input id="f_endereco"/></div>
-          <div class="field"><label>GPS (link)</label><input id="f_gps"/></div>
-          <div class="field"><label>Data (NOC)</label><input id="f_dataNoc"/></div>
-          <div class="field"><label>Período</label><input id="f_periodo"/></div>
-          <div class="field"><label>Protocolo NOC</label><input id="f_protocoloNoc"/></div>
-          <div class="field"><label>Protocolo O&amp;M</label><input id="f_protocoloOem"/></div>
-          <div class="field full"><label>Porta</label><textarea id="f_porta"></textarea></div>
-          <div class="field full"><label>Observações</label><textarea id="f_obs"></textarea></div>
+          <div class="field" id="campo_f_motivo"><label id="lbl_f_motivo">Motivo</label><input id="f_motivo"/></div>
+          <div class="field" id="campo_f_cliente"><label id="lbl_f_cliente">Cliente</label><input id="f_cliente"/></div>
+          <div class="field" id="campo_f_etiqueta"><label>Etiqueta / ID</label><input id="f_etiqueta"/></div>
+          <div class="field full" id="campo_f_endereco"><label id="lbl_f_endereco">Endereço</label><input id="f_endereco"/></div>
+          <div class="field" id="campo_f_gps"><label id="lbl_f_gps">GPS (link)</label><input id="f_gps"/></div>
+          <div class="field" id="campo_f_dataNoc"><label>Data (NOC)</label><input id="f_dataNoc"/></div>
+          <div class="field" id="campo_f_periodo"><label>Período</label><input id="f_periodo"/></div>
+          <div class="field" id="campo_f_protocoloNoc"><label>Protocolo NOC</label><input id="f_protocoloNoc"/></div>
+          <div class="field" id="campo_f_protocoloOem"><label id="lbl_f_protocoloOem">Protocolo O&amp;M</label><input id="f_protocoloOem"/></div>
+          <div class="field full" id="campo_f_porta"><label>Porta</label><textarea id="f_porta"></textarea></div>
+          <div class="field full" id="campo_f_obs"><label>Observações</label><textarea id="f_obs"></textarea></div>
         </div>
-        <div class="field full" style="margin-top:.8rem">
+        <div class="field full" id="campo_agendamento" style="margin-top:.8rem">
           <label>É Agendamento?</label>
           <div class="agendamento-toggle">
             <button type="button" class="ag-btn" id="agSim" onclick="marcarAgendamento(true)">Sim</button>
@@ -613,6 +621,57 @@ function popularContaContabil(){
   if(el) el.innerHTML = '<option value="">Selecione...</option>' + DESCRICOES_CONTABEIS.map(d => `<option value="${d.replace(/"/g,'&quot;')}">${d}</option>`).join('');
 }
 
+// Notificação da companhia elétrica escolhida em acompanhamento_cpfl.html (botão
+// "Despachar") — chega aqui via sessionStorage (não URL, pra não vazar dado em
+// histórico/log) e pré-preenche a Classificação + os mesmos campos que o modo
+// Preventiva já reaproveita. Duas categorias possíveis, escolhidas na tela de
+// notificações (pedido do Vinicius em 2026-08-24 — nem toda notificação vira
+// chamado de Manutenção): ACOMPANHAMENTO (padrão) trava em Manutenção →
+// Manutenção - Rede Externa → Acompanhamento / Fiscalização → Acompanhamento
+// Cia Energia; PREVENTIVA trava em Preventiva → Acompanhamento → Troca de
+// Poste/Comp. Elétrica (também já existentes na matriz). O vínculo de volta pra
+// fechar a notificação como Concluído quando o líder validar acontece no
+// backend (ver bloco dentro de validarAtividade no Apps Script) — aqui só
+// precisamos ligar o ID da atividade recém-criada à notificação, ver confirmarAtividade.
+let NOTIFICACAO_CPFL_PENDENTE = null;
+function aplicarNotificacaoCpflPendente(){
+  const bruto = sessionStorage.getItem('netturbo_notificacao_cpfl_despacho');
+  if(!bruto) return;
+  sessionStorage.removeItem('netturbo_notificacao_cpfl_despacho');
+  let notif;
+  try { notif = JSON.parse(bruto); } catch(e){ return; }
+  if(!notif || !notif.rowIndex) return;
+
+  NOTIFICACAO_CPFL_PENDENTE = notif.rowIndex;
+
+  if(notif.modo === 'PREVENTIVA'){
+    const ehTrocaPoste = /poste/i.test(notif['Ação']||'');
+    document.getElementById('selTipoSolicitacao').value = 'Preventiva';
+    atualizarClassificacao();
+    document.getElementById('selCategoria1').value = 'Acompanhamento';
+    atualizarClassificacao();
+    document.getElementById('selCategoria2').value = ehTrocaPoste ? 'Acompanhamento (Troca de Poste)' : 'Acompanhamento (Comp. Eletrica)';
+    atualizarClassificacao();
+  } else {
+    document.getElementById('selTipoSolicitacao').value = 'Manutenção';
+    atualizarClassificacao();
+    document.getElementById('selCategoria1').value = 'Manutenção - Rede Externa';
+    atualizarClassificacao();
+    document.getElementById('selCategoria2').value = 'Acompanhamento / Fiscalização';
+    atualizarClassificacao();
+    document.getElementById('selCategoria3').value = 'Acompanhamento Cia Energia';
+    atualizarClassificacao();
+  }
+
+  document.getElementById('f_motivo').value = 'Acompanhamento CPFL — ' + (notif['Ação']||'') + (notif['Notificação'] ? ' — Notificação ' + notif['Notificação'] : '');
+  document.getElementById('f_cliente').value = notif['Notificação'] || '';
+  document.getElementById('f_endereco').value = notif['Cidade'] || '';
+  document.getElementById('f_gps').value = notif['Coordenadas'] || '';
+  document.getElementById('reviewBox').style.display = 'block';
+  document.getElementById('avisoNotificacaoCpfl').style.display = 'block';
+  showToast('Notificação CPFL carregada — confira e adicione à esteira.');
+}
+
 function popularSelectMantendo(id, opcoes, valorAtual){
   const el = document.getElementById(id);
   if(!el) return;
@@ -663,7 +722,42 @@ window.atualizarClassificacao = function(){
   else if(slas.length === 1){ slaEl.textContent = 'SLA: ' + slas[0] + 'h — prazo calculado a partir de agora.'; }
   else if(slas.length > 1){ slaEl.textContent = 'Escolha mais uma categoria pra definir o SLA (' + slas.length + ' possíveis nessa combinação).'; }
   else { slaEl.textContent = 'Combinação não encontrada na matriz.'; }
+
+  aplicarModoPreventiva(tipo);
 };
+
+// Preventiva não recebe mensagem de NOC pra colar — é despachada por uma rota
+// inteira (KMZ), sem "um cliente". Em vez de duplicar o formulário, reaproveita
+// os mesmos campos que já vão pro CRIAR_ATIVIDADE normal (f_motivo, f_cliente,
+// f_endereco, f_gps, f_protocoloOem), só trocando o rótulo, e escondendo o que
+// não se aplica a rota (pedido do Vinicius em 2026-08-24, campos de ID/POP,
+// Protocolo e Endereço de Partida acrescentados depois no mesmo dia). O KMZ em
+// si é anexado depois, no card criado, pelo bloco "📎 Projeto / Medição" que já
+// existe pras demais atividades.
+const CAMPOS_OCULTOS_PREVENTIVA = ['campo_f_etiqueta','campo_f_dataNoc','campo_f_periodo','campo_f_protocoloNoc','campo_f_porta','campo_f_obs','campo_agendamento'];
+// Ordem visual pedida pelo Vinicius (2026-08-24): Qual tipo de Solicitação? primeiro,
+// depois Protocolo, ID/POP, Cidade, Endereço de Partida — como .field-grid é um CSS
+// grid, dá pra reordenar só com `order` (mesmos elementos, sem mexer no DOM).
+const ORDEM_CAMPOS_PREVENTIVA = { campo_f_motivo:0, campo_f_protocoloOem:1, campo_f_cliente:2, campo_f_endereco:3, campo_f_gps:4 };
+function aplicarModoPreventiva(tipo){
+  const modoPreventiva = tipo === 'Preventiva';
+  document.getElementById('blocoMascaraNoc').style.display = modoPreventiva ? 'none' : '';
+  document.getElementById('avisoPreventiva').style.display = modoPreventiva ? 'block' : 'none';
+  CAMPOS_OCULTOS_PREVENTIVA.forEach(id => { document.getElementById(id).style.display = modoPreventiva ? 'none' : ''; });
+  Object.entries(ORDEM_CAMPOS_PREVENTIVA).forEach(([id, ordem]) => { document.getElementById(id).style.order = modoPreventiva ? ordem : ''; });
+  // Cidade usa .field.full (linha inteira) na máscara do NOC, mas aqui é só o nome
+  // da cidade — sem isso ela quebrava a grade e desalinhava o resto dos campos.
+  document.getElementById('campo_f_endereco').style.gridColumn = modoPreventiva ? 'auto' : '';
+  document.getElementById('lbl_f_motivo').textContent = modoPreventiva ? 'Qual tipo de Solicitação?' : 'Motivo';
+  document.getElementById('lbl_f_cliente').textContent = modoPreventiva ? 'ID/POP' : 'Cliente';
+  document.getElementById('lbl_f_endereco').textContent = modoPreventiva ? 'Cidade' : 'Endereço';
+  document.getElementById('lbl_f_gps').textContent = modoPreventiva ? 'Endereço de Partida' : 'GPS (link)';
+  document.getElementById('lbl_f_protocoloOem').textContent = modoPreventiva ? 'Protocolo' : 'Protocolo O&M';
+  if(modoPreventiva){
+    marcarAgendamento(false);
+    document.getElementById('reviewBox').style.display = 'block';
+  }
+}
 
 // Resolve o SLA (horas) da combinação atual — só retorna valor quando as
 // categorias escolhidas já isolam um único SLA possível; usado na hora de
@@ -774,6 +868,7 @@ window.sincronizarDataFimDisp = function(){
 function iniciarApp(){
   popularTiposSolicitacao();
   popularContaContabil();
+  aplicarNotificacaoCpflPendente();
   carregarTecnicos().then(carregarEsteira);
   carregarDisponibilidade();
   if(!window._esteiraAutoRefresh){
@@ -1036,6 +1131,16 @@ async function confirmarAtividade(){
     const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(payload) });
     const result = await resp.json();
     if(result.status !== 'ok'){ showToast((result.message||'Erro ao salvar.')); return; }
+    if(NOTIFICACAO_CPFL_PENDENTE){
+      try{
+        await fetch(APPS_SCRIPT_URL, {
+          method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+          body: JSON.stringify({ acao:'LIGAR_NOTIFICACAO_DESPACHO', sessionToken: NetturboAuth.token(), rowIndex: NOTIFICACAO_CPFL_PENDENTE, idAtividadeEsteira: result.id })
+        });
+      }catch(e){ console.error('Falha ao ligar notificação CPFL à atividade:', e); }
+      NOTIFICACAO_CPFL_PENDENTE = null;
+      document.getElementById('avisoNotificacaoCpfl').style.display = 'none';
+    }
     showToast('Atividade adicionada à esteira!');
     limparMascara();
     carregarEsteira();
@@ -1376,7 +1481,7 @@ function renderEsteira(){
             <label class="edit-label">Causa</label>
             <input type="text" class="edit-field" id="edit-causa-${a.rowIndex}" value="${String(a['Causa']||'').replace(/"/g,'&quot;')}"/>
           </div>
-          <div>
+          <div style="display:${a['Tipo de Solicitação'] === 'Preventiva' ? 'none' : ''}">
             <label class="edit-label">Solução</label>
             <textarea class="edit-field" id="edit-solucao-${a.rowIndex}">${String(a['Solução']||'')}</textarea>
           </div>
@@ -1388,6 +1493,27 @@ function renderEsteira(){
             <label class="edit-label">Materiais</label>
             <textarea class="edit-field" id="edit-materiais-${a.rowIndex}">${String(a['Materiais']||'')}</textarea>
           </div>
+          ${a['Tipo de Solicitação'] === 'Preventiva' ? `
+          <div>
+            <label class="edit-label">Rota Percorrida (metros)</label>
+            <input type="number" class="edit-field" id="edit-rotaPercorrida-${a.rowIndex}" value="${String(a['Rota Percorrida']||'')}"/>
+          </div>
+          <div>
+            <label class="edit-label">Quantidade Poste Equipado</label>
+            <input type="number" class="edit-field" id="edit-posteEquipado-${a.rowIndex}" value="${String(a['Poste Equipado']||'')}"/>
+          </div>
+          <div>
+            <label class="edit-label">Cordoalha Lançada</label>
+            <input type="number" class="edit-field" id="edit-cordoalhaLancada-${a.rowIndex}" value="${String(a['Cordoalha Lançada']||'')}"/>
+          </div>
+          <div>
+            <label class="edit-label">Quantidade de Plaquetas</label>
+            <input type="number" class="edit-field" id="edit-plaquetasAdicionadas-${a.rowIndex}" value="${String(a['Plaquetas Adicionadas']||'')}"/>
+          </div>
+          <div>
+            <label class="edit-label">CEO/CTO Regularizadas</label>
+            <input type="number" class="edit-field" id="edit-caixasRegularizadas-${a.rowIndex}" value="${String(a['Caixas Regularizadas']||'')}"/>
+          </div>` : ''}
         </div>
         <div class="acoes" style="margin-top:.5rem">
           <button class="btn btn-green" style="flex:1;padding:.4rem" onclick="validar(${a.rowIndex}, true)">Validar</button>
@@ -1450,6 +1576,17 @@ window.validar = async function(rowIndex, aprovado){
       materiais: document.getElementById('edit-materiais-'+rowIndex).value.trim(),
       melhoria: document.getElementById('edit-melhoria-'+rowIndex).value.trim()
     };
+    // Preventiva: os 5 campos só existem no card quando a atividade é desse
+    // tipo (ver renderização de colValidacao) — o NOC pode corrigir o que o
+    // prestador preencheu antes de fechar (pedido do Vinicius em 2026-08-24).
+    const edRota = document.getElementById('edit-rotaPercorrida-'+rowIndex);
+    if(edRota){
+      payloadExtra.rotaPercorrida = edRota.value.trim();
+      payloadExtra.posteEquipado = document.getElementById('edit-posteEquipado-'+rowIndex).value.trim();
+      payloadExtra.cordoalhaLancada = document.getElementById('edit-cordoalhaLancada-'+rowIndex).value.trim();
+      payloadExtra.plaquetasAdicionadas = document.getElementById('edit-plaquetasAdicionadas-'+rowIndex).value.trim();
+      payloadExtra.caixasRegularizadas = document.getElementById('edit-caixasRegularizadas-'+rowIndex).value.trim();
+    }
   }
 
   try{

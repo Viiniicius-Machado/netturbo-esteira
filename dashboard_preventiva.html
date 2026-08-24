@@ -201,12 +201,12 @@
       <div class="stat-label">Concluídas no Mês</div>
     </div>
     <div class="stat-card stat-ok">
-      <div class="stat-value" id="stCSla">–</div>
-      <div class="stat-label">C/SLA</div>
+      <div class="stat-value" id="stMetros">–</div>
+      <div class="stat-label">Metros no Mês</div>
     </div>
-    <div class="stat-card stat-bad">
-      <div class="stat-value" id="stSSla">–</div>
-      <div class="stat-label">S/SLA</div>
+    <div class="stat-card" id="cardMetaPct">
+      <div class="stat-value" id="stMetaPct">–</div>
+      <div class="stat-label">Da Meta (76km)</div>
     </div>
   </div>
 
@@ -240,43 +240,43 @@
   </div>
 
   <div class="card">
-    <div class="card-header">SLA, Eficiência e Tempos Médios</div>
+    <div class="card-header">Meta de Rota Percorrida (76km/mês)</div>
+    <div class="card-body">
+      <div class="metric-card gauge-card">
+        <div class="gauge-svg-wrap">
+          <svg class="gauge-svg" viewBox="0 0 100 100">
+            <circle class="gauge-track" cx="50" cy="50" r="42"/>
+            <circle class="gauge-fill" id="gMetaRotaFill" cx="50" cy="50" r="42"/>
+          </svg>
+          <div class="gauge-center" id="gMetaRotaNum">–</div>
+        </div>
+        <div class="gauge-info">
+          <div class="metric-title">Rota Percorrida no Mês (concluídas)</div>
+          <div class="metric-sub" id="mMetaRotaTexto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Correções em Campo (concluídas no mês)</div>
     <div class="card-body">
       <div class="metric-row">
-        <div class="metric-card gauge-card">
-          <div class="gauge-svg-wrap">
-            <svg class="gauge-svg" viewBox="0 0 100 100">
-              <circle class="gauge-track" cx="50" cy="50" r="42"/>
-              <circle class="gauge-fill" id="gEficienciaFill" cx="50" cy="50" r="42"/>
-            </svg>
-            <div class="gauge-center" id="gEficienciaNum">–</div>
-          </div>
-          <div class="gauge-info">
-            <div class="metric-title">Eficiência (Meta ≥70%)</div>
-            <div class="metric-sub" id="mEficienciaGapTexto"></div>
-            <div class="metric-sub" style="margin-top:.3rem">
-              <span style="color:var(--green)">● C/SLA <b id="mCSla">–</b></span>
-              &nbsp;&nbsp;<span style="color:var(--red)">● S/SLA <b id="mSSla">–</b></span>
-            </div>
-          </div>
+        <div class="metric-card">
+          <div class="metric-title">Poste Equipado</div>
+          <div class="metric-big" id="mPosteEquipado">–</div>
         </div>
-        <div class="metric-card clicavel" id="cardMTTR" onclick="abrirDetalheIndicador('MTTR')">
-          <div class="metric-title">MTTR Médio (Meta conforme SLA da atividade)</div>
-          <div class="metric-big" id="mMTTR">–</div>
-          <div class="metric-sub" id="mMTTRGapTempo"></div>
-          <div class="metric-hint">Toque para ver as 3 mais rápidas / 3 mais críticas</div>
+        <div class="metric-card">
+          <div class="metric-title">Cordoalha Lançada</div>
+          <div class="metric-big" id="mCordoalhaLancada">–</div>
         </div>
-        <div class="metric-card clicavel" id="cardMTTD" onclick="abrirDetalheIndicador('MTTD')">
-          <div class="metric-title">MTTD Médio (Meta ≤1:00)</div>
-          <div class="metric-big" id="mMTTD">–</div>
-          <div class="metric-sub" id="mMTTDGapTempo"></div>
-          <div class="metric-hint">Toque para ver as 3 mais rápidas / 3 mais críticas</div>
+        <div class="metric-card">
+          <div class="metric-title">Plaquetas Adicionadas</div>
+          <div class="metric-big" id="mPlaquetas">–</div>
         </div>
-        <div class="metric-card clicavel" id="cardTMC" onclick="abrirDetalheIndicador('TMC')">
-          <div class="metric-title">TMC Médio (Meta ≤3:00)</div>
-          <div class="metric-big" id="mTMC">–</div>
-          <div class="metric-sub" id="mTMCGapTempo"></div>
-          <div class="metric-hint">Toque para ver as 3 mais rápidas / 3 mais críticas</div>
+        <div class="metric-card">
+          <div class="metric-title">CEO/CTO Regularizadas</div>
+          <div class="metric-big" id="mCaixasRegularizadas">–</div>
         </div>
       </div>
     </div>
@@ -284,9 +284,9 @@
 
   <div class="metric-row" style="margin-bottom:1rem">
     <div class="card" style="margin-bottom:0;flex:1">
-      <div class="card-header">Ocorrências no Mês (concluídas)</div>
+      <div class="card-header">Regiões (RMC/RMJ/RMP/Outros)</div>
       <div class="card-body">
-        <div id="kpiOcorrencias"></div>
+        <div id="rankRegioes"></div>
       </div>
     </div>
     <div class="card" style="margin-bottom:0;flex:1">
@@ -297,18 +297,10 @@
     </div>
   </div>
 
-  <div class="metric-row" style="margin-bottom:1rem">
-    <div class="card" style="margin-bottom:0;flex:1">
-      <div class="card-header">Causas Mais Comuns</div>
-      <div class="card-body">
-        <div id="rankCausas"></div>
-      </div>
-    </div>
-    <div class="card" style="margin-bottom:0;flex:1">
-      <div class="card-header">Produção por Empresa (mão de obra)</div>
-      <div class="card-body">
-        <div id="kpiEmpresas"></div>
-      </div>
+  <div class="card">
+    <div class="card-header">Produção por Empresa (mão de obra)</div>
+    <div class="card-body">
+      <div id="kpiEmpresas"></div>
     </div>
   </div>
 
@@ -344,7 +336,7 @@
     </div>
   </div>
 
-  <!-- DETALHE DE INDICADOR (MTTR/MTTD/TMC) — 3 mais rápidas e 3 mais críticas do mês atual -->
+  <!-- DETALHE (usado hoje só pela Efetividade da Mão de Obra — clique numa empresa) -->
   <div class="detalhe-overlay" id="detalheOverlay" onclick="if(event.target===this) fecharDetalheIndicador()">
     <div class="detalhe-panel">
       <div class="detalhe-header">
@@ -362,9 +354,9 @@
         <table>
           <thead>
             <tr>
-              <th>Empresa</th><th>Técnico</th><th>Equipe Apoio</th><th>Protocolo</th><th>Cliente</th><th>Cidade</th><th>Tipo</th>
-              <th>Causa</th><th>Início</th><th>Chegada</th><th>Validado</th>
-              <th>MTTR</th><th>MTTD</th><th>Status SLA</th><th>Validado Por</th>
+              <th>Empresa</th><th>Técnico</th><th>Equipe Apoio</th><th>Protocolo</th><th>ID/POP</th><th>Cidade</th><th>Região</th>
+              <th>Início</th><th>Chegada</th><th>Validado</th>
+              <th>Rota (m)</th><th>Poste</th><th>Cordoalha</th><th>Plaquetas</th><th>CEO/CTO Reg.</th><th>Validado Por</th>
             </tr>
           </thead>
           <tbody id="tbodyDados"></tbody>
@@ -378,23 +370,34 @@
 
 <script>
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
-const META_EFICIENCIA = 70;   // %
-const META_MTTR_MIN = 240;    // 4:00 — só usado de referência (atividade antiga sem SLA Horas); C/SLA real usa metaSlaMinutos(a)
-const META_MTTD_MIN = 60;     // 1:00 (Despacho → Chegada: tempo de resposta/deslocamento)
-const META_TMC_MIN = 180;     // 3:00 (Chegada → Pedido de Validação: tempo de execução em campo)
+// Preventiva não tem meta de tempo (SLA/MTTR) — a meta é de rota percorrida no
+// mês (pedido do Vinicius em 2026-08-24). Ajustar aqui se a meta mensal mudar.
+const META_ROTA_METROS_MES = 76000; // 76km
 
-// C/SLA por atividade: usa o SLA Horas dela (matriz nova, ver MATRIZ_SLA em
-// index.html/tecnico.html) quando preenchido; atividade antiga (sem essa
-// coluna) continua na meta fixa de sempre (META_MTTR_MIN, 240min).
-function metaSlaMinutos(a){
-  const h = Number(a['SLA Horas']);
-  return h > 0 ? h * 60 : META_MTTR_MIN;
-}
-
-// Rótulo derivado de Tipo de Solicitação/Categoria (ver derivarOcorrenciaECausa
-// no Apps Script) pra Preventiva.
-const TIPOS = ['PREVENTIVA'];
 const EMPRESAS = ['VAL','PV','OLIVEIRA','SOLUTEC','QUALITY','NETTURBO','SOUZA TELECOM','FUSION TELECOM','EFM TELECOM','DOIS IRMÃOS'];
+
+// Município (de 'Endereço', preenchido pelo despacho como "Cidade" no modo
+// Preventiva — não usa 'Cidade Falha', que é reverse-geocode de GPS e essa
+// frente não pede GPS de falha) → região. Mesmas listas oficiais do Estado de
+// SP já usadas em dashboard_medicao.html, sem a Baixada Santista (essa frente
+// não atua lá) — qualquer cidade fora de RMC/RMJ/RMP cai em "Outros".
+const REGIOES_MUNICIPIOS = {
+  'RMC': ['Americana','Artur Nogueira','Campinas','Cosmópolis','Engenheiro Coelho','Holambra','Hortolândia','Indaiatuba','Itatiba','Jaguariúna','Monte Mor','Morungaba','Nova Odessa','Paulínia','Pedreira',"Santa Bárbara d'Oeste",'Santo Antônio de Posse','Sumaré','Valinhos','Vinhedo'],
+  'RMJ': ['Cabreúva','Campo Limpo Paulista','Itupeva','Jarinu','Jundiaí','Louveira','Várzea Paulista'],
+  'RMP': ['Águas de São Pedro','Analândia','Araras','Capivari','Charqueada','Conchal','Cordeirópolis','Corumbataí','Elias Fausto','Ipeúna','Iracemápolis','Leme','Limeira','Mombuca','Piracicaba','Pirassununga','Rafard','Rio Claro','Rio das Pedras','Saltinho','Santa Cruz da Conceição','Santa Gertrudes','Santa Maria da Serra','São Pedro'],
+};
+const ACENTOS_CIDADE = { 'á':'a','à':'a','ã':'a','â':'a','ä':'a','é':'e','ê':'e','è':'e','ë':'e','í':'i','ì':'i','î':'i','ï':'i','ó':'o','ò':'o','õ':'o','ô':'o','ö':'o','ú':'u','ù':'u','û':'u','ü':'u','ç':'c' };
+function normalizarCidade(s){
+  return String(s||'').trim().toLowerCase().split('').map(ch => ACENTOS_CIDADE[ch] || ch).join('');
+}
+const MAPA_CIDADE_REGIAO = {};
+Object.entries(REGIOES_MUNICIPIOS).forEach(([regiao, municipios]) => {
+  municipios.forEach(m => { MAPA_CIDADE_REGIAO[normalizarCidade(m)] = regiao; });
+});
+function regiaoDaCidade(cidade){
+  if(!cidade) return 'Outros';
+  return MAPA_CIDADE_REGIAO[normalizarCidade(cidade)] || 'Outros';
+}
 
 // Mesmas 9 Descrições Contábeis escolhidas no despacho (index.html) — usadas aqui
 // como categoria do budget mensal. Duplicado de propósito, mesmo padrão já usado
@@ -515,21 +518,6 @@ function renderGauge(fillId, pct, cor){
   fill.style.stroke = cor;
 }
 
-// Classifica um valor em 3 faixas (ok / atenção / crítico) a partir de uma meta.
-// higherIsBetter=true → eficiência (quanto maior, melhor); false → tempos (quanto menor, melhor).
-function faixaStatus(valor, meta, higherIsBetter){
-  if(valor===null || isNaN(valor)) return '';
-  if(higherIsBetter){
-    if(valor >= meta) return 'ok';
-    if(valor >= meta*0.85) return 'warn';
-    return 'bad';
-  }else{
-    if(valor <= meta) return 'ok';
-    if(valor <= meta*1.15) return 'warn';
-    return 'bad';
-  }
-}
-
 // Extrai "YYYY-MM" de um timestamp tipo "17/07/2026, 18:11:43"
 function mesDeTimestamp(str){
   const m = String(str||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
@@ -550,11 +538,6 @@ function parseDataAmpla(val){
   return isNaN(d.getTime()) ? null : d;
 }
 
-function paraMinutos(str){
-  const m = String(str||'').trim().match(/^(\d{1,3}):(\d{2})$/);
-  if(!m) return null;
-  return parseInt(m[1],10)*60 + parseInt(m[2],10);
-}
 // Conta ocorrências de um campo (ex: Cidade Falha, Causa), ignorando vazios,
 // e devolve as top 5 em ordem decrescente.
 function contarPorCampo(dados, campo){
@@ -756,127 +739,9 @@ window.abrirDetalheEfetividade = function(empresa){
   document.getElementById('detalheOverlay').classList.add('open');
 };
 
-// Calcula e renderiza Eficiência (gauge) + MTTR + MTTD + TMC do mês (uma única
-// frente por dashboard — sem abas de tipo pra alternar).
-function renderBlocoEficiencia(){
-  const dados = DADOS_FILTRADOS;
-
-  let cSla=0, sSla=0, somaMTTR=0, contMTTR=0, somaMTTD=0, contMTTD=0, somaTMC=0, contTMC=0;
-  dados.forEach(a=>{
-    const mttr = paraMinutos(a['MTTR']);
-    const mttd = paraMinutos(a['MTTD']);
-    const tmc = paraMinutos(a['TMC']);
-    if(mttr!==null){
-      somaMTTR += mttr; contMTTR++;
-      if(mttr <= metaSlaMinutos(a)) cSla++; else sSla++;
-    }
-    if(mttd!==null){ somaMTTD += mttd; contMTTD++; }
-    if(tmc!==null){ somaTMC += tmc; contTMC++; }
-  });
-
-  document.getElementById('mCSla').textContent = cSla;
-  document.getElementById('mSSla').textContent = sSla;
-
-  const totalSla = cSla + sSla;
-  const eficiencia = totalSla ? Math.round(cSla/totalSla*100) : 0;
-  const corEficiencia = !totalSla ? 'var(--text-muted)' :
-    (eficiencia >= META_EFICIENCIA ? 'var(--green)' : (eficiencia >= META_EFICIENCIA*0.85 ? 'var(--amber)' : 'var(--red)'));
-  document.getElementById('gEficienciaNum').textContent = totalSla ? eficiencia + '%' : '–';
-  document.getElementById('gEficienciaNum').style.color = corEficiencia;
-  renderGauge('gEficienciaFill', totalSla ? eficiencia : 0, corEficiencia);
-  const gapEf = gapContagem(cSla, sSla, META_EFICIENCIA);
-  document.getElementById('mEficienciaGapTexto').textContent = !totalSla
-    ? 'Sem dados nesse mês'
-    : (gapEf === 0 ? '✓ Meta batida' : `Faltam ${gapEf} atividade(s) dentro do SLA pra bater a meta`);
-
-  // MTTR: SLA varia muito por categoria dentro da mesma frente (4h a 24h) — sem
-  // uma meta única representativa, mostra o tempo médio bruto sem faixa de cor
-  // fixa; o C/SLA acima (que usa metaSlaMinutos por atividade) é o indicador real.
-  const mttrMedioMin = contMTTR ? Math.round(somaMTTR/contMTTR) : null;
-  document.getElementById('mMTTR').textContent = fmtMin(mttrMedioMin);
-  document.getElementById('cardMTTR').className = 'metric-card clicavel';
-  document.getElementById('mMTTRGapTempo').textContent = contMTTR ? `${contMTTR} atividade(s) com tempo registrado` : 'Sem dados';
-
-  const mttdMedioMin = contMTTD ? Math.round(somaMTTD/contMTTD) : null;
-  document.getElementById('mMTTD').textContent = fmtMin(mttdMedioMin);
-  const faixaMTTD = faixaStatus(mttdMedioMin, META_MTTD_MIN, false);
-  document.getElementById('cardMTTD').className = 'metric-card clicavel' + (faixaMTTD ? ' m-' + faixaMTTD : '');
-  const diffMTTD = mttdMedioMin!==null ? mttdMedioMin - META_MTTD_MIN : null;
-  document.getElementById('mMTTDGapTempo').textContent = diffMTTD===null ? 'Sem dados' :
-    (diffMTTD<=0 ? `${fmtMin(Math.abs(diffMTTD))} abaixo da meta` : `+${fmtMin(diffMTTD)} acima da meta`);
-
-  const tmcMedioMin = contTMC ? Math.round(somaTMC/contTMC) : null;
-  document.getElementById('mTMC').textContent = fmtMin(tmcMedioMin);
-  const faixaTMC = faixaStatus(tmcMedioMin, META_TMC_MIN, false);
-  document.getElementById('cardTMC').className = 'metric-card clicavel' + (faixaTMC ? ' m-' + faixaTMC : '');
-  const diffTMC = tmcMedioMin!==null ? tmcMedioMin - META_TMC_MIN : null;
-  document.getElementById('mTMCGapTempo').textContent = diffTMC===null ? 'Sem dados' :
-    (diffTMC<=0 ? `${fmtMin(Math.abs(diffTMC))} abaixo da meta` : `+${fmtMin(diffTMC)} acima da meta`);
-}
-
-// ── DETALHE DE INDICADOR (clique no card MTTR/MTTD/TMC) ─────────
-const INDICADOR_DETALHE_CFG = {
-  MTTR: { campo:'MTTR', meta:META_MTTR_MIN, label:'MTTR' },
-  MTTD: { campo:'MTTD', meta:META_MTTD_MIN, label:'MTTD' },
-  TMC:  { campo:'TMC',  meta:META_TMC_MIN,  label:'TMC'  }
-};
-
-window.abrirDetalheIndicador = function(indicador){
-  const cfg = INDICADOR_DETALHE_CFG[indicador];
-  if(!cfg) return;
-  const dados = DADOS_FILTRADOS;
-  const dest = montarDestaques(dados, cfg.campo, cfg.meta);
-
-  document.getElementById('detalheTitulo').textContent = cfg.label + (indicador==='MTTR' ? '' : ' — Meta ≤' + fmtMin(cfg.meta));
-  document.getElementById('detalheBody').innerHTML = `
-    <div class="detalhe-secao-title">3 mais rápidas</div>
-    <div id="detalheRapidas"></div>
-    <div class="detalhe-secao-title">3 mais críticas${indicador==='MTTR' ? ' (maior tempo)' : ' (acima da meta)'}</div>
-    <div id="detalheCriticas"></div>
-  `;
-  renderDestaqueLista('detalheRapidas', dest.rapidas, false);
-  renderDestaqueLista('detalheCriticas', dest.criticas.length ? dest.criticas : montarDestaques(dados, cfg.campo, 0).criticas.slice(-3).reverse(), true);
-  document.getElementById('detalheOverlay').classList.add('open');
-};
-
 window.fecharDetalheIndicador = function(){
   document.getElementById('detalheOverlay').classList.remove('open');
 };
-
-// Monta as top 3 mais rápidas (menor tempo) e as top 3 mais críticas
-// (maior estouro acima da meta) de um campo de tempo ('MTTR', 'MTTD' ou 'TMC').
-function montarDestaques(dados, campoTempo, metaMin){
-  const comTempo = dados
-    .map(a => ({ a, min: paraMinutos(a[campoTempo]) }))
-    .filter(x => x.min !== null);
-
-  const rapidas = [...comTempo].sort((x,y) => x.min - y.min).slice(0,3);
-  const criticas = [...comTempo]
-    .filter(x => x.min > metaMin)
-    .sort((x,y) => (y.min - metaMin) - (x.min - metaMin))
-    .slice(0,3);
-
-  return { rapidas, criticas };
-}
-
-function renderDestaqueLista(elId, lista, comData){
-  const el = document.getElementById(elId);
-  if(!el) return;
-  if(!lista.length){
-    el.innerHTML = '<div style="color:var(--text-muted);font-size:.76rem;font-style:italic;margin-top:.4rem">Sem dados nesse mês.</div>';
-    return;
-  }
-  el.innerHTML = lista.map(({a, min}) => `
-    <div class="destaque-item">
-      <div class="destaque-topo">
-        <span class="destaque-protocolo">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}</span>
-        <span class="destaque-tempo">${fmtMin(min)}</span>
-      </div>
-      <div class="destaque-cliente">${a['Cliente']||'—'}</div>
-      <div class="destaque-causa">${a['Causa'] || 'Sem causa registrada'}</div>
-      ${comData ? `<div class="destaque-data">${a['Timestamp Validação']||'—'}</div>` : ''}
-    </div>`).join('');
-}
 
 function renderRanking(elId, ranking){
   const el = document.getElementById(elId);
@@ -896,66 +761,71 @@ function renderRanking(elId, ranking){
     </div>`).join('');
 }
 
-function fmtMin(min){
-  if(min===null || isNaN(min)) return '—';
-  const h = Math.floor(min/60), m = Math.round(min%60);
-  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-}
-
-// Quantas atividades DENTRO da meta precisam entrar pra atingir a proporção-alvo
-function gapContagem(dentro, fora, metaPct){
-  const total = dentro + fora;
-  if(total === 0) return 0;
-  const metaFrac = metaPct/100;
-  const atual = dentro/total;
-  if(atual >= metaFrac) return 0;
-  const x = (metaFrac*total - dentro) / (1 - metaFrac);
-  return Math.max(0, Math.ceil(x));
+// Soma um dos 5 campos numéricos da RFO de Preventiva (ver renderCamposPreventiva
+// em tecnico.html) sobre uma lista de atividades já concluídas — usado tanto pro
+// gauge de meta de rota quanto pros 4 contadores de "Correções em Campo".
+function somaCampoPreventiva(dados, campo){
+  return dados.reduce((s,a) => s + (Number(a[campo]) || 0), 0);
 }
 
 function renderDashboard(){
   const mes = document.getElementById('mesFiltro').value;
   DADOS_FILTRADOS = TODAS_ATIVIDADES.filter(a => a['Status']==='VALIDADA' && mesDeTimestamp(a['Timestamp Validação'])===mes);
 
-  renderRanking('kpiOcorrencias', montarRankingFixo(DADOS_FILTRADOS, 'Ocorrência', TIPOS).filter(([,qtd])=>qtd>0));
   renderRanking('kpiEmpresas', montarRankingFixo(DADOS_FILTRADOS, 'Empresa', EMPRESAS));
   renderBudget(mes);
   renderEfetividade(mes);
 
-  renderRanking('rankCidades', contarPorCampo(DADOS_FILTRADOS, 'Cidade Falha'));
-  renderRanking('rankCausas', contarPorCampo(DADOS_FILTRADOS, 'Causa'));
-
-  let cSlaGeral=0, sSlaGeral=0;
-  DADOS_FILTRADOS.forEach(a=>{
-    const mttr = paraMinutos(a['MTTR']);
-    if(mttr!==null){ if(mttr <= metaSlaMinutos(a)) cSlaGeral++; else sSlaGeral++; }
+  // Cidade vem de 'Endereço' (preenchido pelo despacho em modo Preventiva),
+  // não de 'Cidade Falha' — essa frente não pede GPS de falha (ver
+  // aplicarModoPreventiva em index.html).
+  renderRanking('rankCidades', contarPorCampo(DADOS_FILTRADOS, 'Endereço'));
+  const porRegiao = {};
+  DADOS_FILTRADOS.forEach(a => {
+    const regiao = regiaoDaCidade(a['Endereço']);
+    porRegiao[regiao] = (porRegiao[regiao]||0) + 1;
   });
-  document.getElementById('stConcluidas').textContent = DADOS_FILTRADOS.length;
-  document.getElementById('stCSla').textContent = cSlaGeral;
-  document.getElementById('stSSla').textContent = sSlaGeral;
+  renderRanking('rankRegioes', Object.entries(porRegiao).sort((a,b)=>b[1]-a[1]));
 
-  renderBlocoEficiencia();
+  document.getElementById('stConcluidas').textContent = DADOS_FILTRADOS.length;
+
+  const metros = somaCampoPreventiva(DADOS_FILTRADOS, 'Rota Percorrida');
+  const metaPct = META_ROTA_METROS_MES ? Math.round(metros / META_ROTA_METROS_MES * 100) : 0;
+  document.getElementById('stMetros').textContent = metros.toLocaleString('pt-BR');
+  document.getElementById('stMetaPct').textContent = metaPct + '%';
+  document.getElementById('cardMetaPct').className = 'stat-card ' + (metaPct >= 100 ? 'stat-ok' : (metaPct >= 70 ? '' : 'stat-bad'));
+  const corMeta = metaPct >= 100 ? 'var(--green)' : (metaPct >= 70 ? 'var(--amber)' : 'var(--red)');
+  document.getElementById('gMetaRotaNum').textContent = metaPct + '%';
+  document.getElementById('gMetaRotaNum').style.color = corMeta;
+  renderGauge('gMetaRotaFill', metaPct, corMeta);
+  const faltamMetros = META_ROTA_METROS_MES - metros;
+  document.getElementById('mMetaRotaTexto').textContent = metros.toLocaleString('pt-BR') + ' de ' + META_ROTA_METROS_MES.toLocaleString('pt-BR') + ' metros'
+    + (faltamMetros > 0 ? ' — faltam ' + faltamMetros.toLocaleString('pt-BR') + 'm pra bater a meta' : ' — ✓ meta batida');
+
+  document.getElementById('mPosteEquipado').textContent = somaCampoPreventiva(DADOS_FILTRADOS, 'Poste Equipado').toLocaleString('pt-BR');
+  document.getElementById('mCordoalhaLancada').textContent = somaCampoPreventiva(DADOS_FILTRADOS, 'Cordoalha Lançada').toLocaleString('pt-BR');
+  document.getElementById('mPlaquetas').textContent = somaCampoPreventiva(DADOS_FILTRADOS, 'Plaquetas Adicionadas').toLocaleString('pt-BR');
+  document.getElementById('mCaixasRegularizadas').textContent = somaCampoPreventiva(DADOS_FILTRADOS, 'Caixas Regularizadas').toLocaleString('pt-BR');
 
   const tbody = document.getElementById('tbodyDados');
   document.getElementById('emptyMsg').style.display = DADOS_FILTRADOS.length ? 'none' : 'block';
   tbody.innerHTML = DADOS_FILTRADOS.map(a=>{
-    const mttr = paraMinutos(a['MTTR']);
-    const slaOk = mttr!==null ? (mttr<=metaSlaMinutos(a)) : null;
     return `<tr>
       <td>${a['Empresa']||'—'}</td>
       <td>${a['Técnico']||'—'}</td>
       <td>${a['Técnico Apoio'] ? (a['Empresa Apoio']+' · '+a['Técnico Apoio']) : '—'}</td>
       <td>${a['Protocolo O&M']||a['Protocolo NOC']||'—'}</td>
       <td>${a['Cliente']||'—'}</td>
-      <td>${a['Cidade Falha']||'—'}</td>
-      <td>${a['Ocorrência']||'—'}</td>
-      <td>${a['Causa']||'—'}</td>
+      <td>${a['Endereço']||'—'}</td>
+      <td>${regiaoDaCidade(a['Endereço'])}</td>
       <td>${a['Hora Início']||'—'}</td>
       <td>${a['Hora Chegada']||'—'}</td>
       <td>${a['Timestamp Validação']||'—'}</td>
-      <td>${a['MTTR']||'—'}</td>
-      <td>${a['MTTD']||'—'}</td>
-      <td>${slaOk===null?'<span class="pill">Sem dado</span>':`<span class="pill ${slaOk?'ok':'breach'}">${slaOk?'C/SLA':'S/SLA'}</span>`}</td>
+      <td>${a['Rota Percorrida']||'—'}</td>
+      <td>${a['Poste Equipado']||'—'}</td>
+      <td>${a['Cordoalha Lançada']||'—'}</td>
+      <td>${a['Plaquetas Adicionadas']||'—'}</td>
+      <td>${a['Caixas Regularizadas']||'—'}</td>
       <td>${a['Validado Por']||'—'}</td>
     </tr>`;
   }).join('');
@@ -963,23 +833,22 @@ function renderDashboard(){
 
 window.exportarExcel = function(){
   const rows = DADOS_FILTRADOS.map(a=>{
-    const mttr = paraMinutos(a['MTTR']);
-    const slaOk = mttr!==null ? (mttr<=metaSlaMinutos(a)) : null;
     return {
       'Empresa': a['Empresa']||'',
       'Técnico': a['Técnico']||'',
       'Equipe Apoio': a['Técnico Apoio'] ? (a['Empresa Apoio']+' - '+a['Técnico Apoio']) : '',
       'Protocolo': a['Protocolo O&M']||a['Protocolo NOC']||'',
-      'Cliente': a['Cliente']||'',
-      'Cidade': a['Cidade Falha']||'',
-      'Tipo de Ocorrência': a['Ocorrência']||'',
-      'Causa': a['Causa']||'',
+      'ID/POP': a['Cliente']||'',
+      'Cidade': a['Endereço']||'',
+      'Região': regiaoDaCidade(a['Endereço']),
       'Início': a['Hora Início']||'',
       'Chegada': a['Hora Chegada']||'',
       'Validado em': a['Timestamp Validação']||'',
-      'MTTR': a['MTTR']||'',
-      'MTTD': a['MTTD']||'',
-      'Status SLA': slaOk===null?'Sem dado':(slaOk?'C/SLA':'S/SLA'),
+      'Rota Percorrida (m)': a['Rota Percorrida']||'',
+      'Poste Equipado': a['Poste Equipado']||'',
+      'Cordoalha Lançada': a['Cordoalha Lançada']||'',
+      'Plaquetas Adicionadas': a['Plaquetas Adicionadas']||'',
+      'CEO/CTO Regularizadas': a['Caixas Regularizadas']||'',
       'Validado Por': a['Validado Por']||''
     };
   });

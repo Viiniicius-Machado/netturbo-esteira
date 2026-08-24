@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<title>Acompanhamento Camp. Elétrica · Netturbo Esteira</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="auth.js"></script>
+<style>
+  :root{
+    --accent:#a8c93c;--accent-dark:#6b8a1f;--accent-dim:rgba(168,201,60,.08);
+    --bg:#080808;--surface:#111;--surface2:#181818;--surface3:#212121;
+    --border:#252525;--border-hi:#353535;
+    --text:#e8e8e8;--text-dim:#888;--text-muted:#505050;
+    --red:#e53935;--amber:#ffa000;--green:#8bc34a;--blue:#42a5f5;
+    --radius:6px;--radius-lg:10px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{font-size:15px}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:2rem}
+
+  .topbar{position:sticky;top:0;z-index:100;height:60px;background:linear-gradient(120deg,#3d4f11,#8bc34a,#a8c93c);display:flex;align-items:center;gap:.9rem;padding:0 1.1rem;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+  .topbar-menu{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0a0a0a;flex-shrink:0}
+  .topbar-logo{height:36px;width:auto;display:block;flex-shrink:0}
+  .topbar-sub{font-size:.58rem;color:#1a2a0e;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+  .topbar-spacer{flex:1}
+
+  .page-actions{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:.5rem;padding:.9rem 1.2rem 0}
+  main{max-width:1200px;margin:0 auto;padding:1.3rem 1.2rem 0}
+
+  .btn{padding:.6rem 1.1rem;border:none;border-radius:var(--radius);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-size:.82rem}
+  .btn-accent{background:linear-gradient(135deg,#6b8a1f,#a8c93c);color:#050505}
+  .btn-outline{background:transparent;border:1px solid var(--border-hi);color:var(--text-dim)}
+  .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-green{background:linear-gradient(135deg,#5d8a1f,#8bc34a);color:#050505}
+  .btn-danger{background:transparent;border:1px solid rgba(229,57,53,.4);color:var(--red)}
+  .btn-sm{padding:.35rem .7rem;font-size:.68rem}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
+  .card-header{padding:.7rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.9rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.6rem}
+  .card-header small{font-size:.65rem;color:var(--text-muted);text-transform:none;letter-spacing:0;font-weight:400}
+  .card-body{padding:.9rem 1rem}
+
+  .field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7rem}
+  .field{display:flex;flex-direction:column;gap:.3rem}
+  .field label{font-size:.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+  .field input,.field select{background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.85rem;padding:.55rem .7rem;font-family:inherit}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+
+  .chip-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}
+  .chip{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;user-select:none}
+  .chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+
+  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:.78rem}
+  thead th{text-align:left;padding:.6rem .7rem;color:var(--text-muted);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+  tbody td{padding:.55rem .7rem;border-bottom:1px solid var(--border);white-space:nowrap}
+  tbody tr:hover{background:var(--surface2)}
+  .empty-msg{padding:2rem;text-align:center;color:var(--text-muted);font-size:.82rem}
+
+  .pill{padding:.25rem .6rem;border-radius:20px;font-size:.64rem;font-weight:700;font-family:'Rajdhani',sans-serif;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+  .pill.planejado{background:rgba(66,165,245,.12);color:var(--blue)}
+  .pill.despachado{background:rgba(255,160,0,.12);color:var(--amber)}
+  .pill.concluido{background:rgba(139,195,74,.12);color:var(--green)}
+  .pill.cancelado,.pill.nao_atendido{background:rgba(229,57,53,.12);color:var(--red)}
+
+  .acoes-linha{display:flex;gap:.4rem}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface3);border:1px solid var(--border-hi);color:var(--text);padding:.7rem 1.2rem;border-radius:var(--radius);font-size:.82rem;z-index:999;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <div>
+    <img class="topbar-logo" src="IMAGENS/sigonet-logo-transparent-sm.png" alt="SIGONET">
+    <div class="topbar-sub">Acompanhamento Companhia Elétrica</div>
+  </div>
+  <div class="topbar-spacer"></div>
+</header>
+
+<div class="page-actions">
+  <a href="painel.html" class="btn btn-outline" style="text-decoration:none;display:inline-flex;align-items:center">Painel</a>
+</div>
+
+<main id="app" style="display:none">
+
+  <div class="card">
+    <div class="card-header">Nova Notificação</div>
+    <div class="card-body">
+      <div class="field-grid">
+        <div class="field"><label>Ação</label><input id="f_tipoAcao" placeholder="Ex: Troca de Poste"/></div>
+        <div class="field"><label>Nº da Notificação</label><input id="f_notificacao" placeholder="Ex: 11243290"/></div>
+        <div class="field"><label>Cidade</label><input id="f_cidade" placeholder="Ex: Campinas"/></div>
+        <div class="field"><label>Coordenadas</label><input id="f_coordenadas" placeholder="Ex: -22.90, -47.06"/></div>
+        <div class="field"><label>Data</label><input type="date" id="f_data"/></div>
+        <div class="field"><label>Prazo</label><input type="date" id="f_prazo"/></div>
+        <div class="field"><label>Hora</label><input type="time" id="f_hora"/></div>
+        <div class="field"><label>Equipe</label><input id="f_equipe" placeholder="Opcional"/></div>
+      </div>
+      <div style="margin-top:.8rem">
+        <button class="btn btn-accent" onclick="salvarNotificacao()">Adicionar Notificação</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="chip-row" id="chipsStatus"></div>
+
+  <div class="card">
+    <div class="card-header">Notificações <small id="subNotificacoes"></small></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Notificação</th><th>Ação</th><th>Cidade</th><th>Coordenadas</th>
+            <th>Data</th><th>Prazo</th><th>Hora</th><th>Equipe</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbodyNotificacoes"></tbody>
+      </table>
+      <div id="emptyMsg" class="empty-msg" style="display:none">Nenhuma notificação nesse filtro.</div>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjRSTNLtZs4rUlacLcm_A_lygHYhKbFzPjs02-NCD6f00CVn7zeEDVe96poT7BYtlsVQ/exec";
+
+let TODAS_NOTIFICACOES = [];
+let FILTRO_STATUS = 'ABERTAS'; // ABERTAS = Planejado + Despachado (visão do dia a dia)
+
+const STATUS_LABEL = { PLANEJADO:'Planejado', DESPACHADO:'Despachado', CONCLUIDO:'Concluído', CANCELADO:'Cancelado', NAO_ATENDIDO:'Não Atendido' };
+const STATUS_FILTROS = [
+  { id:'ABERTAS', label:'Abertas' },
+  { id:'PLANEJADO', label:'Planejado' },
+  { id:'DESPACHADO', label:'Despachado' },
+  { id:'CONCLUIDO', label:'Concluído' },
+  { id:'CANCELADO', label:'Cancelado / Não Atendido' },
+  { id:'TODAS', label:'Todas' }
+];
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3200);
+}
+
+function iniciarApp(){
+  document.getElementById('app').style.display = 'block';
+  renderChipsStatus();
+  carregarNotificacoes();
+  if(!window._autoRefresh) window._autoRefresh = setInterval(carregarNotificacoes, 20000);
+}
+
+function renderChipsStatus(){
+  document.getElementById('chipsStatus').innerHTML = STATUS_FILTROS.map(s => `
+    <div class="chip ${s.id===FILTRO_STATUS?'active':''}" onclick="aplicarFiltroStatus('${s.id}')">${s.label}</div>
+  `).join('');
+}
+function aplicarFiltroStatus(id){
+  FILTRO_STATUS = id;
+  renderChipsStatus();
+  renderTabela();
+}
+window.aplicarFiltroStatus = aplicarFiltroStatus;
+
+async function carregarNotificacoes(){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=LISTAR_NOTIFICACOES_CPFL');
+    const result = await resp.json();
+    TODAS_NOTIFICACOES = result.notificacoes || [];
+    renderTabela();
+  }catch(err){
+    console.error(err);
+  }
+}
+
+function limparFormulario(){
+  ['f_tipoAcao','f_notificacao','f_cidade','f_coordenadas','f_data','f_prazo','f_hora','f_equipe'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+
+// Data/Prazo vêm do <input type=date> como AAAA-MM-DD — a planilha (e o resto
+// do sistema) usa DD/MM/AAAA, então converte aqui antes de mandar.
+function paraDataBR(iso){
+  if(!iso) return '';
+  const [a,m,d] = iso.split('-');
+  return `${d}/${m}/${a}`;
+}
+
+async function salvarNotificacao(){
+  const notificacao = document.getElementById('f_notificacao').value.trim();
+  const cidade = document.getElementById('f_cidade').value.trim();
+  if(!notificacao || !cidade){ showToast('Preencha ao menos Nº da Notificação e Cidade.'); return; }
+  const payload = {
+    acao: 'CRIAR_NOTIFICACAO_CPFL',
+    sessionToken: NetturboAuth.token(),
+    tipoAcao: document.getElementById('f_tipoAcao').value.trim(),
+    notificacao,
+    cidade,
+    coordenadas: document.getElementById('f_coordenadas').value.trim(),
+    data: paraDataBR(document.getElementById('f_data').value),
+    prazo: paraDataBR(document.getElementById('f_prazo').value),
+    hora: document.getElementById('f_hora').value.trim(),
+    equipe: document.getElementById('f_equipe').value.trim()
+  };
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(payload) });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message || 'Erro ao salvar.'); return; }
+    showToast('Notificação adicionada.');
+    limparFormulario();
+    carregarNotificacoes();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+}
+window.salvarNotificacao = salvarNotificacao;
+
+async function atualizarStatusNotificacao(rowIndex, status){
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'EDITAR_NOTIFICACAO_CPFL', sessionToken: NetturboAuth.token(), rowIndex, status })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message || 'Erro ao atualizar.'); return; }
+    showToast('Status atualizado.');
+    carregarNotificacoes();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+}
+window.atualizarStatusNotificacao = atualizarStatusNotificacao;
+
+async function excluirNotificacao(rowIndex){
+  if(!confirm('Excluir esta notificação? Não pode ser desfeito.')) return;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ acao:'EXCLUIR_NOTIFICACAO_CPFL', sessionToken: NetturboAuth.token(), rowIndex })
+    });
+    const result = await resp.json();
+    if(result.status !== 'ok'){ showToast(result.message || 'Erro ao excluir.'); return; }
+    showToast('Notificação excluída.');
+    carregarNotificacoes();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao conectar com o backend.');
+  }
+}
+window.excluirNotificacao = excluirNotificacao;
+
+// Guarda a notificação escolhida pro index.html ler ao carregar (ver
+// aplicarNotificacaoCpflPendente em index.html) e manda pra tela de despacho — o
+// vínculo de volta (LIGAR_NOTIFICACAO_DESPACHO) é feito de lá, depois que a
+// atividade é criada de verdade. `modo` decide a classificação que o despacho
+// abre travada: ACOMPANHAMENTO (Manutenção → Acompanhamento/Fiscalização →
+// Acompanhamento Cia Energia, o padrão) ou PREVENTIVA (Tipo Preventiva →
+// Acompanhamento → Troca de Poste/Comp. Elétrica) — pedido do Vinicius em
+// 2026-08-24, nem toda notificação vira um chamado de Manutenção.
+function despacharNotificacao(rowIndex, modo){
+  const notif = TODAS_NOTIFICACOES.find(n => n.rowIndex === rowIndex);
+  if(!notif) return;
+  sessionStorage.setItem('netturbo_notificacao_cpfl_despacho', JSON.stringify({ ...notif, modo }));
+  window.location.href = 'index.html';
+}
+window.despacharNotificacao = despacharNotificacao;
+
+function statusDaLista(n){
+  return n['Status'] || 'PLANEJADO';
+}
+function passaNoFiltro(n){
+  const status = statusDaLista(n);
+  if(FILTRO_STATUS === 'TODAS') return true;
+  if(FILTRO_STATUS === 'ABERTAS') return status === 'PLANEJADO' || status === 'DESPACHADO';
+  if(FILTRO_STATUS === 'CANCELADO') return status === 'CANCELADO' || status === 'NAO_ATENDIDO';
+  return status === FILTRO_STATUS;
+}
+
+function renderTabela(){
+  const lista = TODAS_NOTIFICACOES.filter(passaNoFiltro).sort((a,b) => b.rowIndex - a.rowIndex);
+  document.getElementById('subNotificacoes').textContent = lista.length + ' notificação(ões)';
+  const tbody = document.getElementById('tbodyNotificacoes');
+  document.getElementById('emptyMsg').style.display = lista.length ? 'none' : 'block';
+
+  tbody.innerHTML = lista.map(n => {
+    const status = statusDaLista(n);
+    const podeDespachar = status === 'PLANEJADO';
+    return `<tr>
+      <td>${n['Notificação']||'—'}</td>
+      <td>${n['Ação']||'—'}</td>
+      <td>${n['Cidade']||'—'}</td>
+      <td>${n['Coordenadas']||'—'}</td>
+      <td>${n['Data']||'—'}</td>
+      <td>${n['Prazo']||'—'}</td>
+      <td>${n['Hora']||'—'}</td>
+      <td>${n['Equipe']||'—'}</td>
+      <td><span class="pill ${status.toLowerCase()}">${STATUS_LABEL[status]||status}</span></td>
+      <td>
+        <div class="acoes-linha">
+          ${podeDespachar ? `<button class="btn btn-green btn-sm" onclick="despacharNotificacao(${n.rowIndex},'ACOMPANHAMENTO')">Despachar</button>` : ''}
+          ${podeDespachar ? `<button class="btn btn-outline btn-sm" onclick="despacharNotificacao(${n.rowIndex},'PREVENTIVA')">Despachar como Preventiva</button>` : ''}
+          ${status === 'PLANEJADO' ? `<button class="btn btn-outline btn-sm" onclick="atualizarStatusNotificacao(${n.rowIndex},'CANCELADO')">Cancelar</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="excluirNotificacao(${n.rowIndex})">Excluir</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+NetturboAuth.proteger({ tela:'Acompanhamento Camp. Elétrica', aoEntrar: iniciarApp });
+</script>
+</body>
+</html>
