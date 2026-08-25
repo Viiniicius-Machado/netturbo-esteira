@@ -55,6 +55,9 @@
   .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
   table{width:100%;border-collapse:collapse;font-size:.78rem}
   thead th{text-align:left;padding:.6rem .7rem;color:var(--text-muted);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+  .filtros-row th{padding:.4rem .5rem;background:var(--surface2)}
+  .filtros-row input{width:100%;background:var(--surface3);border:1px solid var(--border-hi);border-radius:4px;color:var(--text);font-size:.68rem;padding:.32rem .4rem;font-family:'Inter',sans-serif}
+  .filtros-row input::placeholder{color:var(--text-muted)}
   tbody td{padding:.55rem .7rem;border-bottom:1px solid var(--border);white-space:nowrap}
   tbody tr:hover{background:var(--surface2)}
   .empty-msg{padding:2rem;text-align:center;color:var(--text-muted);font-size:.82rem}
@@ -115,6 +118,23 @@
           <tr>
             <th>Notificação</th><th>Ação</th><th>Cidade</th><th>Coordenadas</th>
             <th>Data</th><th>Prazo</th><th>Hora</th><th>Equipe</th><th>Status</th><th></th>
+          </tr>
+          <tr class="filtros-row">
+            <th><input type="text" id="fNotificacao" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+            <th><input type="text" id="fAcao" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+            <th><input type="text" id="fCidade" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+            <th><input type="text" id="fCoordenadas" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+            <th>
+              <div style="display:flex;gap:.25rem">
+                <input type="text" id="fData" placeholder="dd/mm/aaaa" oninput="renderTabelaDebounced()" style="flex:1;min-width:0"/>
+                <button class="btn btn-outline btn-sm" style="padding:.32rem .5rem" onclick="filtrarHoje()">Hoje</button>
+              </div>
+            </th>
+            <th><input type="text" id="fPrazo" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+            <th><input type="text" id="fHora" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+            <th><input type="text" id="fEquipe" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
+            <th></th>
+            <th><button class="btn btn-outline btn-sm" style="padding:.32rem .5rem;width:100%" onclick="limparFiltrosColuna()">Limpar</button></th>
           </tr>
         </thead>
         <tbody id="tbodyNotificacoes"></tbody>
@@ -279,12 +299,53 @@ window.despacharNotificacao = despacharNotificacao;
 function statusDaLista(n){
   return n['Status'] || 'PLANEJADO';
 }
+
+// Filtro por coluna (texto livre, "contém", igual ao padrão já usado em
+// controle_atividades.html) — pedido do Vinicius em 2026-08-25, principalmente
+// pra conseguir puxar só as notificações do dia pelo campo Data (botão "Hoje"
+// preenche esse filtro com a data de hoje em dd/mm/aaaa, mesmo formato salvo).
+function debounce(fn, atrasoMs){
+  let timer;
+  return function(...args){
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), atrasoMs);
+  };
+}
+function valorFiltro(id){ return (document.getElementById(id).value||'').trim().toLowerCase(); }
+function contem(valorCampo, filtro){ return !filtro || String(valorCampo||'').toLowerCase().includes(filtro); }
+
+function filtrarHoje(){
+  const hoje = new Date();
+  const dataBR = String(hoje.getDate()).padStart(2,'0') + '/' + String(hoje.getMonth()+1).padStart(2,'0') + '/' + hoje.getFullYear();
+  document.getElementById('fData').value = dataBR;
+  renderTabela();
+}
+window.filtrarHoje = filtrarHoje;
+
+function limparFiltrosColuna(){
+  ['fNotificacao','fAcao','fCidade','fCoordenadas','fData','fPrazo','fHora','fEquipe'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  renderTabela();
+}
+window.limparFiltrosColuna = limparFiltrosColuna;
+
 function passaNoFiltro(n){
   const status = statusDaLista(n);
-  if(FILTRO_STATUS === 'TODAS') return true;
-  if(FILTRO_STATUS === 'ABERTAS') return status === 'PLANEJADO' || status === 'DESPACHADO';
-  if(FILTRO_STATUS === 'CANCELADO') return status === 'CANCELADO' || status === 'NAO_ATENDIDO';
-  return status === FILTRO_STATUS;
+  if(FILTRO_STATUS === 'TODAS'){ /* segue pros filtros de coluna abaixo */ }
+  else if(FILTRO_STATUS === 'ABERTAS'){ if(status !== 'PLANEJADO' && status !== 'DESPACHADO') return false; }
+  else if(FILTRO_STATUS === 'CANCELADO'){ if(status !== 'CANCELADO' && status !== 'NAO_ATENDIDO') return false; }
+  else if(status !== FILTRO_STATUS) return false;
+
+  if(!contem(n['Notificação'], valorFiltro('fNotificacao'))) return false;
+  if(!contem(n['Ação'], valorFiltro('fAcao'))) return false;
+  if(!contem(n['Cidade'], valorFiltro('fCidade'))) return false;
+  if(!contem(n['Coordenadas'], valorFiltro('fCoordenadas'))) return false;
+  if(!contem(n['Data'], valorFiltro('fData'))) return false;
+  if(!contem(n['Prazo'], valorFiltro('fPrazo'))) return false;
+  if(!contem(n['Hora'], valorFiltro('fHora'))) return false;
+  if(!contem(n['Equipe'], valorFiltro('fEquipe'))) return false;
+  return true;
 }
 
 function renderTabela(){
@@ -317,6 +378,7 @@ function renderTabela(){
     </tr>`;
   }).join('');
 }
+const renderTabelaDebounced = debounce(renderTabela, 250);
 
 NetturboAuth.proteger({ tela:'Acompanhamento Camp. Elétrica', aoEntrar: iniciarApp });
 </script>
