@@ -58,6 +58,7 @@
     table{width:100%;border-collapse:collapse;font-size:.75rem}
     thead th{text-align:left;padding:.6rem .7rem;color:var(--text-muted);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2);white-space:nowrap}
     tbody td{padding:.5rem .7rem;border-bottom:1px solid var(--border);vertical-align:top}
+    .categoria-cel{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.68rem;color:var(--text-dim)}
     tbody tr{cursor:pointer}
     tbody tr:hover{background:var(--surface2)}
     .empty-msg{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.82rem}
@@ -172,7 +173,7 @@
       <thead>
         <tr>
           <th>Data</th><th>Protocolo</th><th>Cliente</th><th>Técnico</th><th>Empresa</th>
-          <th>Tipo de Solicitação</th><th>Itens</th><th>Status</th><th>MTTR</th><th>MTTD</th><th>TMC</th><th>Baixado Por</th><th>Nº no Ciclo</th>
+          <th>Tipo de Solicitação</th><th>Categorias Editadas</th><th>Itens</th><th>Status</th><th>MTTR</th><th>MTTD</th><th>TMC</th><th>Baixado Por</th><th>Nº no Ciclo</th>
         </tr>
         <tr class="filtros-row">
           <th style="display:flex;flex-direction:column;gap:.25rem">
@@ -201,6 +202,7 @@
               <option value="Medição">Medição</option>
             </select>
           </th>
+          <th><input type="text" id="fCategorias" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
           <th><input type="text" id="fItens" placeholder="Filtrar..." oninput="renderTabelaDebounced()"/></th>
           <th>
             <select id="fStatus" oninput="renderTabela()">
@@ -456,6 +458,7 @@ function passaFiltrosColuna(a){
   const fCliente = document.getElementById('fCliente').value.trim().toLowerCase();
   const fTecnico = document.getElementById('fTecnico').value.trim().toLowerCase();
   const fEmpresa = document.getElementById('fEmpresa').value.trim().toLowerCase();
+  const fCategorias = document.getElementById('fCategorias').value.trim().toLowerCase();
   const fItens = document.getElementById('fItens').value.trim().toLowerCase();
   const fStatus = document.getElementById('fStatus').value;
   const fBaixadoPor = document.getElementById('fBaixadoPor').value.trim().toLowerCase();
@@ -470,6 +473,7 @@ function passaFiltrosColuna(a){
   if(fTecnico && !String(a['Técnico']||'').toLowerCase().includes(fTecnico)) return false;
   if(fEmpresa && !String(a['Empresa']||'').toLowerCase().includes(fEmpresa)) return false;
   if(FILTRO_TIPO !== 'TODOS' && a['Tipo de Solicitação'] !== FILTRO_TIPO) return false;
+  if(fCategorias && !categoriasArray(a).join(' › ').toLowerCase().includes(fCategorias)) return false;
   if(fItens && !(material && material.itens.some(it => String(it['Descrição']||'').toLowerCase().includes(fItens) || String(it['Código']||'').toLowerCase().includes(fItens)))) return false;
   if(fStatus && a['Status'] !== fStatus) return false;
   if(fBaixadoPor && !String((material&&material.baixadoPor)||'').toLowerCase().includes(fBaixadoPor)) return false;
@@ -525,6 +529,7 @@ function renderTabela(){
     const faixaMTTR = faixaMetrica(mttrMin, metaSlaMinutos(a));
     const faixaMTTD = faixaMetrica(mttdMin, META_MTTD_MIN);
     const faixaTMC = faixaMetrica(tmcMin, META_TMC_MIN);
+    const categoriasTexto = categoriasArray(a).join(' › ') || '—';
     return `<tr onclick="abrirDetalhe('${String(id).replace(/'/g,"\\'")}')">
       <td>${fmtDataCurta(dataAtividade(a))}</td>
       <td><div class="protocolo-cel">${protocolo}</div>${a['Etiqueta'] ? `<div class="etiqueta-cel">Etiqueta: ${a['Etiqueta']}</div>` : ''}</td>
@@ -532,6 +537,7 @@ function renderTabela(){
       <td>${a['Técnico']||'—'}</td>
       <td>${a['Empresa']||'—'}</td>
       <td>${a['Tipo de Solicitação']||'—'}</td>
+      <td class="categoria-cel" title="${categoriasTexto.replace(/"/g,'&quot;')}">${categoriasTexto}</td>
       <td>${itensHtml}</td>
       <td><span class="status-pill ${statusClasse(status)}">${STATUS_LABELS[status]||status||'—'}</span></td>
       <td><span class="metrica-cel ${faixaMTTR}">${a['MTTR']||'—'}</span></td>
@@ -558,6 +564,14 @@ function debounce(fn, atrasoMs){
 }
 const renderTabelaDebounced = debounce(renderTabela, 250);
 
+// Categoria 1-4 da atividade, só as preenchidas — mesma trilha usada no drawer
+// (abrirDetalhe) e agora também na coluna "Categorias Editadas" da tabela
+// (pedido do Vinicius em 2026-08-25, pra não precisar abrir o drawer só pra ver
+// a categoria de cada linha).
+function categoriasArray(a){
+  return [a['Categoria 1'], a['Categoria 2'], a['Categoria 3'], a['Categoria 4']].filter(Boolean);
+}
+
 // ── DRAWER DE DETALHAMENTO (só leitura) ──────────────────────
 window.abrirDetalhe = function(idAtividade){
   const a = TODAS_ATIVIDADES.find(x => String(x['ID Atividade']) === String(idAtividade));
@@ -567,7 +581,7 @@ window.abrirDetalhe = function(idAtividade){
   const material = MAPA_MATERIAL_POR_ATIVIDADE[idAtividade];
   const status = a['Status']||'';
 
-  const categorias = [a['Categoria 1'], a['Categoria 2'], a['Categoria 3'], a['Categoria 4']].filter(Boolean);
+  const categorias = categoriasArray(a);
   const trilhaCategoria = categorias.length
     ? categorias.map((c,i) => `<span>${c}</span>${i<categorias.length-1?'<span class="sep">›</span>':''}`).join('')
     : '<span style="color:var(--text-muted);background:none;border:none;padding:0">Sem categoria registrada</span>';
