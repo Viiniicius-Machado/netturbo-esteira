@@ -114,8 +114,6 @@
   .status-pill.bad{background:rgba(229,57,53,.12);color:var(--red);border:1px solid rgba(229,57,53,.35)}
   .budget-edit{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--text-muted);margin-top:.7rem}
   .budget-edit input{background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--text);font-size:.78rem;padding:.35rem .5rem;width:120px;font-family:'Rajdhani',sans-serif;font-weight:700}
-  .sel-aprovador{background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--text);font-size:.78rem;padding:.35rem .5rem;font-family:'Inter',sans-serif}
-  .sel-aprovador:invalid{color:var(--text-muted)}
   .alerta-fora-manut{margin-top:.9rem;border:1px solid rgba(255,160,0,.35);background:rgba(255,160,0,.08);border-radius:8px;padding:.6rem .8rem}
   .alerta-fora-manut .alerta-titulo{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;color:var(--amber);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.4rem}
   .alerta-fora-manut .alerta-item{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.75rem;color:var(--text-muted);padding:.3rem 0;border-top:1px solid rgba(255,160,0,.18)}
@@ -184,16 +182,10 @@
     <div class="dropzone-title">Arraste aqui os PDFs (relatório de prestação de serviços) ou os ZIPs das prestadoras</div>
     <div class="dropzone-sub">Aceita .pdf e .zip (procura PDFs dentro, em qualquer subpasta). Reimportar o mesmo arquivo não duplica o registro.</div>
     <div class="dropzone-actions">
-      <select class="sel-aprovador" id="selAprovadorImport">
-        <option value="">Aprovador destes relatórios (opcional)</option>
-        <option value="VINICIUS MACHADO">VINICIUS MACHADO</option>
-        <option value="EMERSON SILVA">EMERSON SILVA</option>
-        <option value="GABRIEL MILHOMENS">GABRIEL MILHOMENS</option>
-      </select>
       <button class="btn btn-accent" onclick="document.getElementById('inputArquivos').click()">Selecionar Arquivos</button>
       <input type="file" id="inputArquivos" multiple accept=".pdf,.zip"/>
     </div>
-    <div class="dropzone-sub">A assinatura do aprovador no PDF é uma imagem escaneada (não dá pra ler automaticamente) — escolha aqui quem aprovou antes de importar. Dá pra corrigir depois clicando no nome na coluna "Aprovador" da tabela.</div>
+    <div class="dropzone-sub">Aprovador é preenchido sozinho com quem estiver logado ao importar (a assinatura do aprovador no PDF é uma imagem escaneada, não dá pra ler automaticamente).</div>
     <div class="import-log" id="importLog"></div>
   </div>
 
@@ -301,6 +293,7 @@
             <th data-sort="dataOrdenacao">Data</th>
             <th data-sort="contaDescricao">Conta Contábil</th>
             <th data-sort="aprovador">Aprovador</th>
+            <th data-sort="importadoEm">Importado em</th>
             <th data-sort="totalGeral">Total</th>
             <th></th>
           </tr>
@@ -376,6 +369,11 @@ function fmtMoeda(v){
   return (v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 }
 function fmtNum(v){ return (v||0).toLocaleString('pt-BR'); }
+function fmtDataHora(iso){
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
 function isManutencao(rec){ return /MANUTEN/i.test(rec.contaDescricao || ''); }
 // 0006 (Manutenção CLIENTE) virou o segmento GTD (pedido do Vinicius em 2026-08-24) — não
 // pode cair aqui mesmo batendo o texto "MANUTEN". Registros antigos sem contaCodigo gravado
@@ -827,7 +825,11 @@ async function processarArquivos(fileList){
 
   let novos = 0, atualizados = 0, erros = 0;
   const mapa = new Map(TODAS_OBRAS.map(r => [r.id, r]));
-  const aprovadorLote = document.getElementById('selAprovadorImport').value;
+  // aprovador não vem do PDF (é assinatura escaneada, sem texto pra ler) — vira sempre quem
+  // está logado fazendo ESTE import (pedido do Vinicius em 2026-08-26: antes era um select
+  // manual, agora é automático a cada acesso que importa/reimporta um relatório).
+  const usuarioLogado = NetturboAuth.usuario();
+  const aprovadorAtual = (usuarioLogado && usuarioLogado.nome) || '';
 
   for (const pdf of pdfs){
     try {
@@ -839,9 +841,10 @@ async function processarArquivos(fileList){
         continue;
       }
       const existente = mapa.get(rec.id);
-      // aprovador não vem do PDF (é assinatura escaneada, sem texto pra ler) — usa o
-      // selecionado no lote, ou mantém o que já estava salvo se reimportar sem escolher.
-      rec.aprovador = aprovadorLote || (existente ? existente.aprovador : '') || '';
+      rec.aprovador = aprovadorAtual;
+      // "Importado em" preserva a 1ª vez que a obra entrou no orçamento — reimportar (ex.:
+      // PDF corrigido) não deve mexer nessa data, só o aprovador reflete quem tocou por último.
+      if (existente) rec.importadoEm = existente.importadoEm;
       const existia = !!existente;
       mapa.set(rec.id, rec);
       if (existia) atualizados++; else novos++;
@@ -1331,25 +1334,12 @@ function renderTabela(){
       <td>${r.idEtiqueta || '—'}</td>
       <td>${r.periodoIni || r.dataRelatorio || '—'}</td>
       <td><span class="conta-tag ${isManutencao(r)?'manut':''}">${r.contaDescricao || '—'}</span></td>
-      <td>
-        <select class="sel-aprovador" onchange="atualizarAprovador('${r.id.replace(/'/g,"\\'")}', this.value)">
-          <option value="" ${!r.aprovador?'selected':''}>—</option>
-          <option value="VINICIUS MACHADO" ${r.aprovador==='VINICIUS MACHADO'?'selected':''}>VINICIUS MACHADO</option>
-          <option value="EMERSON SILVA" ${r.aprovador==='EMERSON SILVA'?'selected':''}>EMERSON SILVA</option>
-          <option value="GABRIEL MILHOMENS" ${r.aprovador==='GABRIEL MILHOMENS'?'selected':''}>GABRIEL MILHOMENS</option>
-        </select>
-      </td>
+      <td>${r.aprovador || '—'}</td>
+      <td>${fmtDataHora(r.importadoEm)}</td>
       <td>${fmtMoeda(r.totalGeral)}</td>
       <td><button class="btn btn-outline btn-sm" onclick="excluirObra('${r.id.replace(/'/g,"\\'")}')">Remover</button></td>
     </tr>
   `).join('');
-}
-
-function atualizarAprovador(id, valor){
-  const rec = TODAS_OBRAS.find(r => r.id === id);
-  if (!rec) return;
-  rec.aprovador = valor;
-  salvarObras(TODAS_OBRAS);
 }
 
 document.querySelectorAll('th[data-sort]').forEach(th => {
@@ -1364,10 +1354,10 @@ document.querySelectorAll('th[data-sort]').forEach(th => {
 /* ═══════════════════════════ EXPORT CSV ═══════════════════════════ */
 document.getElementById('btnExportarCsv').addEventListener('click', () => {
   const lista = obrasFiltradas();
-  const linhas = [['Empresa','Técnico','Cliente/POP','ID','Período','Conta Contábil','Aprovador','Total'].join(';')];
+  const linhas = [['Empresa','Técnico','Cliente/POP','ID','Período','Conta Contábil','Aprovador','Importado em','Total'].join(';')];
   lista.forEach(r => linhas.push([
     r.empresa, r.tecnico, r.clientePop, r.idEtiqueta, r.periodoIni,
-    (r.contaDescricao||'').replace(/;/g,','), r.aprovador||'', r.totalGeral.toFixed(2).replace('.', ',')
+    (r.contaDescricao||'').replace(/;/g,','), r.aprovador||'', fmtDataHora(r.importadoEm), r.totalGeral.toFixed(2).replace('.', ',')
   ].join(';')));
   const blob = new Blob(['\uFEFF' + linhas.join('\n')], { type:'text/csv;charset=utf-8' });
   const a = document.createElement('a');
