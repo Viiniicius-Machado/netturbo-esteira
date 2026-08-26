@@ -147,6 +147,7 @@
   .contrato-excedente label{flex:1;min-width:0}
   .contrato-excedente input[type=number]{width:60px;flex-shrink:0;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--text);font-size:.8rem;padding:.3rem .4rem;font-family:'Rajdhani',sans-serif;font-weight:700}
   .contrato-excedente b{color:var(--amber);flex-shrink:0}
+  .contrato-improdutivas{font-size:.72rem;color:var(--red);background:color-mix(in srgb, var(--red) 12%, transparent);border:1px solid color-mix(in srgb, var(--red) 35%, transparent);border-radius:6px;padding:.5rem .6rem;margin-top:.4rem;line-height:1.4}
   .contrato-subtotal{margin-top:.7rem;padding-top:.6rem;border-top:1px solid var(--border-hi);font-family:'Rajdhani',sans-serif;font-weight:700;display:flex;justify-content:space-between;font-size:.85rem}
   .contratos-total{margin-top:1rem;padding-top:.9rem;border-top:1px solid var(--border-hi);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;display:flex;justify-content:space-between;gap:1rem}
 
@@ -245,11 +246,11 @@
   </div>
 
   <div class="card" id="cardContratosFixos" style="display:none">
-    <div class="card-header">Contratos Fixos — Manutenção <small id="mesContratosLabel"></small></div>
+    <div class="card-header">Contratos Fixos — <span id="cardContratosFixosSegmento">Manutenção</span> <small id="mesContratosLabel"></small></div>
     <div class="card-body">
       <div class="contratos-grid" id="contratosFixosBody"></div>
       <div class="contratos-total">
-        <span>Total contratos fixos (somado no Gasto realizado de Manutenção)</span>
+        <span id="totalContratosFixosLabel">Total contratos fixos (somado no Gasto realizado de Manutenção)</span>
         <b id="totalContratosFixos">–</b>
       </div>
     </div>
@@ -402,14 +403,25 @@ const SEGMENTOS = [
 let SEGMENTO_ATIVO = 'manutencao';
 function segmentoAtual(){ return SEGMENTOS.find(s => s.id === SEGMENTO_ATIVO) || SEGMENTOS[0]; }
 
-// contratos fixos (VAL NOTURNO/DIURNO): equipes pagas por contrato mensal fixo, não por
-// LPU/obra importada — por isso não aparecem em TODAS_OBRAS, e precisam entrar manualmente
-// no Gasto realizado de Manutenção pra não subestimar o orçamento (pedido do Vinicius em
-// 2026-08-19). valorFixo já é meta×valorAcionamento; guardado calculado, não recalculado,
-// pra não depender da quantidade real de acionamentos do mês.
+// contratos fixos: equipes pagas por contrato mensal fixo, não por LPU/obra importada —
+// por isso não aparecem em TODAS_OBRAS, e precisam entrar manualmente no Gasto realizado
+// do segmento (segmentoId) pra não subestimar o orçamento (pedido do Vinicius em
+// 2026-08-19, generalizado pra qualquer segmento — não só Manutenção — em 2026-08-26 pra
+// caber o contrato da SOUZA TELECOM em Implantação). valorFixo já é meta×valorAcionamento
+// quando existe meta; guardado calculado, não recalculado, pra não depender da quantidade
+// real de acionamentos do mês.
+//
+// Dois modos de excedente (valor acima do fixo mensal):
+// - contratos COM metaAtividades (VAL/QUALITY): a pessoa digita quantas atividades foram
+//   REALIZADAS no mês (não a diferença) — o sistema deriva excedente (acima da meta, ×
+//   valorExcedente, some no Total) e déficit/improdutivas (abaixo da meta, só informativo,
+//   não desconta do Total — pedido do Vinicius em 2026-08-26).
+// - SOUZA TELECOM (modoExcedente:'valor'): contrato não é por meta de atividades — o
+//   excedente é digitado direto em R$ (o "tanto a mais" que sai do fixo de R$26.000).
 const CONTRATOS_FIXOS = [
   {
-    id:'val_noturno', label:'VAL NOTURNO', metaAtividades:40, valorAcionamento:375, valorFixo:15000, valorExcedente:380,
+    id:'val_noturno', label:'VAL NOTURNO', segmentoId:'manutencao',
+    metaAtividades:40, valorAcionamento:375, valorFixo:15000, valorExcedente:380,
     variaveis:[
       { id:'plantao_fds', label:'CUMPRIR O PLANTÃO NO FIM DE SEMANA ESCALADO', valor:1000 },
       { id:'sla_4h', label:'POR MANTER O SLA DE 4 HORAS', valor:500 },
@@ -417,7 +429,8 @@ const CONTRATOS_FIXOS = [
     ],
   },
   {
-    id:'val_diurno', label:'VAL DIURNO', metaAtividades:80, valorAcionamento:325, valorFixo:26000, valorExcedente:380,
+    id:'val_diurno', label:'VAL DIURNO', segmentoId:'manutencao',
+    metaAtividades:80, valorAcionamento:325, valorFixo:26000, valorExcedente:380,
     variaveis:[
       { id:'plantao_fds', label:'CUMPRIR O PLANTÃO NO FIM DE SEMANA ESCALADO', valor:3333.33 },
       { id:'sla_4h', label:'POR MANTER O SLA DE 4 HORAS', valor:1000 },
@@ -426,11 +439,29 @@ const CONTRATOS_FIXOS = [
   },
   {
     // sem variáveis e sem excedente configurado ainda (pedido do Vinicius em 2026-08-20) —
-    // valorExcedente:0 desliga o campo "atividades acima da meta" no card (ver renderContratosFixos).
-    id:'quality', label:'QUALITY', metaAtividades:18, valorAcionamento:555.56, valorFixo:10000, valorExcedente:0,
+    // valorExcedente:0 desliga o campo "atividades realizadas" no card (ver renderContratosFixos).
+    id:'quality', label:'QUALITY', segmentoId:'manutencao',
+    metaAtividades:18, valorAcionamento:555.56, valorFixo:10000, valorExcedente:0,
     variaveis:[],
   },
+  {
+    // contrato fixo da SOUZA TELECOM (Implantação, pedido do Vinicius em 2026-08-26) — não é
+    // por meta de atividades (por isso sem metaAtividades/valorAcionamento/valorExcedente),
+    // sempre recebe os R$26.000 fixos + o que exceder digitado direto em R$ (modoExcedente:'valor').
+    id:'souza_telecom', label:'SOUZA TELECOM', segmentoId:'implantacao',
+    metaAtividades:0, valorAcionamento:0, valorFixo:26000, valorExcedente:0, modoExcedente:'valor',
+    variaveis:[
+      { id:'plantao_fds', label:'CUMPRIR O PLANTÃO NO FINAL DE SEMANA ESCALADO (CONTEMPLA AS DUAS EQUIPES)', valor:2000 },
+      { id:'sem_atraso_chamados', label:'ATENDER CHAMADOS SEM ATRASOS DE HORÁRIOS', valor:500 },
+      { id:'baixa_forms_prazo', label:'REALIZAR BAIXAS DAS ATIVIDADES NO FORMS DENTRO DO PRAZO (1 DIA)', valor:500 },
+      { id:'baixa_voalle_prazo', label:'REALIZAR BAIXAS DE MATERIAIS NO VOALLE DENTRO DO PRAZO (1 DIA)', valor:500 },
+      { id:'padroes_construtivos', label:'CUMPRIR TODOS OS PADRÕES CONSTRUTIVOS', valor:500 },
+    ],
+  },
 ];
+function contratosDoSegmento(segId){ return CONTRATOS_FIXOS.filter(c => c.segmentoId === segId); }
+function temContratoFixo(segId){ return contratosDoSegmento(segId).length > 0; }
+
 function carregarContratosFixos(){ return ESTADO_CONTRATOS_FIXOS; }
 function salvarContratosFixos(obj){
   ESTADO_CONTRATOS_FIXOS = obj;
@@ -447,27 +478,58 @@ function setVariavelBatida(chave, contratoId, varId, valor){
   dados[chave][contratoId][varId] = valor;
   salvarContratosFixos(dados);
 }
-// atividades excedentes: quando a equipe passa da meta do ciclo, cada atividade extra sai do
-// valor fixo/acionamento normal e passa a custar o valor de excedente do contrato (pedido do
-// Vinicius em 2026-08-20 — hoje R$380 tanto pro NOTURNO quanto pro DIURNO). Guardado na mesma
-// chave de ciclo (_excedenteQtd) pra também resetar quando fecha a folha, igual as variáveis.
-function excedenteAtividades(chave, contratoId){
+
+// Atividades REALIZADAS no mês (não a diferença) — quem digita informa o total do ciclo, e
+// excedente/déficit são derivados daqui (pedido do Vinicius em 2026-08-26: antes só existia
+// "atividades acima da meta", sem jeito de ver quanto faltou quando não bate a meta). null =
+// ainda não informado neste ciclo (distinto de "realizou 0 atividades", que é 0 de verdade).
+function realizadasAtividades(chave, contratoId){
   const dados = carregarContratosFixos();
-  return Number(dados[chave] && dados[chave][contratoId] && dados[chave][contratoId]._excedenteQtd) || 0;
+  const v = dados[chave] && dados[chave][contratoId] ? dados[chave][contratoId]._realizadasQtd : undefined;
+  return (v === undefined || v === null || v === '') ? null : Number(v);
 }
-function setExcedenteAtividades(chave, contratoId, qtd){
+function setRealizadasAtividades(chave, contratoId, qtd){
   const dados = carregarContratosFixos();
   if (!dados[chave]) dados[chave] = {};
   if (!dados[chave][contratoId]) dados[chave][contratoId] = {};
-  dados[chave][contratoId]._excedenteQtd = qtd;
+  dados[chave][contratoId]._realizadasQtd = qtd;
   salvarContratosFixos(dados);
 }
+// acima da meta: some no Total do contrato (× valorExcedente).
+function excedenteAtividades(chave, contrato){
+  const realizadas = realizadasAtividades(chave, contrato.id);
+  return realizadas === null ? 0 : Math.max(0, realizadas - contrato.metaAtividades);
+}
+// abaixo da meta ("improdutivas"): só informativo (não desconta do Total — pedido do
+// Vinicius em 2026-08-26), × valorAcionamento (o mesmo valor usado no cálculo do fixo, pra
+// ficar simétrico: cada atividade que falta "vale" o mesmo que uma atividade dentro da meta).
+function deficitAtividades(chave, contrato){
+  const realizadas = realizadasAtividades(chave, contrato.id);
+  return realizadas === null ? 0 : Math.max(0, contrato.metaAtividades - realizadas);
+}
+
+// SOUZA TELECOM (modoExcedente:'valor'): sem meta de atividades — o que exceder o fixo é
+// digitado direto em R$ pelo Vinicius, não calculado por quantidade × taxa.
+function excedenteValorManual(chave, contratoId){
+  const dados = carregarContratosFixos();
+  return Number(dados[chave] && dados[chave][contratoId] && dados[chave][contratoId]._excedenteValor) || 0;
+}
+function setExcedenteValorManual(chave, contratoId, valor){
+  const dados = carregarContratosFixos();
+  if (!dados[chave]) dados[chave] = {};
+  if (!dados[chave][contratoId]) dados[chave][contratoId] = {};
+  dados[chave][contratoId]._excedenteValor = valor;
+  salvarContratosFixos(dados);
+}
+
 function totalContratoFixo(chave, contrato){
   const totalVariaveis = contrato.variaveis.reduce((s,v) => s + (variavelBatida(chave, contrato.id, v.id) ? v.valor : 0), contrato.valorFixo);
-  return totalVariaveis + excedenteAtividades(chave, contrato.id) * contrato.valorExcedente;
+  if (contrato.modoExcedente === 'valor') return totalVariaveis + excedenteValorManual(chave, contrato.id);
+  if (contrato.metaAtividades && contrato.valorExcedente) return totalVariaveis + excedenteAtividades(chave, contrato) * contrato.valorExcedente;
+  return totalVariaveis;
 }
-function totalContratosFixosMes(chave){
-  return CONTRATOS_FIXOS.reduce((s,c) => s + totalContratoFixo(chave, c), 0);
+function totalContratosFixosMes(chave, segId){
+  return contratosDoSegmento(segId).reduce((s,c) => s + totalContratoFixo(chave, c), 0);
 }
 
 function diasNoMes(ano, mesIdx){ return new Date(ano, mesIdx + 1, 0).getDate(); }
@@ -607,7 +669,7 @@ function capturarSnapshotMes(){
     snap.segmentos[seg.id] = {
       lpu: lista.reduce((s,r) => s + r.totalGeral, 0),
       qtd: lista.length,
-      fixo: seg.id === 'manutencao' ? totalContratosFixosMes(chaveFixo) : 0,
+      fixo: totalContratosFixosMes(chaveFixo, seg.id),
     };
   });
   const historico = carregarHistorico().filter(h => h.chave !== chave);
@@ -658,7 +720,7 @@ function renderResumoMesHistorico(){
     <div class="orcamento-linhas">
       <div class="linha-destaque">Gasto realizado <b>${fmtMoeda(gasto)}</b></div>
       <div class="linha-sub">↳ Contrato LPU <b>${fmtMoeda(dadosSeg.lpu)}</b> (${dadosSeg.qtd} relatório(s))</div>
-      ${segmento.id === 'manutencao' ? `<div class="linha-sub">↳ Contrato Fixo <b>${fmtMoeda(dadosSeg.fixo||0)}</b></div>` : ''}
+      ${temContratoFixo(segmento.id) ? `<div class="linha-sub">↳ Contrato Fixo <b>${fmtMoeda(dadosSeg.fixo||0)}</b></div>` : ''}
       <div>Orçamento <b>${budget ? fmtMoeda(budget) : '—'}</b></div>
       <div>Saldo <b style="color:${saldo>=0?'var(--green)':'var(--red)'}">${budget ? fmtMoeda(saldo) : '—'}</b></div>
     </div>`;
@@ -871,29 +933,63 @@ function renderChipsSegmento(){
   });
 }
 
+// HTML do campo de excedente/déficit de um contrato — muda de acordo com o modo:
+// - modoExcedente:'valor' (SOUZA TELECOM): input direto em R$.
+// - contrato com meta (VAL/QUALITY): input de "atividades realizadas", deriva excedente
+//   (some no Total) e déficit/improdutivas (só informativo, ver deficitAtividades).
+function campoExcedenteHtml(chave, c){
+  if (c.modoExcedente === 'valor'){
+    const valor = excedenteValorManual(chave, c.id);
+    return `
+      <div class="contrato-excedente">
+        <label>Valor que excedeu ${fmtMoeda(c.valorFixo)} este mês</label>
+        <input type="number" min="0" step="0.01" data-excedente-valor-contrato="${c.id}" value="${valor || ''}" placeholder="0,00"/>
+        <b>${fmtMoeda(valor)}</b>
+      </div>`;
+  }
+  if (!c.metaAtividades) return '';
+
+  const realizadas = realizadasAtividades(chave, c.id);
+  const excedente = excedenteAtividades(chave, c);
+  const deficit = deficitAtividades(chave, c);
+  let html = `
+    <div class="contrato-excedente">
+      <label>Atividades realizadas no mês (meta: ${c.metaAtividades})</label>
+      <input type="number" min="0" step="1" data-realizadas-contrato="${c.id}" value="${realizadas === null ? '' : realizadas}" placeholder="ex.: ${c.metaAtividades}"/>
+      ${c.valorExcedente && excedente ? `<b>+${excedente} excedente(s) × ${fmtMoeda(c.valorExcedente)} = ${fmtMoeda(excedente * c.valorExcedente)}</b>` : ''}
+    </div>`;
+  if (deficit){
+    html += `
+    <div class="contrato-improdutivas">
+      ⚠ ${deficit} atividade(s) improdutiva(s) abaixo da meta — equivalente a ${fmtMoeda(deficit * c.valorAcionamento)} pra repor e honrar o contrato (informativo, não desconta do Total abaixo).
+    </div>`;
+  }
+  return html;
+}
+
 function renderContratosFixos(chave){
   const cardEl = document.getElementById('cardContratosFixos');
-  if (SEGMENTO_ATIVO !== 'manutencao'){ cardEl.style.display = 'none'; return; }
+  const contratos = contratosDoSegmento(SEGMENTO_ATIVO);
+  if (!contratos.length){ cardEl.style.display = 'none'; return; }
   cardEl.style.display = '';
 
+  document.getElementById('cardContratosFixosSegmento').textContent = segmentoAtual().label;
+  document.getElementById('totalContratosFixosLabel').textContent = 'Total contratos fixos (somado no Gasto realizado de ' + segmentoAtual().label + ')';
   document.getElementById('mesContratosLabel').textContent = labelCicloFixo(chave);
 
-  document.getElementById('contratosFixosBody').innerHTML = CONTRATOS_FIXOS.map(c => `
+  document.getElementById('contratosFixosBody').innerHTML = contratos.map(c => `
     <div class="contrato-card">
       <h4>${c.label}</h4>
-      <div class="contrato-meta">Meta: ${c.metaAtividades} atividades × ${fmtMoeda(c.valorAcionamento)} = ${fmtMoeda(c.valorFixo)} (valor fixo do contrato)</div>
+      ${c.metaAtividades
+        ? `<div class="contrato-meta">Meta: ${c.metaAtividades} atividades × ${fmtMoeda(c.valorAcionamento)} = ${fmtMoeda(c.valorFixo)} (valor fixo do contrato)</div>`
+        : `<div class="contrato-meta">Valor fixo mensal: ${fmtMoeda(c.valorFixo)} (não é por meta de atividades)</div>`}
       ${c.variaveis.map(v => `
         <div class="contrato-var">
           <label><input type="checkbox" data-contrato="${c.id}" data-var="${v.id}" ${variavelBatida(chave, c.id, v.id) ? 'checked' : ''}/> ${v.label}</label>
           <b>${fmtMoeda(v.valor)}</b>
         </div>
       `).join('')}
-      ${c.valorExcedente ? `
-      <div class="contrato-excedente">
-        <label>Atividades acima da meta (${fmtMoeda(c.valorExcedente)} cada)</label>
-        <input type="number" min="0" step="1" data-excedente-contrato="${c.id}" value="${excedenteAtividades(chave, c.id) || ''}" placeholder="0"/>
-        <b>${fmtMoeda(excedenteAtividades(chave, c.id) * c.valorExcedente)}</b>
-      </div>` : ''}
+      ${campoExcedenteHtml(chave, c)}
       <div class="contrato-subtotal"><span>Total ${c.label}</span><span>${fmtMoeda(totalContratoFixo(chave, c))}</span></div>
     </div>
   `).join('');
@@ -910,17 +1006,22 @@ function renderContratosFixos(chave){
   // (debounced, ver persistirEstado). O recálculo visual dos totais/gauge só acontece
   // no blur ("change"), pra não perder o foco do campo a cada tecla (renderOrcamento
   // reconstrói o card inteiro).
-  document.querySelectorAll('#contratosFixosBody input[data-excedente-contrato]').forEach(inp => {
+  document.querySelectorAll('#contratosFixosBody input[data-realizadas-contrato]').forEach(inp => {
+    const ler = () => inp.value === '' ? null : Math.max(0, Number(inp.value) || 0);
+    inp.addEventListener('input', () => setRealizadasAtividades(chave, inp.dataset.realizadasContrato, ler()));
+    inp.addEventListener('change', () => { setRealizadasAtividades(chave, inp.dataset.realizadasContrato, ler()); renderOrcamento(); });
+  });
+  document.querySelectorAll('#contratosFixosBody input[data-excedente-valor-contrato]').forEach(inp => {
     inp.addEventListener('input', () => {
-      setExcedenteAtividades(chave, inp.dataset.excedenteContrato, Math.max(0, Number(inp.value) || 0));
+      setExcedenteValorManual(chave, inp.dataset.excedenteValorContrato, Math.max(0, Number(inp.value) || 0));
     });
     inp.addEventListener('change', () => {
-      setExcedenteAtividades(chave, inp.dataset.excedenteContrato, Math.max(0, Number(inp.value) || 0));
+      setExcedenteValorManual(chave, inp.dataset.excedenteValorContrato, Math.max(0, Number(inp.value) || 0));
       renderOrcamento();
     });
   });
 
-  document.getElementById('totalContratosFixos').textContent = fmtMoeda(totalContratosFixosMes(chave));
+  document.getElementById('totalContratosFixos').textContent = fmtMoeda(totalContratosFixosMes(chave, SEGMENTO_ATIVO));
 }
 
 function renderEvolucaoLpu(chave, segmento){
@@ -949,16 +1050,16 @@ function renderEvolucaoLpu(chave, segmento){
 
 function renderEvolucaoFixo(chave, chaveFixo, segmento){
   const wrapEl = document.getElementById('evolucaoFixoWrap');
-  if (segmento.id !== 'manutencao'){ wrapEl.style.display = 'none'; return; }
+  if (!temContratoFixo(segmento.id)){ wrapEl.style.display = 'none'; return; }
   wrapEl.style.display = '';
-  document.getElementById('evolucaoFixoLabel').textContent = CONTRATOS_FIXOS.map(c => c.label).join(' + ');
+  document.getElementById('evolucaoFixoLabel').textContent = contratosDoSegmento(segmento.id).map(c => c.label).join(' + ');
 
-  const atual = { label: labelCicloFixo(chaveFixo) + ' (em andamento)', valor: totalContratosFixosMes(chaveFixo), atual:true };
+  const atual = { label: labelCicloFixo(chaveFixo) + ' (em andamento)', valor: totalContratosFixosMes(chaveFixo, segmento.id), atual:true };
   const meses = carregarHistorico()
-    .filter(h => h.chave !== chave && h.segmentos && h.segmentos.manutencao)
+    .filter(h => h.chave !== chave && h.segmentos && h.segmentos[segmento.id])
     .sort((a,b) => a.chave.localeCompare(b.chave))
     .slice(-5)
-    .map(h => ({ label: labelMesChave(h.chave), valor: h.segmentos.manutencao.fixo, atual:false }))
+    .map(h => ({ label: labelMesChave(h.chave), valor: h.segmentos[segmento.id].fixo, atual:false }))
     .concat([atual]);
 
   const max = Math.max(1, ...meses.map(m => m.valor));
@@ -994,16 +1095,17 @@ function renderOrcamento(){
   // ignora o filtro de empresa e a data do relatório: a base é zerada manualmente a
   // cada fechamento de mês (ver excluirObra/btnResetSeed), então tudo que estiver aqui
   // é o ciclo atual, ainda não pago (decidido com o Vinicius em 2026-08-15; segmentos
-  // Melhoria REDE e Preventiva adicionados em 2026-08-19). Manutenção também soma os
-  // contratos fixos VAL NOTURNO/DIURNO, que não vêm de PDF importado (2026-08-19).
+  // Melhoria REDE e Preventiva adicionados em 2026-08-19). Manutenção e Implantação também
+  // somam os respectivos contratos fixos (VAL NOTURNO/DIURNO e SOUZA TELECOM), que não vêm
+  // de PDF importado (2026-08-19, generalizado em 2026-08-26).
   const lista = TODAS_OBRAS.filter(segmento.match);
   const gastoLpu = lista.reduce((s,r) => s + r.totalGeral, 0);
-  const gastoFixo = segmento.id === 'manutencao' ? totalContratosFixosMes(chaveFixo) : 0;
+  const gastoFixo = totalContratosFixosMes(chaveFixo, segmento.id);
   const gasto = gastoLpu + gastoFixo;
 
   document.getElementById('orcLpu').textContent = fmtMoeda(gastoLpu);
   const linhaFixoEl = document.getElementById('linhaContratoFixo');
-  if (segmento.id === 'manutencao'){
+  if (temContratoFixo(segmento.id)){
     linhaFixoEl.style.display = '';
     document.getElementById('orcFixo').textContent = fmtMoeda(gastoFixo);
   } else {
