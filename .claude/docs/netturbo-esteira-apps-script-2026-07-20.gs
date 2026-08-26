@@ -290,6 +290,8 @@ function doPost(e) {
     if (acao === 'REPROVAR_LPU_NF')      return reprovarLpuNf(ss, data);
     if (acao === 'LPU_ATUALIZAR_PDF')    return atualizarLpuPdf(ss, data);
     if (acao === 'REGISTRAR_ORCAMENTO_MENSAL') return registrarOrcamentoMensal(ss, data);
+    if (acao === 'SALVAR_OBRAS_PRESTADORAS') return salvarObrasPrestadoras(ss, data);
+    if (acao === 'SALVAR_ESTADO_CONTROLE_PRESTADORAS') return salvarEstadoControlePrestadoras(ss, data);
     if (acao === 'REGISTRAR_DISPONIBILIDADE')  return registrarDisponibilidade(ss, data);
     if (acao === 'EXCLUIR_DISPONIBILIDADE')    return excluirDisponibilidade(ss, data);
     if (acao === 'REGISTRAR_ASSINATURA_LPU')   return registrarAssinaturaLpu(ss, data);
@@ -330,6 +332,7 @@ function doGet(e) {
   if (params.acao === 'LISTAR_LPU_PAGAMENTO') return listarLpuPagamento(ss);
   if (params.acao === 'LPU_OBTER_PDF') return obterLpuPdf(ss, params);
   if (params.acao === 'LISTAR_ORCAMENTOS_MENSAIS') return listarOrcamentosMensais(ss);
+  if (params.acao === 'LISTAR_CONTROLE_PRESTADORAS') return listarControlePrestadoras(ss);
   if (params.acao === 'LISTAR_DISPONIBILIDADE') return listarDisponibilidade(ss);
   if (params.acao === 'LISTAR_GEOGRID') return listarGeogrid(ss);
   if (params.acao === 'LISTAR_USUARIOS_LIDERANCA') return listarUsuariosLideranca(ss);
@@ -2192,6 +2195,109 @@ function listarOrcamentosMensais(ss) {
     mes: row[0], categoria: row[1], valor: Number(row[2]) || 0, registradoPor: row[3], timestamp: row[4]
   }));
   return resposta('ok', { orcamentos: orcamentos });
+}
+
+// ── CONTROLE DE OBRAS / PRESTADORAS (controle_prestadoras.html) — até 2026-08-26
+// essa tela guardava TUDO (obras importadas dos PDFs, contratos fixos, budgets por
+// segmento, histórico mensal, excluídos fora de segmento) só no localStorage do
+// navegador — cada conta via um estado diferente (o Vinicius importava relatório
+// e a Pamela, logada em outra conta/navegador, não via nada). Duas abas: uma de
+// registros de verdade (obras, uma linha por relatório importado) e outra de
+// blobs JSON por chave pro resto do estado (pequeno, aninhado, não compensa
+// normalizar em colunas).
+const ABA_CONTROLE_PRESTADORAS_OBRAS = 'CONTROLE_PRESTADORAS_OBRAS';
+const HEADERS_CONTROLE_PRESTADORAS_OBRAS = [
+  'ID', 'Empresa', 'CNPJ', 'Técnico', 'Cidade', 'Cliente/POP', 'ID Etiqueta',
+  'Período Início', 'Período Fim', 'Data Relatório', 'Conta Código', 'Conta Descrição',
+  'Total Geral', 'Itens JSON', 'Arquivo', 'Importado Em', 'Aprovador'
+];
+const ABA_CONTROLE_PRESTADORAS_ESTADO = 'CONTROLE_PRESTADORAS_ESTADO';
+const HEADERS_CONTROLE_PRESTADORAS_ESTADO = ['Chave', 'Valor JSON', 'Atualizado Por', 'Atualizado Em'];
+
+function garantirControlePrestadorasObras(ss) {
+  return garantirAba(ss, ABA_CONTROLE_PRESTADORAS_OBRAS, HEADERS_CONTROLE_PRESTADORAS_OBRAS, '#1a1a1a', '#5aa9e6');
+}
+function garantirControlePrestadorasEstado(ss) {
+  return garantirAba(ss, ABA_CONTROLE_PRESTADORAS_ESTADO, HEADERS_CONTROLE_PRESTADORAS_ESTADO, '#1a1a1a', '#5aa9e6');
+}
+
+// Um GET só, junta as duas abas — a tela carrega tudo de uma vez ao abrir.
+function listarControlePrestadoras(ss) {
+  const sheetObras = garantirControlePrestadorasObras(ss);
+  let obras = [];
+  if (sheetObras.getLastRow() >= 2) {
+    const data = sheetObras.getRange(2, 1, sheetObras.getLastRow() - 1, HEADERS_CONTROLE_PRESTADORAS_OBRAS.length).getValues();
+    obras = data.map(row => {
+      let itens = [];
+      try { itens = JSON.parse(row[13] || '[]'); } catch (e) { itens = []; }
+      return {
+        id: row[0], empresa: row[1], cnpj: row[2], tecnico: row[3], cidade: row[4],
+        clientePop: row[5], idEtiqueta: row[6], periodoIni: fmtTextoLivre(row[7]),
+        periodoFim: fmtTextoLivre(row[8]), dataRelatorio: fmtTextoLivre(row[9]),
+        contaCodigo: row[10], contaDescricao: row[11], totalGeral: Number(row[12]) || 0,
+        itens: itens, arquivo: row[14], importadoEm: row[15], aprovador: row[16]
+      };
+    });
+  }
+
+  const sheetEstado = garantirControlePrestadorasEstado(ss);
+  const estado = {};
+  if (sheetEstado.getLastRow() >= 2) {
+    const data = sheetEstado.getRange(2, 1, sheetEstado.getLastRow() - 1, HEADERS_CONTROLE_PRESTADORAS_ESTADO.length).getValues();
+    data.forEach(row => { estado[row[0]] = row[1]; }); // valor fica cru (string JSON) — front-end faz JSON.parse
+  }
+
+  return resposta('ok', { obras: obras, estado: estado });
+}
+
+// Substitui a lista inteira (mesmo padrão que TODAS_OBRAS já seguia no
+// localStorage: o front-end manda o array completo depois de qualquer
+// import/edição/exclusão, não faz diff linha a linha). Datas curtas tipo
+// "17/07" viram texto forçado, senão o Sheets tenta converter pra data.
+function salvarObrasPrestadoras(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'SALVAR_OBRAS_PRESTADORAS', data.autor, (data.obras || []).length + ' obra(s)');
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+  if (!Array.isArray(data.obras)) return resposta('error', { message: 'Lista de obras inválida.' });
+
+  const sheet = garantirControlePrestadorasObras(ss);
+  const lastRow = sheet.getLastRow();
+  if (lastRow >= 2) sheet.getRange(2, 1, lastRow - 1, HEADERS_CONTROLE_PRESTADORAS_OBRAS.length).clearContent();
+
+  if (data.obras.length) {
+    const col = HEADERS_CONTROLE_PRESTADORAS_OBRAS.indexOf('Período Início') + 1;
+    sheet.getRange(2, col, data.obras.length, 3).setNumberFormat('@STRING@'); // Período Início/Fim/Data Relatório
+    const valores = data.obras.map(o => [
+      o.id || '', o.empresa || '', o.cnpj || '', o.tecnico || '', o.cidade || '',
+      o.clientePop || '', o.idEtiqueta || '', o.periodoIni || '', o.periodoFim || '',
+      o.dataRelatorio || '', o.contaCodigo || '', o.contaDescricao || '', Number(o.totalGeral) || 0,
+      JSON.stringify(o.itens || []), o.arquivo || '', o.importadoEm || '', o.aprovador || ''
+    ]);
+    sheet.getRange(2, 1, valores.length, HEADERS_CONTROLE_PRESTADORAS_OBRAS.length).setValues(valores);
+  }
+  return resposta('ok', {});
+}
+
+// Upsert de uma chave só (contratosFixos/budgets/historico/excluidos) — cada
+// uma persiste independente das outras, então editar o budget não reenvia o
+// histórico inteiro e vice-versa.
+function salvarEstadoControlePrestadoras(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'SALVAR_ESTADO_CONTROLE_PRESTADORAS', data.autor, data.chave);
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+  if (!data.chave) return resposta('error', { message: 'Chave é obrigatória.' });
+
+  const sheet = garantirControlePrestadorasEstado(ss);
+  const lastRow = sheet.getLastRow();
+  let rowIndex = -1;
+  if (lastRow >= 2) {
+    const chaves = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < chaves.length; i++) {
+      if (chaves[i][0] === data.chave) { rowIndex = i + 2; break; }
+    }
+  }
+  const valores = [data.chave, String(data.valor != null ? data.valor : ''), autor, new Date().toLocaleString('pt-BR')];
+  if (rowIndex === -1) sheet.appendRow(valores);
+  else sheet.getRange(rowIndex, 1, 1, HEADERS_CONTROLE_PRESTADORAS_ESTADO.length).setValues([valores]);
+  return resposta('ok', {});
 }
 
 // ── DISPONIBILIDADE DA MÃO DE OBRA (períodos em que um técnico não pode ser
