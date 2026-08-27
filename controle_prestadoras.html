@@ -370,6 +370,12 @@ const SEED_DATA = [{"arquivo":"11357234 - 30.07.pdf","pastaEmpresa":"OLIVEIRA TE
 
 /* ═══════════════════════════ ESTADO ═══════════════════════════ */
 let TODAS_OBRAS = [];          // vem do backend (LISTAR_CONTROLE_PRESTADORAS, ver iniciar())
+// LPUs preenchidas pelo próprio prestador no sistema (não veio de PDF anexado aqui) — vem de
+// LISTAR_LPU_ESTEIRA_CONTAS (aba ESTEIRA), já deduplicada contra TODAS_OBRAS por Etiqueta/
+// Protocolo + empresa (ver mesclarLpuEsteira). Nunca é salva de volta em TODAS_OBRAS/
+// CONTROLE_PRESTADORAS_OBRAS — é só um complemento em memória pra orçamento/stats/tabela
+// (ver todasObrasCombinadas). Pedido do Vinicius em 2026-08-27.
+let OBRAS_LPU_SISTEMA = [];
 let ESTADO_CONTRATOS_FIXOS = {};
 let ESTADO_BUDGETS = {};
 let ESTADO_HISTORICO = [];
@@ -393,6 +399,62 @@ function normalizarEmpresa(nome){
   if (n.includes('PV')) return 'PV TELECOM';
   return n || 'DESCONHECIDA';
 }
+
+// ── mescla com LPU preenchida no sistema (ver OBRAS_LPU_SISTEMA acima) ──
+// 'Conta Contábil' na ESTEIRA vem no mesmo formato do dropdown do despacho (DESCRICOES_
+// CONTABEIS em index.html): "3.1.1.2.05.0008 - Serviços de Manutenção REDE - ...". Extrai o
+// código do mesmo jeito que o parser do PDF já faz pra contaCodigo.
+function extrairContaCodigo(contaContabil){
+  const m = /^([\d.]+)/.exec((contaContabil || '').trim());
+  return m ? m[1] : '';
+}
+function extrairContaDescricao(contaContabil){
+  return (contaContabil || '').replace(/^[\d.]+\s*-\s*/, '').trim();
+}
+function transformarRegistroLpu(reg){
+  const dataStr = reg.timestampRecebido ? new Date(reg.timestampRecebido).toLocaleDateString('pt-BR') : '';
+  return {
+    id: 'LPU-' + reg.origem + '-' + reg.idAtividade,
+    empresa: normalizarEmpresa(reg.empresa),
+    cnpj: reg.cnpj || '',
+    tecnico: reg.tecnico || '',
+    cidade: '',
+    clientePop: reg.cliente || '',
+    idEtiqueta: reg.etiqueta || '',
+    periodoIni: dataStr, periodoFim: dataStr, dataRelatorio: dataStr,
+    contaCodigo: extrairContaCodigo(reg.contaContabil),
+    contaDescricao: extrairContaDescricao(reg.contaContabil),
+    totalGeral: Number(reg.totalGeral) || 0,
+    itens: [],
+    arquivo: '',
+    importadoEm: reg.timestampRecebido || '',
+    aprovador: '',
+    origemLpu: true,   // ver renderTabela — sem PDF/excluir, é só leitura
+    protocolo: reg.protocolo || '',
+  };
+}
+function chaveDedupObra(idOuProtocolo, empresa){
+  return String(idOuProtocolo || '').trim().toUpperCase() + '|' + normalizarEmpresa(empresa);
+}
+// pedido do Vinicius em 2026-08-27: cruza por Etiqueta OU Protocolo (o PDF só tem
+// idEtiqueta; a ESTEIRA tem os dois — historicamente o Protocolo O&M fazia as vezes de
+// Etiqueta antes desse campo existir, ver comentário de HEADERS_ESTEIRA no backend) +
+// empresa, pra não contar duas vezes o mesmo serviço quando tem PDF anexado *e* LPU
+// preenchida no sistema pro mesmo trabalho.
+function mesclarLpuEsteira(obrasPdf, registros){
+  const chavesPdf = new Set();
+  obrasPdf.forEach(o => { if (o.idEtiqueta) chavesPdf.add(chaveDedupObra(o.idEtiqueta, o.empresa)); });
+  return registros
+    .filter(reg => {
+      const chaveEtiqueta = reg.etiqueta ? chaveDedupObra(reg.etiqueta, reg.empresa) : null;
+      const chaveProtocolo = reg.protocolo ? chaveDedupObra(reg.protocolo, reg.empresa) : null;
+      const duplicado = (chaveEtiqueta && chavesPdf.has(chaveEtiqueta)) || (chaveProtocolo && chavesPdf.has(chaveProtocolo));
+      return !duplicado;
+    })
+    .map(transformarRegistroLpu);
+}
+function todasObrasCombinadas(){ return TODAS_OBRAS.concat(OBRAS_LPU_SISTEMA); }
+
 function parseDataBR(str){
   if (!str) return null;
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(str.trim());
@@ -887,7 +949,7 @@ inputArquivos.addEventListener('change', e => { if (e.target.files.length) proce
 // atual. 'mes'/'ano' fechados não têm detalhe por obra guardado (só o resumo agregado,
 // ver renderOrcamentoHistoricoMes/Ano) — por isso retornam lista vazia aqui.
 function obrasFiltradas(){
-  let lista = TODAS_OBRAS.filter(r => !EMPRESA_ATIVA || r.empresa === EMPRESA_ATIVA);
+  let lista = todasObrasCombinadas().filter(r => !EMPRESA_ATIVA || r.empresa === EMPRESA_ATIVA);
   if (FILTRO_PERIODO.tipo === 'mes' || FILTRO_PERIODO.tipo === 'ano') return [];
   if (FILTRO_PERIODO.tipo === 'semana' && FILTRO_PERIODO.inicio && FILTRO_PERIODO.fim){
     const iniMs = FILTRO_PERIODO.inicio.getTime(), fimMs = FILTRO_PERIODO.fim.getTime();
@@ -1096,7 +1158,7 @@ function renderContratosFixos(chave){
 }
 
 function renderEvolucaoLpu(chave, segmento){
-  const listaAtual = TODAS_OBRAS.filter(segmento.match);
+  const listaAtual = todasObrasCombinadas().filter(segmento.match);
   const atual = { chave, valor: listaAtual.reduce((s,r) => s + r.totalGeral, 0), qtd: listaAtual.length, atual:true };
 
   const meses = carregarHistorico()
@@ -1180,8 +1242,9 @@ function renderOrcamento(){
   // é o ciclo atual, ainda não pago (decidido com o Vinicius em 2026-08-15; segmentos
   // Melhoria REDE e Preventiva adicionados em 2026-08-19). Manutenção e Implantação também
   // somam os respectivos contratos fixos (VAL NOTURNO/DIURNO e SOUZA TELECOM), que não vêm
-  // de PDF importado (2026-08-19, generalizado em 2026-08-26).
-  const lista = TODAS_OBRAS.filter(segmento.match);
+  // de PDF importado (2026-08-19, generalizado em 2026-08-26). Também soma LPU preenchida
+  // pelo prestador direto no sistema, sem PDF anexado (ver OBRAS_LPU_SISTEMA, 2026-08-27).
+  const lista = todasObrasCombinadas().filter(segmento.match);
   const gastoLpu = lista.reduce((s,r) => s + r.totalGeral, 0);
   const gastoFixo = totalContratosFixosMes(chaveFixo, segmento.id);
   const gasto = gastoLpu + gastoFixo;
@@ -1257,7 +1320,11 @@ function renderOrcamento(){
   // e não entram em orçamento nenhum. Mostra aqui pra facilitar achar e excluir, e não
   // depende do segmento selecionado no chip (é sempre "fora de tudo que é rastreado").
   // São exatamente as 3 contas contábeis que o Vinicius gerencia — qualquer conta fora
-  // dessas 3 cai aqui como aviso (pedido do Vinicius em 2026-08-20).
+  // dessas 3 cai aqui como aviso (pedido do Vinicius em 2026-08-20). Só varre TODAS_OBRAS
+  // (PDF anexado) de propósito, não o combinado com OBRAS_LPU_SISTEMA — o botão Excluir
+  // aqui apaga da planilha CONTROLE_PRESTADORAS_OBRAS, que não existe pra LPU preenchida
+  // no sistema (essa fica de fora desse alerta; some do "Todos" só se ninguém escolher
+  // Conta Contábil no despacho, o que já é raro, 2026-08-27).
   const semSegmento = TODAS_OBRAS.filter(r => !SEGMENTOS.some(s => s.match(r)));
   const alertaEl = document.getElementById('alertaForaSegmentos');
   if (semSegmento.length){
@@ -1386,7 +1453,7 @@ function renderOrcamentoGrupo(tipoGrupo){
 
   let gastoLpu = 0, gastoFixo = 0, budget = 0;
   contas.forEach(s => {
-    gastoLpu += TODAS_OBRAS.filter(s.match).reduce((sum,r) => sum + r.totalGeral, 0);
+    gastoLpu += todasObrasCombinadas().filter(s.match).reduce((sum,r) => sum + r.totalGeral, 0);
     gastoFixo += totalContratosFixosMes(chaveFixo, s.id);
     budget += budgetDoSegmento(chave, s.id);
   });
@@ -1657,7 +1724,9 @@ function renderTabela(){
       <td>${r.aprovador || '—'}</td>
       <td>${fmtDataHora(r.importadoEm)}</td>
       <td>${fmtMoeda(r.totalGeral)}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="excluirObra('${r.id.replace(/'/g,"\\'")}')">Remover</button></td>
+      <td>${r.origemLpu
+        ? '<span style="font-size:.68rem;color:var(--text-muted);font-style:italic">LPU no sistema</span>'
+        : `<button class="btn btn-outline btn-sm" onclick="excluirObra('${r.id.replace(/'/g,"\\'")}')">Remover</button>`}</td>
     </tr>
   `).join('');
 }
@@ -1688,7 +1757,7 @@ document.getElementById('btnExportarCsv').addEventListener('click', () => {
 
 /* ═══════════════════════════ FILTROS: chips + mês ═══════════════════════════ */
 function renderChipsEmpresa(){
-  const empresasPresentes = Array.from(new Set(TODAS_OBRAS.map(r => r.empresa))).sort();
+  const empresasPresentes = Array.from(new Set(todasObrasCombinadas().map(r => r.empresa))).sort();
   const cont = document.getElementById('chipsEmpresa');
   cont.innerHTML = ['<div class="chip' + (EMPRESA_ATIVA===null?' active':'') + '" data-emp="">Todas</div>']
     .concat(empresasPresentes.map(e => `<div class="chip${EMPRESA_ATIVA===e?' active':''}" data-emp="${e}">${e}</div>`))
@@ -1775,6 +1844,16 @@ async function iniciar(){
     ESTADO_HISTORICO = lerEstadoJson(resultado.estado.historico, []);
     ESTADO_EXCLUIDOS = lerEstadoJson(resultado.estado.excluidos, []);
   }
+
+  // LPUs preenchidas pelo próprio prestador direto no sistema (não só PDF anexado) — pedido
+  // do Vinicius em 2026-08-27. Busca à parte, não bloqueia a tela se falhar (fica só sem esse
+  // complemento, PDFs continuam funcionando normalmente).
+  try {
+    const resultadoLpu = await apiGet('acao=LISTAR_LPU_ESTEIRA_CONTAS');
+    if (resultadoLpu && resultadoLpu.status === 'ok'){
+      OBRAS_LPU_SISTEMA = mesclarLpuEsteira(TODAS_OBRAS, resultadoLpu.registros || []);
+    }
+  } catch(e){ /* segue só com o que veio de PDF */ }
 
   renderTudo();
 }
