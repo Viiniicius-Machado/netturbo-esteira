@@ -1739,16 +1739,11 @@ function renderCamposPreventiva(a){
 function renderFormOcorrenciaNovo(a){
   const tipoSolicitacao = a['Tipo de Solicitação'];
   const ceoAtual = CEO_LABELS_REVERSA[a['CEO']] || a['CEO'] || '';
-  // Preventiva tem 2 formatos bem diferentes de RFO: "rota" (KMZ, os 5 campos de
-  // renderCamposPreventiva) e "Acompanhamento" (Categoria 1, ex.: troca de poste
-  // da CPFL) — esse último é uma visita normal, não uma rota inteira, então a
-  // RFO precisa ser igual à dos outros segmentos (Local da Falha, Solução,
-  // CEO/fusão se for o caso). Categoria 1 não é editável pelo técnico (só
-  // despacho define), então dá pra confiar no valor já salvo em `a`. Pedido do
-  // Vinicius em 2026-08-25.
-  const ehPreventivaAcompanhamento = tipoSolicitacao === 'Preventiva' && a['Categoria 1'] === 'Acompanhamento';
-  const ehPreventivaRota = tipoSolicitacao === 'Preventiva' && !ehPreventivaAcompanhamento;
-  const isFibra = TIPOS_COM_FUSAO.includes(tipoSolicitacao) || ehPreventivaAcompanhamento;
+  // Toda Preventiva (rota KMZ ou Acompanhamento/Comp. Elétrica) usa os mesmos 5
+  // campos reduzidos de renderCamposPreventiva — pedido do Vinicius em
+  // 2026-08-27 (reverteu uma tentativa de dar RFO completa só pra Acompanhamento).
+  const ehPreventivaRota = tipoSolicitacao === 'Preventiva';
+  const isFibra = TIPOS_COM_FUSAO.includes(tipoSolicitacao);
   return `
     <div class="form-ocorrencia" id="form-${a.rowIndex}">
       <div>
@@ -2773,11 +2768,7 @@ window.solicitarValidacao = async function(rowIndex){
   const tipoSolicitacao = atividadeAtual['Tipo de Solicitação'] || '';
   const usaModeloNovo = !!tipoSolicitacao;
   const isMedicao = tipoSolicitacao === 'Medição';
-  // Preventiva + Categoria 1 "Acompanhamento" usa a RFO padrão (igual aos
-  // outros segmentos), não os 5 campos de rota — ver mesma lógica em
-  // renderFormOcorrenciaNovo (ehPreventivaRota). Categoria 1 não é editável
-  // pelo técnico, então o valor já salvo na atividade é confiável aqui.
-  const isPreventiva = tipoSolicitacao === 'Preventiva' && atividadeAtual['Categoria 1'] !== 'Acompanhamento';
+  const isPreventiva = tipoSolicitacao === 'Preventiva';
 
   let tipo, causa, categorias = null;
   if(usaModeloNovo){
@@ -2826,7 +2817,7 @@ window.solicitarValidacao = async function(rowIndex){
     }
   }
 
-  const isFibra = usaModeloNovo ? (TIPOS_COM_FUSAO.includes(tipoSolicitacao) || (tipoSolicitacao === 'Preventiva' && atividadeAtual['Categoria 1'] === 'Acompanhamento')) : (tipo === 'ROMPIMENTO' || tipo === 'MASSIVA');
+  const isFibra = usaModeloNovo ? TIPOS_COM_FUSAO.includes(tipoSolicitacao) : (tipo === 'ROMPIMENTO' || tipo === 'MASSIVA');
   let ceo = '';
   if(isFibra){
     ceo = CEO_STATE[rowIndex];
