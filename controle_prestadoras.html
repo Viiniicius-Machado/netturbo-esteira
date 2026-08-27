@@ -77,6 +77,29 @@
   .stat-label{font-size:.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.2rem}
   .stat-card.stat-accent{border-top-color:var(--accent)}
   .stat-card.stat-accent .stat-value{color:var(--accent)}
+  .stat-card.stat-clicavel{cursor:pointer;transition:border-color .15s ease,transform .1s ease}
+  .stat-card.stat-clicavel:hover{border-color:var(--accent)}
+  .stat-card.stat-clicavel:active{transform:scale(.98)}
+
+  /* ── modal: detalhamento por conta contábil (Valor a Receber) ── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none}
+  .modal-overlay.show{display:block}
+  .modal-box{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.96);width:min(1020px,94vw);max-height:88vh;background:var(--surface);border:1px solid var(--border-hi);border-radius:var(--radius-lg);z-index:501;display:none;flex-direction:column;opacity:0;transition:opacity .15s ease,transform .15s ease;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .modal-box.show{display:flex;opacity:1;transform:translate(-50%,-50%) scale(1)}
+  .modal-header{padding:.9rem 1.3rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:.6rem;border-radius:var(--radius-lg) var(--radius-lg) 0 0}
+  .modal-header h2{font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+  .modal-header small{display:block;font-family:'Inter',sans-serif;font-size:.66rem;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text-muted);margin-top:.15rem}
+  .modal-close{background:none;border:none;color:var(--text-dim);font-size:1.4rem;cursor:pointer;line-height:1}
+  .modal-close:hover{color:var(--text)}
+  .modal-body{padding:1.1rem 1.3rem 1.4rem;overflow-y:auto}
+  .modal-body table{min-width:640px}
+  .modal-body .linha-subtotal td{background:var(--surface2);font-family:'Rajdhani',sans-serif;font-weight:700;border-top:1px solid var(--border-hi);border-bottom:1px solid var(--border-hi)}
+  .modal-resumo-geral{margin-top:1rem;padding:.9rem 1.1rem;border:1px solid var(--border-hi);border-radius:8px;background:var(--surface2);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.7rem}
+  .modal-resumo-geral .linha-info{font-size:.74rem;color:var(--text-muted)}
+  .modal-resumo-geral .linha-info b{color:var(--text);font-family:'Rajdhani',sans-serif}
+  .modal-resumo-geral .saldo-geral{text-align:right}
+  .modal-resumo-geral .saldo-geral .valor{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.4rem;line-height:1.1}
+  .modal-resumo-geral .saldo-geral .status{font-size:.64rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:.15rem}
 
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden}
   .card-header{padding:.6rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap}
@@ -338,6 +361,18 @@
     <button class="btn btn-danger btn-sm" id="btnResetSeed">Restaurar dados originais</button>
   </footer>
 </main>
+
+<div class="modal-overlay" id="modalReceberOverlay" onclick="fecharModalReceber()"></div>
+<div class="modal-box" id="modalReceber">
+  <div class="modal-header">
+    <div>
+      <h2>Detalhamento por Conta Contábil</h2>
+      <small>Orçamento, LPU, Contrato Fixo e saldo do ciclo atual — todas as contas, sem depender do filtro selecionado na tela</small>
+    </div>
+    <button class="modal-close" onclick="fecharModalReceber()">✕</button>
+  </div>
+  <div class="modal-body" id="modalReceberBody"></div>
+</div>
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -987,7 +1022,7 @@ function renderStatsEEmpresas(){
   const empresasAtivas = new Set(lista.map(r => r.empresa)).size;
 
   document.getElementById('statRow').innerHTML = `
-    <div class="stat-card stat-accent"><div class="stat-value">${fmtMoeda(totalGeral)}</div><div class="stat-label">Valor a Receber (total)</div></div>
+    <div class="stat-card stat-accent stat-clicavel" onclick="abrirModalReceber()" title="Ver detalhamento por conta contábil"><div class="stat-value">${fmtMoeda(totalGeral)}</div><div class="stat-label">Valor a Receber (total)</div></div>
     <div class="stat-card"><div class="stat-value">${fmtNum(qtdObras)}</div><div class="stat-label">Obras Executadas</div></div>
     <div class="stat-card"><div class="stat-value">${fmtMoeda(ticketMedio)}</div><div class="stat-label">Ticket Médio</div></div>
     <div class="stat-card"><div class="stat-value">${empresasAtivas}</div><div class="stat-label">Prestadoras no Período</div></div>
@@ -1486,6 +1521,98 @@ function renderOrcamentoGrupo(tipoGrupo){
   else statusHtml = `<span class="status-pill ok">Dentro da meta — ${fmtMoeda(gasto)} de ${fmtMoeda(budget)}</span>`;
   document.getElementById('statusPillBox').innerHTML = statusHtml;
 }
+
+/* ═══════════════════════════ MODAL: detalhamento por conta contábil (Valor a Receber) ═══════════════════════════ */
+// Pedido do Vinicius em 2026-08-27: clicar em "Valor a Receber (total)" abre uma visão
+// completa das 8 contas contábeis — orçamento, LPU, contrato fixo, total e saldo (positivo
+// = sobrou, negativo = faltou) de cada uma, mais subtotal OPEX/CAPEX e o saldo geral da
+// operação inteira. Sempre o ciclo atual, ao vivo — não depende do chip/filtro selecionado
+// na tela (é uma foto completa, não um recorte).
+function calcularLinhaConta(s, chave, chaveFixo){
+  const gastoLpu = todasObrasCombinadas().filter(s.match).reduce((sum,r) => sum + r.totalGeral, 0);
+  const gastoFixo = totalContratosFixosMes(chaveFixo, s.id);
+  const total = gastoLpu + gastoFixo;
+  const budget = budgetDoSegmento(chave, s.id);
+  return { s, budget, gastoLpu, gastoFixo, total, saldo: budget - total };
+}
+function somaLinhas(linhas){
+  return linhas.reduce((acc,l) => ({
+    budget: acc.budget + l.budget, gastoLpu: acc.gastoLpu + l.gastoLpu,
+    gastoFixo: acc.gastoFixo + l.gastoFixo, total: acc.total + l.total
+  }), { budget:0, gastoLpu:0, gastoFixo:0, total:0 });
+}
+function linhaContaHtml(l){
+  const cor = l.saldo >= 0 ? 'var(--green)' : 'var(--red)';
+  const sinal = l.saldo >= 0 ? '+' : '';
+  return `
+    <tr>
+      <td>${l.s.codigo} — ${l.s.descricao}</td>
+      <td>${l.budget ? fmtMoeda(l.budget) : '—'}</td>
+      <td>${fmtMoeda(l.gastoLpu)}</td>
+      <td>${fmtMoeda(l.gastoFixo)}</td>
+      <td>${fmtMoeda(l.total)}</td>
+      <td style="color:${cor};font-weight:700">${sinal}${fmtMoeda(l.saldo)}</td>
+    </tr>`;
+}
+function linhaSubtotalHtml(label, t){
+  const saldo = t.budget - t.total;
+  const cor = saldo >= 0 ? 'var(--green)' : 'var(--red)';
+  const sinal = saldo >= 0 ? '+' : '';
+  return `
+    <tr class="linha-subtotal">
+      <td>${label}</td>
+      <td>${fmtMoeda(t.budget)}</td>
+      <td>${fmtMoeda(t.gastoLpu)}</td>
+      <td>${fmtMoeda(t.gastoFixo)}</td>
+      <td>${fmtMoeda(t.total)}</td>
+      <td style="color:${cor}">${sinal}${fmtMoeda(saldo)}</td>
+    </tr>`;
+}
+function abrirModalReceber(){
+  const hoje = new Date();
+  const chave = chaveMes(hoje);
+  const chaveFixo = chaveCicloFixo(hoje);
+  const linhas = SEGMENTOS.map(s => calcularLinhaConta(s, chave, chaveFixo));
+  const opex = linhas.filter(l => l.s.tipo === 'OPEX');
+  const capex = linhas.filter(l => l.s.tipo === 'CAPEX');
+  const totalOpex = somaLinhas(opex);
+  const totalCapex = somaLinhas(capex);
+  const totalGeral = somaLinhas(linhas);
+  const saldoGeral = totalGeral.budget - totalGeral.total;
+  const corGeral = saldoGeral >= 0 ? 'var(--green)' : 'var(--red)';
+  const sinalGeral = saldoGeral >= 0 ? '+' : '';
+  const statusGeral = saldoGeral >= 0 ? '✓ Fecha positivo' : '⚠ Fecha negativo';
+
+  document.getElementById('modalReceberBody').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Conta Contábil</th><th>Orçamento</th><th>Contrato LPU</th><th>Contrato Fixo</th><th>Total (Fechamento)</th><th>Saldo</th>
+        </tr></thead>
+        <tbody>
+          ${opex.map(linhaContaHtml).join('')}
+          ${linhaSubtotalHtml('TOTAL OPEX', totalOpex)}
+          ${capex.map(linhaContaHtml).join('')}
+          ${linhaSubtotalHtml('TOTAL CAPEX', totalCapex)}
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-resumo-geral">
+      <div class="linha-info">Orçamento total (OPEX+CAPEX) <b>${fmtMoeda(totalGeral.budget)}</b> · Fechamento total <b>${fmtMoeda(totalGeral.total)}</b></div>
+      <div class="saldo-geral">
+        <div class="valor" style="color:${corGeral}">${sinalGeral}${fmtMoeda(saldoGeral)}</div>
+        <div class="status" style="color:${corGeral}">${statusGeral}</div>
+      </div>
+    </div>
+  `;
+  document.getElementById('modalReceberOverlay').classList.add('show');
+  document.getElementById('modalReceber').classList.add('show');
+}
+function fecharModalReceber(){
+  document.getElementById('modalReceberOverlay').classList.remove('show');
+  document.getElementById('modalReceber').classList.remove('show');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModalReceber(); });
 
 /* ═══════════════════════════ FILTRO DE PERÍODO (voltar no tempo) ═══════════════════════════ */
 function calcularSemanaAtual(){
