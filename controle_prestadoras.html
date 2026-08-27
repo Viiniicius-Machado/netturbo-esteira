@@ -79,8 +79,20 @@
   .card-header small{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text-muted)}
   .card-body{padding:.9rem 1rem}
 
-  .grid-2{display:grid;grid-template-columns:2fr 1fr;gap:1rem}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
   @media (max-width:900px){.grid-2{grid-template-columns:1fr}}
+
+  /* ── filtro de período (voltar no tempo) ── */
+  .periodo-wrap{position:relative}
+  .periodo-btn{display:flex;align-items:center;gap:.4rem}
+  .periodo-painel{position:absolute;top:calc(100% + .5rem);right:0;z-index:60;background:var(--surface2);border:1px solid var(--border-hi);border-radius:var(--radius-lg);padding:.9rem;min-width:270px;box-shadow:0 10px 30px rgba(0,0,0,.5);display:none}
+  .periodo-painel.show{display:block}
+  .periodo-painel .chip-row{margin-bottom:.7rem}
+  .periodo-painel select{width:100%;background:var(--surface3);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--text);font-size:.8rem;padding:.5rem .6rem}
+  .periodo-semana-nav{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+  .periodo-semana-nav b{font-family:'Rajdhani',sans-serif;font-size:.8rem;text-align:center;flex:1}
+  .periodo-hint{font-size:.66rem;color:var(--text-muted);margin-top:.6rem;line-height:1.4}
+  .badge-historico{display:inline-block;font-size:.6rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:.15rem .5rem;border-radius:20px;background:rgba(255,160,0,.12);color:var(--amber);border:1px solid rgba(255,160,0,.35);margin-left:.4rem}
 
   /* ── ranking / barra horizontal (empresas e SEV) ── */
   .rank-item{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-top:1px solid var(--border)}
@@ -192,6 +204,22 @@
   <div class="toolbar">
     <div class="chip-row" id="chipsEmpresa"></div>
     <div class="toolbar-spacer"></div>
+    <div class="periodo-wrap">
+      <button class="btn btn-outline btn-sm periodo-btn" id="btnPeriodo" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span id="periodoLabel">Mês atual</span>
+      </button>
+      <div class="periodo-painel" id="periodoPainel">
+        <div class="chip-row" id="periodoChips">
+          <div class="chip active" data-periodo="atual">Mês atual</div>
+          <div class="chip" data-periodo="semana">Semana</div>
+          <div class="chip" data-periodo="mes">Mês fechado</div>
+          <div class="chip" data-periodo="ano">Ano</div>
+        </div>
+        <div id="periodoControle"></div>
+        <div class="periodo-hint" id="periodoHint"></div>
+      </div>
+    </div>
     <button class="btn btn-outline btn-sm" id="btnExportarCsv">Exportar CSV</button>
   </div>
 
@@ -220,12 +248,14 @@
               <div class="linha-destaque">Gasto realizado <b id="orcGasto">–</b></div>
               <div class="linha-sub">↳ Contrato LPU <b id="orcLpu">–</b></div>
               <div class="linha-sub" id="linhaContratoFixo">↳ Contrato Fixo <b id="orcFixo">–</b></div>
+              <div class="linha-sub" id="linhaVariaveis">↳ Variáveis batidas <b id="orcVariaveis">–</b></div>
+              <div class="linha-sub" id="linhaImprodutivas" style="color:var(--red)">↳ Improdutivas (informativo) <b id="orcImprodutivas">–</b></div>
               <div>Orçamento <b id="orcBudget">–</b></div>
               <div class="linha-destaque">Saldo <b id="orcSaldo">–</b></div>
               <div>Ritmo diário (LPU) <b id="orcRitmo">–</b></div>
               <div>Projeção fim do mês <b id="orcProjecao">–</b></div>
             </div>
-            <div class="budget-edit">
+            <div class="budget-edit" id="budgetEditBox">
               Orçamento do mês (R$): <input type="number" id="inputBudget" step="100"/>
               <button class="btn btn-outline btn-sm" id="btnSalvarBudget">Salvar</button>
             </div>
@@ -249,13 +279,8 @@
   </div>
 
   <div class="card" id="cardEvolucaoMensal">
-    <div class="card-header">Evolução Mensal
-      <select id="selMesHistorico" onchange="renderResumoMesHistorico()" style="margin-left:auto;font-size:.75rem">
-        <option value="">Mês atual (ao vivo)</option>
-      </select>
-    </div>
+    <div class="card-header">Evolução Mensal <small>use o filtro de período (ícone de calendário acima) pra ver o resumo de um mês/ano fechado</small></div>
     <div class="card-body">
-      <div id="resumoMesHistorico" style="display:none"></div>
       <div class="evolucao-grid">
         <div class="evolucao-bloco">
           <div class="evolucao-titulo">Entregas de relatório LPU — <span id="evolucaoSegLabel"></span></div>
@@ -346,6 +371,12 @@ let ESTADO_BUDGETS = {};
 let ESTADO_HISTORICO = [];
 let ESTADO_EXCLUIDOS = [];
 let EMPRESA_ATIVA = null;  // null = todas
+// filtro de período (voltar no tempo) — 'atual' é o ciclo ao vivo (comportamento de sempre).
+// 'semana' filtra Por Prestadora/stats dentro do ciclo atual (único período com detalhe por
+// obra). 'mes'/'ano' trocam o card "Orçamento por Segmento" pro resumo agregado guardado no
+// fechamento (ver ESTADO_HISTORICO) — sem detalhe por prestadora, que não é guardado (pedido
+// do Vinicius em 2026-08-27).
+let FILTRO_PERIODO = { tipo:'atual' };
 let ORD_SEV = 'valor';
 let ORDENACAO_TABELA = { campo: 'dataOrdenacao', dir: -1 };
 
@@ -683,45 +714,18 @@ function labelMesChaveLongo(chave){
   return new Date(ano, mes - 1, 1).toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
 }
 
-// Seletor de mês/ano em "Evolução Mensal" — pra quando vira o mês (base de obras é
-// zerada no fechamento, ver capturarSnapshotMes acima) dar pra olhar o resumo por
-// segmento de um mês já fechado, não só os últimos 5 nas barras (pedido do Vinicius
-// em 2026-08-22). Só o resumo agregado (LPU/Qtd/Fixo/Orçamento) — o detalhe por
-// prestadora não é guardado no fechamento, então não dá pra reconstruir aqui.
-function popularSelMesHistorico(){
-  const sel = document.getElementById('selMesHistorico');
-  const atual = sel.value;
-  const chaves = carregarHistorico().map(h => h.chave).sort().reverse();
-  sel.innerHTML = '<option value="">Mês atual (ao vivo)</option>' +
-    chaves.map(c => `<option value="${c}">${labelMesChaveLongo(c)}</option>`).join('');
-  if(chaves.includes(atual)) sel.value = atual;
+// Resumo agregado (LPU/Qtd/Fixo/Orçamento) de um mês ou ano já fechado — a base de
+// obras é zerada no fechamento (ver capturarSnapshotMes acima), então isso é o único
+// jeito de "voltar no tempo" pra fora do ciclo atual (pedido do Vinicius em 2026-08-22,
+// promovido de um select isolado em "Evolução Mensal" pro filtro de período do topo em
+// 2026-08-27). O detalhe por prestadora não é guardado no fechamento, então essa visão
+// fica restrita ao card "Orçamento por Segmento" — ver renderOrcamentoHistorico*.
+function labelAnoDisponivel(){
+  const anos = [...new Set(carregarHistorico().map(h => h.chave.split('-')[0]))].sort().reverse();
+  return anos;
 }
-
-function renderResumoMesHistorico(){
-  const chave = document.getElementById('selMesHistorico').value;
-  const el = document.getElementById('resumoMesHistorico');
-  if(!chave){ el.style.display = 'none'; return; }
-
-  const snap = carregarHistorico().find(h => h.chave === chave);
-  const segmento = segmentoAtual();
-  const dadosSeg = snap && snap.segmentos ? snap.segmentos[segmento.id] : null;
-  el.style.display = 'block';
-  if(!dadosSeg){
-    el.innerHTML = `<div class="empty-msg">Sem fechamento registrado pra ${segmento.label} em ${labelMesChaveLongo(chave)}.</div>`;
-    return;
-  }
-  const budget = budgetDoSegmento(chave, segmento.id);
-  const gasto = dadosSeg.lpu + (dadosSeg.fixo||0);
-  const saldo = budget - gasto;
-  el.innerHTML = `
-    <div class="evolucao-titulo" style="margin-bottom:.5rem">${segmento.label} — ${labelMesChaveLongo(chave)} (fechado em ${new Date(snap.fechadoEm).toLocaleDateString('pt-BR')})</div>
-    <div class="orcamento-linhas">
-      <div class="linha-destaque">Gasto realizado <b>${fmtMoeda(gasto)}</b></div>
-      <div class="linha-sub">↳ Contrato LPU <b>${fmtMoeda(dadosSeg.lpu)}</b> (${dadosSeg.qtd} relatório(s))</div>
-      ${temContratoFixo(segmento.id) ? `<div class="linha-sub">↳ Contrato Fixo <b>${fmtMoeda(dadosSeg.fixo||0)}</b></div>` : ''}
-      <div>Orçamento <b>${budget ? fmtMoeda(budget) : '—'}</b></div>
-      <div>Saldo <b style="color:${saldo>=0?'var(--green)':'var(--red)'}">${budget ? fmtMoeda(saldo) : '—'}</b></div>
-    </div>`;
+function chavesHistoricoOrdenadas(){
+  return carregarHistorico().map(h => h.chave).sort().reverse();
 }
 
 /* ═══════════════════════════ PARSER (PDF → registro) — mesma lógica usada para gerar o SEED ═══════════════════════════ */
@@ -868,14 +872,33 @@ dropzone.addEventListener('drop', e => { if (e.dataTransfer.files.length) proces
 inputArquivos.addEventListener('change', e => { if (e.target.files.length) processarArquivos(e.target.files); e.target.value = ''; });
 
 /* ═══════════════════════════ FILTROS ═══════════════════════════ */
-// sem filtro de mês de propósito: a base é zerada manualmente a cada fechamento
-// (ver excluirObra/btnResetSeed), então tudo que estiver na tela é o ciclo atual.
+// sem filtro de mês pro CICLO em si de propósito: a base é zerada manualmente a cada
+// fechamento (ver excluirObra/btnResetSeed), então tudo que estiver na tela é o ciclo
+// atual. 'mes'/'ano' fechados não têm detalhe por obra guardado (só o resumo agregado,
+// ver renderOrcamentoHistoricoMes/Ano) — por isso retornam lista vazia aqui.
 function obrasFiltradas(){
-  return TODAS_OBRAS.filter(r => !EMPRESA_ATIVA || r.empresa === EMPRESA_ATIVA);
+  let lista = TODAS_OBRAS.filter(r => !EMPRESA_ATIVA || r.empresa === EMPRESA_ATIVA);
+  if (FILTRO_PERIODO.tipo === 'mes' || FILTRO_PERIODO.tipo === 'ano') return [];
+  if (FILTRO_PERIODO.tipo === 'semana' && FILTRO_PERIODO.inicio && FILTRO_PERIODO.fim){
+    const iniMs = FILTRO_PERIODO.inicio.getTime(), fimMs = FILTRO_PERIODO.fim.getTime();
+    lista = lista.filter(r => {
+      const d = parseDataBR(r.periodoIni) || parseDataBR(r.dataRelatorio);
+      if (!d) return false;
+      const t = d.getTime();
+      return t >= iniMs && t <= fimMs;
+    });
+  }
+  return lista;
 }
 
 /* ═══════════════════════════ RENDER: stats + ranking empresas ═══════════════════════════ */
 function renderStatsEEmpresas(){
+  if (FILTRO_PERIODO.tipo === 'mes' || FILTRO_PERIODO.tipo === 'ano'){
+    document.getElementById('statRow').innerHTML = '';
+    document.getElementById('subPrestadoras').textContent = 'sem detalhe por prestadora em período fechado';
+    document.getElementById('rankEmpresas').innerHTML = '<div class="empty-msg">O detalhe por prestadora não fica guardado depois do fechamento do mês — pra períodos fechados só o resumo por segmento (card ao lado) fica disponível.</div>';
+    return;
+  }
   const lista = obrasFiltradas();
   const totalGeral = lista.reduce((s,r) => s + r.totalGeral, 0);
   const qtdObras = lista.length;
@@ -1078,6 +1101,12 @@ function renderEvolucaoFixo(chave, chaveFixo, segmento){
 }
 
 function renderOrcamento(){
+  renderChipsSegmento();
+  const segmento = segmentoAtual();
+
+  if (FILTRO_PERIODO.tipo === 'mes'){ renderOrcamentoHistoricoMes(segmento); return; }
+  if (FILTRO_PERIODO.tipo === 'ano'){ renderOrcamentoHistoricoAno(segmento); return; }
+
   const hoje = new Date();
   const ano = hoje.getFullYear(), mesIdx = hoje.getMonth();
   const chave = chaveMes(hoje);
@@ -1085,13 +1114,10 @@ function renderOrcamento(){
   // em ciclo próprio (21 a 20, pagamento dia 28) — por isso usam chaves diferentes, senão as
   // variáveis marcadas resetariam antes ou depois da folha de pagamento real (2026-08-20).
   const chaveFixo = chaveCicloFixo(hoje);
-  const segmento = segmentoAtual();
 
-  renderChipsSegmento();
   document.getElementById('mesOrcamentoLabel').textContent = new Date(ano, mesIdx, 1).toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+  document.getElementById('budgetEditBox').style.display = '';
   renderContratosFixos(chaveFixo);
-  popularSelMesHistorico();
-  renderResumoMesHistorico();
 
   // orçamento é um bolo único por segmento — soma de TODAS as prestadoras e TODOS os
   // relatórios cadastrados na tela que casam com a conta contábil do segmento ativo,
@@ -1108,11 +1134,29 @@ function renderOrcamento(){
 
   document.getElementById('orcLpu').textContent = fmtMoeda(gastoLpu);
   const linhaFixoEl = document.getElementById('linhaContratoFixo');
+  const contratosSeg = contratosDoSegmento(segmento.id);
   if (temContratoFixo(segmento.id)){
     linhaFixoEl.style.display = '';
     document.getElementById('orcFixo').textContent = fmtMoeda(gastoFixo);
+
+    // dentro do valor fixo pago, quanto veio de variável batida e quanto de atividade
+    // improdutiva (abaixo da meta, mas o fixo é pago do mesmo jeito) — pedido do Vinicius
+    // em 2026-08-27 pra ver isso resumido no card, não só dentro de cada contrato.
+    const totalVariaveis = contratosSeg.reduce((s,c) => s + c.variaveis.reduce((s2,v) => s2 + (variavelBatida(chaveFixo, c.id, v.id) ? v.valor : 0), 0), 0);
+    const totalImprodutivas = contratosSeg.reduce((s,c) => s + deficitAtividades(chaveFixo, c) * c.valorAcionamento, 0);
+    document.getElementById('linhaVariaveis').style.display = '';
+    document.getElementById('orcVariaveis').textContent = fmtMoeda(totalVariaveis);
+    const linhaImpEl = document.getElementById('linhaImprodutivas');
+    if (totalImprodutivas > 0){
+      linhaImpEl.style.display = '';
+      document.getElementById('orcImprodutivas').textContent = fmtMoeda(totalImprodutivas);
+    } else {
+      linhaImpEl.style.display = 'none';
+    }
   } else {
     linhaFixoEl.style.display = 'none';
+    document.getElementById('linhaVariaveis').style.display = 'none';
+    document.getElementById('linhaImprodutivas').style.display = 'none';
   }
   renderEvolucaoLpu(chave, segmento);
   renderEvolucaoFixo(chave, chaveFixo, segmento);
@@ -1179,6 +1223,173 @@ function renderOrcamento(){
   }
   renderExcluidosForaSegmento();
 }
+
+// ── card "Orçamento por Segmento" pra mês/ano JÁ FECHADO (filtro de período, ver
+// FILTRO_PERIODO) — reaproveita os mesmos elementos do card ao vivo, só que lendo do
+// resumo agregado guardado no fechamento (ESTADO_HISTORICO) em vez de TODAS_OBRAS.
+// Some com Contratos Fixos, edição de orçamento e os alertas de "fora de segmento":
+// nada disso existe (ou faz sentido editar) pra um período que já fechou. Variáveis/
+// improdutivas por contrato também não aparecem aqui: só o total lpu/fixo/qtd é
+// guardado no snapshot, não a composição interna do fixo (pedido do Vinicius em
+// 2026-08-27).
+function renderOrcamentoHistoricoHtml(segmento, dadosSeg, subtitulo){
+  document.getElementById('cardContratosFixos').style.display = 'none';
+  document.getElementById('budgetEditBox').style.display = 'none';
+  document.getElementById('alertaForaSegmentos').innerHTML = '';
+  document.getElementById('excluidosForaSegmento').innerHTML = '';
+  document.getElementById('linhaVariaveis').style.display = 'none';
+  document.getElementById('linhaImprodutivas').style.display = 'none';
+
+  const linhaFixoEl = document.getElementById('linhaContratoFixo');
+  if (!dadosSeg){
+    desenharGauge(0);
+    document.getElementById('statusPillBox').innerHTML = `<span class="status-pill warn">Sem fechamento registrado pra ${segmento.label}${subtitulo}</span>`;
+    ['orcGasto','orcLpu','orcFixo','orcBudget','orcSaldo','orcRitmo','orcProjecao'].forEach(id => document.getElementById(id).textContent = '–');
+    linhaFixoEl.style.display = temContratoFixo(segmento.id) ? '' : 'none';
+    return;
+  }
+  const budget = dadosSeg.budget || 0;
+  const gasto = dadosSeg.lpu + (dadosSeg.fixo || 0);
+  const saldo = budget - gasto;
+  const pct = budget ? (gasto / budget * 100) : 0;
+  desenharGauge(pct);
+
+  document.getElementById('orcLpu').textContent = fmtMoeda(dadosSeg.lpu);
+  if (temContratoFixo(segmento.id)){
+    linhaFixoEl.style.display = '';
+    document.getElementById('orcFixo').textContent = fmtMoeda(dadosSeg.fixo || 0);
+  } else {
+    linhaFixoEl.style.display = 'none';
+  }
+  document.getElementById('orcGasto').textContent = fmtMoeda(gasto);
+  document.getElementById('orcBudget').textContent = budget ? fmtMoeda(budget) : 'não definido';
+  const orcSaldoEl = document.getElementById('orcSaldo');
+  orcSaldoEl.textContent = budget ? fmtMoeda(saldo) : '—';
+  orcSaldoEl.style.color = saldo < 0 ? 'var(--red)' : 'var(--text)';
+  document.getElementById('orcRitmo').textContent = '—';
+  document.getElementById('orcProjecao').textContent = '—';
+
+  let statusHtml;
+  if (!budget) statusHtml = `<span class="status-pill warn">Orçamento não definido${subtitulo}</span>`;
+  else if (gasto > budget) statusHtml = `<span class="status-pill bad">Fechou estourando o orçamento${subtitulo}</span>`;
+  else statusHtml = `<span class="status-pill ok">Fechou dentro do orçamento${subtitulo}</span>`;
+  document.getElementById('statusPillBox').innerHTML = statusHtml;
+}
+
+function renderOrcamentoHistoricoMes(segmento){
+  const chaves = chavesHistoricoOrdenadas();
+  if (!FILTRO_PERIODO.chave || !chaves.includes(FILTRO_PERIODO.chave)) FILTRO_PERIODO.chave = chaves[0] || null;
+  const chave = FILTRO_PERIODO.chave;
+  document.getElementById('mesOrcamentoLabel').innerHTML = chave
+    ? labelMesChaveLongo(chave) + '<span class="badge-historico">Histórico</span>'
+    : 'sem mês fechado registrado';
+  if (!chave){ renderOrcamentoHistoricoHtml(segmento, null, ''); return; }
+
+  const snap = carregarHistorico().find(h => h.chave === chave);
+  const dadosSeg = snap && snap.segmentos ? snap.segmentos[segmento.id] : null;
+  const subtitulo = snap ? ` (fechado em ${new Date(snap.fechadoEm).toLocaleDateString('pt-BR')})` : '';
+  renderOrcamentoHistoricoHtml(segmento, dadosSeg ? { ...dadosSeg, budget: budgetDoSegmento(chave, segmento.id) } : null, subtitulo);
+}
+
+function renderOrcamentoHistoricoAno(segmento){
+  const anos = labelAnoDisponivel();
+  if (!FILTRO_PERIODO.ano || !anos.includes(FILTRO_PERIODO.ano)) FILTRO_PERIODO.ano = anos[0] || null;
+  const ano = FILTRO_PERIODO.ano;
+  const chaves = ano ? carregarHistorico().map(h => h.chave).filter(c => c.startsWith(ano + '-')) : [];
+  document.getElementById('mesOrcamentoLabel').innerHTML = ano
+    ? 'Ano ' + ano + '<span class="badge-historico">Histórico</span>'
+    : 'sem ano fechado registrado';
+  if (!chaves.length){ renderOrcamentoHistoricoHtml(segmento, null, ''); return; }
+
+  let lpu = 0, fixo = 0, budget = 0;
+  chaves.forEach(c => {
+    const snap = carregarHistorico().find(h => h.chave === c);
+    const d = snap && snap.segmentos ? snap.segmentos[segmento.id] : null;
+    if (d){ lpu += d.lpu; fixo += d.fixo || 0; }
+    budget += budgetDoSegmento(c, segmento.id);
+  });
+  renderOrcamentoHistoricoHtml(segmento, { lpu, fixo, budget }, ` (soma de ${chaves.length} mês(es) fechado(s) em ${ano})`);
+}
+
+/* ═══════════════════════════ FILTRO DE PERÍODO (voltar no tempo) ═══════════════════════════ */
+function calcularSemanaAtual(){
+  const hoje = new Date();
+  const diaSemana = (hoje.getDay() + 6) % 7; // 0 = segunda
+  const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - diaSemana, 0, 0, 0, 0);
+  const fim = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + 6, 23, 59, 59, 999);
+  return { inicio, fim };
+}
+function labelPeriodoAtivo(){
+  if (FILTRO_PERIODO.tipo === 'semana' && FILTRO_PERIODO.inicio && FILTRO_PERIODO.fim){
+    return 'Semana ' + FILTRO_PERIODO.inicio.toLocaleDateString('pt-BR') + '–' + FILTRO_PERIODO.fim.toLocaleDateString('pt-BR');
+  }
+  if (FILTRO_PERIODO.tipo === 'mes') return FILTRO_PERIODO.chave ? labelMesChaveLongo(FILTRO_PERIODO.chave) : 'mês fechado';
+  if (FILTRO_PERIODO.tipo === 'ano') return FILTRO_PERIODO.ano ? 'Ano ' + FILTRO_PERIODO.ano : 'ano fechado';
+  return 'Mês atual';
+}
+function renderPeriodoControle(){
+  document.getElementById('periodoLabel').textContent = labelPeriodoAtivo();
+  const controle = document.getElementById('periodoControle');
+  const hint = document.getElementById('periodoHint');
+
+  if (FILTRO_PERIODO.tipo === 'semana'){
+    controle.innerHTML = `
+      <div class="periodo-semana-nav">
+        <button class="btn btn-outline btn-sm" id="btnSemanaAnt" type="button">←</button>
+        <b>${FILTRO_PERIODO.inicio.toLocaleDateString('pt-BR')} – ${FILTRO_PERIODO.fim.toLocaleDateString('pt-BR')}</b>
+        <button class="btn btn-outline btn-sm" id="btnSemanaProx" type="button">→</button>
+      </div>`;
+    document.getElementById('btnSemanaAnt').addEventListener('click', () => deslocarSemana(-7));
+    document.getElementById('btnSemanaProx').addEventListener('click', () => deslocarSemana(7));
+    hint.textContent = 'Filtra Por Prestadora e os totais do topo pelo período da semana, dentro do ciclo atual (ainda não fechado). O card Orçamento por Segmento continua mostrando o ciclo inteiro.';
+  } else if (FILTRO_PERIODO.tipo === 'mes'){
+    const chaves = chavesHistoricoOrdenadas();
+    controle.innerHTML = chaves.length
+      ? `<select id="selPeriodoMes">${chaves.map(c => `<option value="${c}" ${c===FILTRO_PERIODO.chave?'selected':''}>${labelMesChaveLongo(c)}</option>`).join('')}</select>`
+      : '<div class="empty-msg" style="padding:.6rem 0">Nenhum mês fechado ainda.</div>';
+    if (chaves.length){
+      document.getElementById('selPeriodoMes').addEventListener('change', e => { FILTRO_PERIODO.chave = e.target.value; renderPeriodoControle(); renderTudo(); });
+    }
+    hint.textContent = 'Mostra o resumo agregado (guardado no fechamento) do mês escolhido no card Orçamento por Segmento. Sem detalhe Por Prestadora — não fica guardado depois do fechamento.';
+  } else if (FILTRO_PERIODO.tipo === 'ano'){
+    const anos = labelAnoDisponivel();
+    controle.innerHTML = anos.length
+      ? `<select id="selPeriodoAno">${anos.map(a => `<option value="${a}" ${a===FILTRO_PERIODO.ano?'selected':''}>${a}</option>`).join('')}</select>`
+      : '<div class="empty-msg" style="padding:.6rem 0">Nenhum ano com mês fechado ainda.</div>';
+    if (anos.length){
+      document.getElementById('selPeriodoAno').addEventListener('change', e => { FILTRO_PERIODO.ano = e.target.value; renderPeriodoControle(); renderTudo(); });
+    }
+    hint.textContent = 'Soma os meses fechados do ano escolhido no card Orçamento por Segmento. Sem detalhe Por Prestadora.';
+  } else {
+    controle.innerHTML = '';
+    hint.textContent = 'Ciclo atual, ainda não fechado — os dados aqui podem mudar até o fechamento do mês.';
+  }
+}
+function deslocarSemana(dias){
+  FILTRO_PERIODO.inicio = new Date(FILTRO_PERIODO.inicio.getTime() + dias * 86400000);
+  FILTRO_PERIODO.fim = new Date(FILTRO_PERIODO.fim.getTime() + dias * 86400000);
+  renderPeriodoControle();
+  renderTudo();
+}
+
+const btnPeriodo = document.getElementById('btnPeriodo');
+const periodoPainel = document.getElementById('periodoPainel');
+btnPeriodo.addEventListener('click', e => { e.stopPropagation(); periodoPainel.classList.toggle('show'); });
+document.addEventListener('click', e => { if (!periodoPainel.contains(e.target) && e.target !== btnPeriodo) periodoPainel.classList.remove('show'); });
+document.getElementById('periodoChips').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  document.querySelectorAll('#periodoChips .chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  const tipo = chip.dataset.periodo;
+  FILTRO_PERIODO = { tipo };
+  if (tipo === 'semana') Object.assign(FILTRO_PERIODO, calcularSemanaAtual());
+  else if (tipo === 'mes') FILTRO_PERIODO.chave = chavesHistoricoOrdenadas()[0] || null;
+  else if (tipo === 'ano') FILTRO_PERIODO.ano = labelAnoDisponivel()[0] || null;
+  renderPeriodoControle();
+  renderTudo();
+});
+renderPeriodoControle();
 
 // Orçamento tinha só "digitar + clicar Salvar", sem nenhum aviso se a pessoa
 // esquecesse de clicar — o número digitado sumia silenciosamente ao recarregar a
