@@ -64,6 +64,10 @@
   .chip-row{display:flex;gap:.4rem;flex-wrap:wrap}
   .chip{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;user-select:none}
   .chip.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
+  .chip-conta{display:flex;flex-direction:column;align-items:flex-start;gap:.05rem;border-radius:8px;padding:.4rem .7rem}
+  .chip-conta .chip-conta-codigo{font-size:.74rem;letter-spacing:.02em}
+  .chip-conta .chip-conta-nome{font-family:'Inter',sans-serif;font-size:.6rem;font-weight:500;letter-spacing:0;text-transform:none;color:var(--text-muted)}
+  .chip-conta.active .chip-conta-nome{color:var(--accent);opacity:.75}
   .toolbar-spacer{flex:1}
 
   /* ── STAT CARDS ── */
@@ -421,13 +425,13 @@ function isManutencaoRede(rec){
 // 0008 Manutenção (mantém os contratos fixos VAL/QUALITY), 0006 GTD, 0005 Implantação,
 // 0007 Transmissão, 0101 Preventiva, 0103 Melhoria REDE, 0009 Consultoria de Regularização.
 const SEGMENTOS = [
-  { id:'manutencao', label:'Manutenção', codigo:'3.1.1.2.05.0008', match: isManutencaoRede },
-  { id:'gtd', label:'GTD', codigo:'3.1.1.2.05.0006', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0006' },
-  { id:'implantacao', label:'Implantação', codigo:'3.1.1.2.05.0005', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0005' },
-  { id:'transmissao', label:'Transmissão', codigo:'3.1.1.2.05.0007', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0007' },
-  { id:'melhoria_rede', label:'Melhoria REDE', codigo:'3.1.1.2.05.0103', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0103' },
-  { id:'preventiva', label:'Preventiva', codigo:'3.1.1.2.05.0101', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0101' },
-  { id:'consultoria_regularizacao', label:'Consultoria de Regularização', codigo:'3.1.1.2.05.0009', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0009' },
+  { id:'manutencao', label:'Manutenção', codigo:'3.1.1.2.05.0008', descricao:'Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)', match: isManutencaoRede },
+  { id:'gtd', label:'GTD', codigo:'3.1.1.2.05.0006', descricao:'Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0006' },
+  { id:'implantacao', label:'Implantação', codigo:'3.1.1.2.05.0005', descricao:'Serviços de Instalação CLIENTE - IMPLANTAÇÃO', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0005' },
+  { id:'transmissao', label:'Transmissão', codigo:'3.1.1.2.05.0007', descricao:'Serviços de Instalação REDE - CONSTRUÇÃO DE REDE', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0007' },
+  { id:'melhoria_rede', label:'Melhoria REDE', codigo:'3.1.1.2.05.0103', descricao:'Serviços de Melhoria REDE - REPARO PROGRAMADO DE REDE', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0103' },
+  { id:'preventiva', label:'Preventiva', codigo:'3.1.1.2.05.0101', descricao:'Serviços Preventivos', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0101' },
+  { id:'consultoria_regularizacao', label:'Consultoria de Regularização', codigo:'3.1.1.2.05.0009', descricao:'Consultoria de Regularização', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0009' },
 ];
 let SEGMENTO_ATIVO = 'manutencao';
 function segmentoAtual(){ return SEGMENTOS.find(s => s.id === SEGMENTO_ATIVO) || SEGMENTOS[0]; }
@@ -947,9 +951,16 @@ function desenharGauge(pct){
   document.getElementById('gaugeNum').textContent = Math.round(pct) + '%';
 }
 
+// Chips mostram a conta contábil (código + nome curto) em vez do nome do segmento
+// direto — pedido do Vinicius em 2026-08-27: no dia a dia eles pensam em termos de
+// conta contábil, e cada segmento já corresponde a uma única conta (ver SEGMENTOS
+// acima); clicar continua filtrando orçamento/fluxo igual antes, só mudou o rótulo.
 function renderChipsSegmento(){
   document.getElementById('chipsSegmento').innerHTML = SEGMENTOS.map(s => `
-    <div class="chip ${s.id === SEGMENTO_ATIVO ? 'active' : ''}" data-seg="${s.id}">${s.label}</div>
+    <div class="chip chip-conta ${s.id === SEGMENTO_ATIVO ? 'active' : ''}" data-seg="${s.id}" title="${s.codigo} - ${s.descricao}">
+      <span class="chip-conta-codigo">${s.codigo}</span>
+      <span class="chip-conta-nome">${s.label}</span>
+    </div>
   `).join('');
   document.querySelectorAll('#chipsSegmento .chip').forEach(chip => {
     chip.addEventListener('click', () => {
