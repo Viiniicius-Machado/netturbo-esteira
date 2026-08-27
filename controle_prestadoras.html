@@ -421,19 +421,25 @@ function isManutencaoRede(rec){
 }
 
 // segmentos de orçamento acompanhados na tela — cada um com sua própria conta contábil e
-// budget mensal. Mapa de conta → segmento/frente confirmado com o Vinicius em 2026-08-24:
-// 0008 Manutenção (mantém os contratos fixos VAL/QUALITY), 0006 GTD, 0005 Implantação,
-// 0007 Transmissão, 0101 Preventiva, 0103 Melhoria REDE, 0009 Consultoria de Regularização.
+// budget mensal. Mapa de conta → segmento/frente confirmado com o Vinicius em 2026-08-24,
+// corrigido em 2026-08-27 com a relação real de contas dele (código da Consultoria de
+// Regularização era 0009 mas na verdade é 0109 — nunca bateu com nenhuma obra real até
+// aqui; conta 0102 Retirada não existia como segmento e foi adicionada). `tipo` (OPEX/
+// CAPEX) é usado pelos chips "Total OPEX"/"Total CAPEX" (ver renderChipsSegmento).
 const SEGMENTOS = [
-  { id:'manutencao', label:'Manutenção', codigo:'3.1.1.2.05.0008', descricao:'Serviços de Manutenção REDE - REPARO EMERGENCIAL DE REDE (MANUTENÇÃO)', match: isManutencaoRede },
-  { id:'gtd', label:'GTD', codigo:'3.1.1.2.05.0006', descricao:'Serviços de Manutenção CLIENTE - REPARO EMERGENCIAL EM CLIENTES (MANUTENÇÃO)', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0006' },
-  { id:'implantacao', label:'Implantação', codigo:'3.1.1.2.05.0005', descricao:'Serviços de Instalação CLIENTE - IMPLANTAÇÃO', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0005' },
-  { id:'transmissao', label:'Transmissão', codigo:'3.1.1.2.05.0007', descricao:'Serviços de Instalação REDE - CONSTRUÇÃO DE REDE', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0007' },
-  { id:'melhoria_rede', label:'Melhoria REDE', codigo:'3.1.1.2.05.0103', descricao:'Serviços de Melhoria REDE - REPARO PROGRAMADO DE REDE', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0103' },
-  { id:'preventiva', label:'Preventiva', codigo:'3.1.1.2.05.0101', descricao:'Serviços Preventivos', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0101' },
-  { id:'consultoria_regularizacao', label:'Consultoria de Regularização', codigo:'3.1.1.2.05.0009', descricao:'Consultoria de Regularização', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0009' },
+  { id:'manutencao', label:'Manutenção', codigo:'3.1.1.2.05.0008', descricao:'Serviços de Manutenção REDE', tipo:'OPEX', match: isManutencaoRede },
+  { id:'gtd', label:'GTD', codigo:'3.1.1.2.05.0006', descricao:'Serviços de Manutenção CLIENTE', tipo:'OPEX', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0006' },
+  { id:'preventiva', label:'Preventiva', codigo:'3.1.1.2.05.0101', descricao:'Serviços Preventivos', tipo:'OPEX', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0101' },
+  { id:'consultoria_regularizacao', label:'Consultoria de Regularização', codigo:'3.1.1.2.05.0109', descricao:'Consultoria de Regularização', tipo:'OPEX', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0109' },
+  { id:'melhoria_rede', label:'Melhoria REDE', codigo:'3.1.1.2.05.0103', descricao:'Serviços de Melhoria de REDE', tipo:'OPEX', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0103' },
+  { id:'retirada', label:'Retirada', codigo:'3.1.1.2.05.0102', descricao:'Serviços de Retirada', tipo:'OPEX', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0102' },
+  { id:'implantacao', label:'Implantação', codigo:'3.1.1.2.05.0005', descricao:'Serviços de Instalação CLIENTE', tipo:'CAPEX', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0005' },
+  { id:'transmissao', label:'Transmissão', codigo:'3.1.1.2.05.0007', descricao:'Serviços de Instalação REDE', tipo:'CAPEX', match: r => (r.contaCodigo||'').trim() === '3.1.1.2.05.0007' },
 ];
-let SEGMENTO_ATIVO = 'manutencao';
+// 'todos' é o padrão (mesmo comportamento de sempre: Valor a Receber/Obras/Ticket/
+// Prestadoras e o gauge do card Orçamento somam tudo) — só filtra por uma conta ou
+// grupo (OPEX/CAPEX) quando a pessoa clica num chip (ver obrasFiltradas/renderOrcamento).
+let SEGMENTO_ATIVO = 'todos';
 function segmentoAtual(){ return SEGMENTOS.find(s => s.id === SEGMENTO_ATIVO) || SEGMENTOS[0]; }
 
 // contratos fixos: equipes pagas por contrato mensal fixo, não por LPU/obra importada —
@@ -892,6 +898,15 @@ function obrasFiltradas(){
       return t >= iniMs && t <= fimMs;
     });
   }
+  // chip de conta contábil/grupo (Todos/OPEX/CAPEX) também filtra Valor a Receber, Obras
+  // Executadas, Ticket Médio, Prestadoras no Período e Por Prestadora — pedido do Vinicius
+  // em 2026-08-27 ("Todos" = sem filtro, comportamento de sempre).
+  if (SEGMENTO_ATIVO === 'opex') lista = lista.filter(r => SEGMENTOS.some(s => s.tipo === 'OPEX' && s.match(r)));
+  else if (SEGMENTO_ATIVO === 'capex') lista = lista.filter(r => SEGMENTOS.some(s => s.tipo === 'CAPEX' && s.match(r)));
+  else if (SEGMENTO_ATIVO !== 'todos'){
+    const seg = SEGMENTOS.find(s => s.id === SEGMENTO_ATIVO);
+    if (seg) lista = lista.filter(seg.match);
+  }
   return lista;
 }
 
@@ -955,13 +970,32 @@ function desenharGauge(pct){
 // direto — pedido do Vinicius em 2026-08-27: no dia a dia eles pensam em termos de
 // conta contábil, e cada segmento já corresponde a uma única conta (ver SEGMENTOS
 // acima); clicar continua filtrando orçamento/fluxo igual antes, só mudou o rótulo.
+// 3 chips agrupadores (Todos/Total OPEX/Total CAPEX) na frente dos 8 de conta — pedido
+// do Vinicius em 2026-08-27, junto com a troca do rótulo dos chips de segmento pra
+// mostrar a conta contábil em vez do nome de negócio. "Todos" soma tudo (igual o
+// comportamento de sempre, sem filtro de segmento); OPEX/CAPEX somam só os segmentos
+// daquele `tipo` (ver SEGMENTOS). Muda tanto o card Orçamento por Segmento (gauge
+// agregado, ver renderOrcamentoGrupo) quanto Valor a Receber/Obras/Ticket/Prestadoras
+// no topo da página (ver obrasFiltradas).
+const GRUPOS_SEGMENTO = [
+  { id:'todos', titulo:'TODOS', sub:'todas as contas' },
+  { id:'opex', titulo:'TOTAL OPEX', sub:'6 contas' },
+  { id:'capex', titulo:'TOTAL CAPEX', sub:'2 contas' },
+];
 function renderChipsSegmento(){
-  document.getElementById('chipsSegmento').innerHTML = SEGMENTOS.map(s => `
-    <div class="chip chip-conta ${s.id === SEGMENTO_ATIVO ? 'active' : ''}" data-seg="${s.id}" title="${s.codigo} - ${s.descricao}">
-      <span class="chip-conta-codigo">${s.codigo}</span>
-      <span class="chip-conta-nome">${s.label}</span>
+  const gruposHtml = GRUPOS_SEGMENTO.map(g => `
+    <div class="chip chip-conta ${g.id === SEGMENTO_ATIVO ? 'active' : ''}" data-seg="${g.id}">
+      <span class="chip-conta-codigo">${g.titulo}</span>
+      <span class="chip-conta-nome">${g.sub}</span>
     </div>
   `).join('');
+  const contasHtml = SEGMENTOS.map(s => `
+    <div class="chip chip-conta ${s.id === SEGMENTO_ATIVO ? 'active' : ''}" data-seg="${s.id}" title="${s.codigo} - ${s.descricao}">
+      <span class="chip-conta-codigo">${s.codigo}</span>
+      <span class="chip-conta-nome">${s.descricao}</span>
+    </div>
+  `).join('');
+  document.getElementById('chipsSegmento').innerHTML = gruposHtml + contasHtml;
   document.querySelectorAll('#chipsSegmento .chip').forEach(chip => {
     chip.addEventListener('click', () => {
       SEGMENTO_ATIVO = chip.dataset.seg;
@@ -1113,6 +1147,15 @@ function renderEvolucaoFixo(chave, chaveFixo, segmento){
 
 function renderOrcamento(){
   renderChipsSegmento();
+
+  // grupo (Todos/OPEX/CAPEX) sempre mostra o agregado ao vivo, independente do filtro de
+  // período — não dá pra combinar com mês/ano fechado porque o histórico (ESTADO_HISTORICO)
+  // só guarda retrato por segmento individual, não por grupo (ver renderOrcamentoGrupo).
+  if (SEGMENTO_ATIVO === 'todos' || SEGMENTO_ATIVO === 'opex' || SEGMENTO_ATIVO === 'capex'){
+    renderOrcamentoGrupo(SEGMENTO_ATIVO);
+    return;
+  }
+
   const segmento = segmentoAtual();
 
   if (FILTRO_PERIODO.tipo === 'mes'){ renderOrcamentoHistoricoMes(segmento); return; }
@@ -1320,6 +1363,61 @@ function renderOrcamentoHistoricoAno(segmento){
     budget += budgetDoSegmento(c, segmento.id);
   });
   renderOrcamentoHistoricoHtml(segmento, { lpu, fixo, budget }, ` (soma de ${chaves.length} mês(es) fechado(s) em ${ano})`);
+}
+
+// card "Orçamento por Segmento" agregado pra Todos/OPEX/CAPEX (ver GRUPOS_SEGMENTO) — soma
+// LPU/Fixo/Orçamento de todos os segmentos do grupo no ciclo atual (ao vivo, mesma regra de
+// sempre: ignora filtro de empresa, base zerada só no fechamento). Sem edição aqui (nem
+// orçamento nem contratos fixos) — cada conta continua editada individualmente no chip dela.
+function renderOrcamentoGrupo(tipoGrupo){
+  const hoje = new Date();
+  const chave = chaveMes(hoje);
+  const chaveFixo = chaveCicloFixo(hoje);
+  const contas = tipoGrupo === 'todos' ? SEGMENTOS : SEGMENTOS.filter(s => s.tipo === tipoGrupo.toUpperCase());
+  const grupo = GRUPOS_SEGMENTO.find(g => g.id === tipoGrupo);
+
+  document.getElementById('mesOrcamentoLabel').innerHTML = grupo.titulo + ' <span class="badge-historico" style="background:rgba(139,195,74,.12);color:var(--green);border-color:rgba(139,195,74,.35)">Agregado</span>';
+  document.getElementById('cardContratosFixos').style.display = 'none';
+  document.getElementById('budgetEditBox').style.display = 'none';
+  document.getElementById('alertaForaSegmentos').innerHTML = '';
+  document.getElementById('excluidosForaSegmento').innerHTML = '';
+  document.getElementById('linhaVariaveis').style.display = 'none';
+  document.getElementById('linhaImprodutivas').style.display = 'none';
+
+  let gastoLpu = 0, gastoFixo = 0, budget = 0;
+  contas.forEach(s => {
+    gastoLpu += TODAS_OBRAS.filter(s.match).reduce((sum,r) => sum + r.totalGeral, 0);
+    gastoFixo += totalContratosFixosMes(chaveFixo, s.id);
+    budget += budgetDoSegmento(chave, s.id);
+  });
+  const gasto = gastoLpu + gastoFixo;
+  const saldo = budget - gasto;
+  const pct = budget ? (gasto / budget * 100) : 0;
+  desenharGauge(pct);
+
+  document.getElementById('orcLpu').textContent = fmtMoeda(gastoLpu);
+  const linhaFixoEl = document.getElementById('linhaContratoFixo');
+  const temFixoNoGrupo = contas.some(s => temContratoFixo(s.id));
+  if (temFixoNoGrupo){
+    linhaFixoEl.style.display = '';
+    document.getElementById('orcFixo').textContent = fmtMoeda(gastoFixo);
+  } else {
+    linhaFixoEl.style.display = 'none';
+  }
+  document.getElementById('orcGasto').textContent = fmtMoeda(gasto);
+  document.getElementById('orcBudget').textContent = budget ? fmtMoeda(budget) : 'não definido';
+  const orcSaldoEl = document.getElementById('orcSaldo');
+  orcSaldoEl.textContent = budget ? fmtMoeda(saldo) : '—';
+  orcSaldoEl.style.color = saldo < 0 ? 'var(--red)' : 'var(--text)';
+  document.getElementById('orcRitmo').textContent = '—';
+  document.getElementById('orcProjecao').textContent = '—';
+
+  let statusHtml;
+  if (!budget) statusHtml = '<span class="status-pill warn">Orçamento não definido pra este grupo (soma das contas)</span>';
+  else if (gasto > budget) statusHtml = `<span class="status-pill bad">Estourando — ${fmtMoeda(gasto)} de ${fmtMoeda(budget)}</span>`;
+  else if (gasto > budget * 0.9) statusHtml = `<span class="status-pill warn">Perto do limite — ${fmtMoeda(gasto)} de ${fmtMoeda(budget)}</span>`;
+  else statusHtml = `<span class="status-pill ok">Dentro da meta — ${fmtMoeda(gasto)} de ${fmtMoeda(budget)}</span>`;
+  document.getElementById('statusPillBox').innerHTML = statusHtml;
 }
 
 /* ═══════════════════════════ FILTRO DE PERÍODO (voltar no tempo) ═══════════════════════════ */
