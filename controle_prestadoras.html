@@ -2154,6 +2154,19 @@ async function iniciar(){
     ESTADO_EXCLUIDOS = lerEstadoJson(resultado.estado.excluidos, []);
     FECHAMENTOS_EMPRESA = lerEstadoJson(resultado.estado.fechamentosEmpresa, {});
     FECHAMENTOS_CONTRATO_FIXO = lerEstadoJson(resultado.estado.fechamentosContratoFixo, {});
+
+    // limpeza pontual (2026-08-28): "Excluir Todos os Relatórios" (removido nesta versão)
+    // foi clicado em 24/08/2026 no meio do mês, deixando um retrato de "2026-08" em
+    // ESTADO_HISTORICO incompleto (só até dia 24 — o mês continuou rodando depois, no
+    // ciclo novo). Sem esse botão não existe mais jeito de gerar um retrato assim, então
+    // essa entrada nunca vai ficar completa — tira ela do seletor "Mês fechado" pra não
+    // confundir com o total real do mês (que segue vivo em "Mês atual"/fechamento por
+    // prestadora). Idempotente: assim que rodar uma vez e salvar, não acha mais nada pra
+    // limpar nas próximas cargas.
+    if (ESTADO_HISTORICO.some(h => h.chave === '2026-08')){
+      ESTADO_HISTORICO = ESTADO_HISTORICO.filter(h => h.chave !== '2026-08');
+      persistirEstadoAgora('historico', ESTADO_HISTORICO);
+    }
   }
 
   // LPUs preenchidas pelo próprio prestador direto no sistema (não só PDF anexado) — pedido
