@@ -188,6 +188,8 @@
   .contrato-var:first-of-type{border-top:none}
   .contrato-var label{display:flex;align-items:center;gap:.5rem;cursor:pointer;color:var(--text)}
   .contrato-var input[type=checkbox]{width:15px;height:15px;flex-shrink:0;accent-color:var(--green)}
+  .contrato-card input:disabled{opacity:.5;cursor:not-allowed}
+  .contrato-card label:has(input:disabled){cursor:not-allowed}
   .contrato-excedente{display:flex;align-items:center;gap:.5rem;font-size:.72rem;padding:.5rem 0;border-top:1px solid var(--border-hi);margin-top:.2rem;color:var(--text-dim)}
   .contrato-excedente label{flex:1;min-width:0}
   .contrato-excedente input[type=number]{width:60px;flex-shrink:0;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--text);font-size:.8rem;padding:.3rem .4rem;font-family:'Rajdhani',sans-serif;font-weight:700}
@@ -435,6 +437,13 @@ let ESTADO_EXCLUIDOS = [];
 // ordenado por fechadoEm asc. Cada fechamento é só um corte no tempo — não apaga nem
 // move nenhuma obra (ver obraEstaFechada) — LPU e Contrato Fixo nunca perdem detalhe.
 let FECHAMENTOS_EMPRESA = {};
+// mesma ideia pro Contrato Fixo (pedido do Vinicius em 2026-08-28, depois de testar o
+// fechamento de LPU) — só que aqui não existe "obra chegando depois" pra rolar pro
+// próximo ciclo (o ciclo já troca sozinho no dia 21, ver chaveCicloFixo): fechar um
+// contrato tranca os campos daquele ciclo pra edição (protege contra editar depois que
+// a prestadora já foi paga), sem mexer no valor total já calculado.
+// { [contratoId]: [{chave, fechadoEm}, ...] }, ordenado por fechadoEm asc.
+let FECHAMENTOS_CONTRATO_FIXO = {};
 let EMPRESA_ATIVA = null;  // null = todas
 // filtro de período (voltar no tempo) — 'atual' é o ciclo ao vivo (comportamento de sempre).
 // 'semana' filtra Por Prestadora/stats dentro do ciclo atual (único período com detalhe por
@@ -778,6 +787,49 @@ function labelCicloFixo(chave){
   const inicioCiclo = new Date(ano, mes - 2, 21);
   const fmtDia = dt => dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
   return `${fmtDia(inicioCiclo)} a ${fmtDia(fimCiclo)} · pagamento dia 28/${String(mes).padStart(2,'0')}`;
+}
+
+/* ═══════════════════ FECHAMENTO DE CONTRATO FIXO ═══════════════════
+   Mesmo espírito do fechamento por prestadora (ver acima), adaptado: aqui não tem
+   "obra chegando depois" pra rolar pro próximo ciclo — o ciclo já troca sozinho
+   (chaveCicloFixo). Fechar só tranca os campos deste ciclo pra edição (protege contra
+   editar sem querer depois que já foi paga) — o valor total continua contando
+   normalmente no card Orçamento por Segmento. */
+function carregarFechamentosContratoFixo(){ return FECHAMENTOS_CONTRATO_FIXO; }
+function salvarFechamentosContratoFixo(obj){
+  FECHAMENTOS_CONTRATO_FIXO = obj;
+  persistirEstado('fechamentosContratoFixo', obj);
+}
+function fechamentosDoContrato(contratoId){ return carregarFechamentosContratoFixo()[contratoId] || []; }
+function ultimoFechamentoContrato(contratoId){
+  const lista = fechamentosDoContrato(contratoId);
+  return lista.length ? lista[lista.length - 1] : null;
+}
+function contratoFechadoNoCiclo(contratoId, chave){
+  const u = ultimoFechamentoContrato(contratoId);
+  return !!(u && u.chave === chave);
+}
+function fecharContratoFixo(contratoId, chave){
+  const contrato = CONTRATOS_FIXOS.find(c => c.id === contratoId);
+  if (!confirm(
+    `Fechar o ciclo de ${labelCicloFixo(chave)} do contrato ${contrato ? contrato.label : contratoId}?\n\n` +
+    `Total deste ciclo: ${fmtMoeda(totalContratoFixo(chave, contrato))}.\n\n` +
+    `Os campos ficam travados pra edição (nada é apagado) — dá pra reabrir se for engano.`
+  )) return;
+  const fechamentos = carregarFechamentosContratoFixo();
+  const lista = fechamentosDoContrato(contratoId).concat([{ chave, fechadoEm: new Date().toISOString() }]);
+  salvarFechamentosContratoFixo({ ...fechamentos, [contratoId]: lista });
+  renderOrcamento();
+}
+function reabrirContratoFixo(contratoId){
+  const ultimo = ultimoFechamentoContrato(contratoId);
+  if (!ultimo) return;
+  const contrato = CONTRATOS_FIXOS.find(c => c.id === contratoId);
+  if (!confirm(`Reabrir o fechamento de ${labelCicloFixo(ultimo.chave)} de ${contrato ? contrato.label : contratoId}? Os campos voltam a ficar editáveis.`)) return;
+  const fechamentos = carregarFechamentosContratoFixo();
+  const lista = fechamentosDoContrato(contratoId).slice(0, -1);
+  salvarFechamentosContratoFixo({ ...fechamentos, [contratoId]: lista });
+  renderOrcamento();
 }
 
 function idRegistro(rec){
@@ -1211,13 +1263,14 @@ function renderChipsSegmento(){
 // - modoExcedente:'valor' (SOUZA TELECOM): input direto em R$.
 // - contrato com meta (VAL/QUALITY): input de "atividades realizadas", deriva excedente
 //   (some no Total) e déficit/improdutivas (só informativo, ver deficitAtividades).
-function campoExcedenteHtml(chave, c){
+function campoExcedenteHtml(chave, c, fechado){
+  const disabled = fechado ? 'disabled' : '';
   if (c.modoExcedente === 'valor'){
     const valor = excedenteValorManual(chave, c.id);
     return `
       <div class="contrato-excedente">
         <label>Valor que excedeu ${fmtMoeda(c.valorFixo)} este mês</label>
-        <input type="number" min="0" step="0.01" data-excedente-valor-contrato="${c.id}" value="${valor || ''}" placeholder="0,00"/>
+        <input type="number" min="0" step="0.01" data-excedente-valor-contrato="${c.id}" value="${valor || ''}" placeholder="0,00" ${disabled}/>
         <b>${fmtMoeda(valor)}</b>
       </div>`;
   }
@@ -1229,7 +1282,7 @@ function campoExcedenteHtml(chave, c){
   let html = `
     <div class="contrato-excedente">
       <label>Atividades realizadas no mês (meta: ${c.metaAtividades})</label>
-      <input type="number" min="0" step="1" data-realizadas-contrato="${c.id}" value="${realizadas === null ? '' : realizadas}" placeholder="ex.: ${c.metaAtividades}"/>
+      <input type="number" min="0" step="1" data-realizadas-contrato="${c.id}" value="${realizadas === null ? '' : realizadas}" placeholder="ex.: ${c.metaAtividades}" ${disabled}/>
       ${c.valorExcedente && excedente ? `<b>+${excedente} excedente(s) × ${fmtMoeda(c.valorExcedente)} = ${fmtMoeda(excedente * c.valorExcedente)}</b>` : ''}
     </div>`;
   if (deficit){
@@ -1251,28 +1304,45 @@ function renderContratosFixos(chave){
   document.getElementById('totalContratosFixosLabel').textContent = 'Total contratos fixos (somado no Gasto realizado de ' + segmentoAtual().label + ')';
   document.getElementById('mesContratosLabel').textContent = labelCicloFixo(chave);
 
-  document.getElementById('contratosFixosBody').innerHTML = contratos.map(c => `
+  document.getElementById('contratosFixosBody').innerHTML = contratos.map(c => {
+    const fechado = contratoFechadoNoCiclo(c.id, chave);
+    const ultimo = fechado ? ultimoFechamentoContrato(c.id) : null;
+    const acaoHtml = fechado
+      ? `<span class="badge-historico" style="background:rgba(139,195,74,.12);color:var(--green);border-color:rgba(139,195,74,.35)" title="Fechado em ${new Date(ultimo.fechadoEm).toLocaleString('pt-BR')}">Fechado ${new Date(ultimo.fechadoEm).toLocaleDateString('pt-BR')}</span>
+         <button class="btn btn-outline btn-sm" data-reabrir-contrato="${c.id}">Reabrir</button>`
+      : `<button class="btn btn-outline btn-sm" data-fechar-contrato="${c.id}" title="Tranca os campos deste ciclo pra edição">Fechar mês</button>`;
+    return `
     <div class="contrato-card">
-      <h4>${c.label}</h4>
+      <h4 style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+        <span>${c.label}</span>
+        <span style="display:flex;align-items:center;gap:.4rem">${acaoHtml}</span>
+      </h4>
       ${c.metaAtividades
         ? `<div class="contrato-meta">Meta: ${c.metaAtividades} atividades × ${fmtMoeda(c.valorAcionamento)} = ${fmtMoeda(c.valorFixo)} (valor fixo do contrato)</div>`
         : `<div class="contrato-meta">Valor fixo mensal: ${fmtMoeda(c.valorFixo)} (não é por meta de atividades)</div>`}
       ${c.variaveis.map(v => `
         <div class="contrato-var">
-          <label><input type="checkbox" data-contrato="${c.id}" data-var="${v.id}" ${variavelBatida(chave, c.id, v.id) ? 'checked' : ''}/> ${v.label}</label>
+          <label><input type="checkbox" data-contrato="${c.id}" data-var="${v.id}" ${variavelBatida(chave, c.id, v.id) ? 'checked' : ''} ${fechado ? 'disabled' : ''}/> ${v.label}</label>
           <b>${fmtMoeda(v.valor)}</b>
         </div>
       `).join('')}
-      ${campoExcedenteHtml(chave, c)}
+      ${campoExcedenteHtml(chave, c, fechado)}
       <div class="contrato-subtotal"><span>Total ${c.label}</span><span>${fmtMoeda(totalContratoFixo(chave, c))}</span></div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   document.querySelectorAll('#contratosFixosBody input[type=checkbox]').forEach(chk => {
     chk.addEventListener('change', () => {
       setVariavelBatida(chave, chk.dataset.contrato, chk.dataset.var, chk.checked);
       renderOrcamento();
     });
+  });
+  document.querySelectorAll('#contratosFixosBody [data-fechar-contrato]').forEach(btn => {
+    btn.addEventListener('click', () => fecharContratoFixo(btn.dataset.fecharContrato, chave));
+  });
+  document.querySelectorAll('#contratosFixosBody [data-reabrir-contrato]').forEach(btn => {
+    btn.addEventListener('click', () => reabrirContratoFixo(btn.dataset.reabrirContrato));
   });
 
   // Salva a cada tecla digitada (não só no blur/Enter) — se a pessoa sair da tela
@@ -2064,6 +2134,7 @@ async function iniciar(){
     ESTADO_HISTORICO = historicoLocal || [];
     ESTADO_EXCLUIDOS = excluidosLocais || [];
     FECHAMENTOS_EMPRESA = {};
+    FECHAMENTOS_CONTRATO_FIXO = {};
 
     await salvarObras(TODAS_OBRAS);
     await Promise.all([
@@ -2072,6 +2143,7 @@ async function iniciar(){
       persistirEstadoAgora('historico', ESTADO_HISTORICO),
       persistirEstadoAgora('excluidos', ESTADO_EXCLUIDOS),
       persistirEstadoAgora('fechamentosEmpresa', FECHAMENTOS_EMPRESA),
+      persistirEstadoAgora('fechamentosContratoFixo', FECHAMENTOS_CONTRATO_FIXO),
     ]);
     await persistirEstadoAgora('bootstrap', 'v1');
   } else {
@@ -2081,6 +2153,7 @@ async function iniciar(){
     ESTADO_HISTORICO = lerEstadoJson(resultado.estado.historico, []);
     ESTADO_EXCLUIDOS = lerEstadoJson(resultado.estado.excluidos, []);
     FECHAMENTOS_EMPRESA = lerEstadoJson(resultado.estado.fechamentosEmpresa, {});
+    FECHAMENTOS_CONTRATO_FIXO = lerEstadoJson(resultado.estado.fechamentosContratoFixo, {});
   }
 
   // LPUs preenchidas pelo próprio prestador direto no sistema (não só PDF anexado) — pedido
