@@ -462,6 +462,10 @@ function normalizarEmpresa(nome){
   if (n.includes('SOLUTEC')) return 'SOLUTEC';
   if (n.includes('OLIVEIRA')) return 'OLIVEIRA TELECOM';
   if (n.includes('PV')) return 'PV TELECOM';
+  // PDF às vezes vem anexado/nomeado com o nome da pessoa (RHIKELMY SOARES MACEDO,
+  // CNPJ 51.944.068/0001-60) em vez da razão social — pedido do Vinicius em 2026-08-28
+  // pra reconhecer isso como FUSION TELECOM, igual já acontece com VAL/SOLUTEC/etc.
+  if (n.includes('RHIKELMY')) return 'FUSION TELECOM';
   return n || 'DESCONHECIDA';
 }
 
@@ -2148,12 +2152,41 @@ async function iniciar(){
     await persistirEstadoAgora('bootstrap', 'v1');
   } else {
     TODAS_OBRAS = resultado.obras;
+
+    // migração pontual (2026-08-28): obras importadas com o PDF anexado/nomeado com o
+    // nome da pessoa (RHIKELMY SOARES MACEDO) em vez da razão social — pedido do
+    // Vinicius pra reconhecer como FUSION TELECOM (CNPJ 51.944.068/0001-60, ver
+    // normalizarEmpresa). normalizarEmpresa só roda uma vez, na importação — corrigir a
+    // regra não migra sozinho o que já estava salvo, por isso esse ajuste pontual.
+    // Idempotente: só reescreve e salva se achar alguma obra com o nome antigo.
+    let precisaMigrarEmpresa = false;
+    TODAS_OBRAS.forEach(r => {
+      if (r.empresa && /RHIKELMY/i.test(r.empresa) && r.empresa !== 'FUSION TELECOM'){
+        r.empresa = 'FUSION TELECOM';
+        precisaMigrarEmpresa = true;
+      }
+    });
+    if (precisaMigrarEmpresa) salvarObras(TODAS_OBRAS);
+
     ESTADO_CONTRATOS_FIXOS = lerEstadoJson(resultado.estado.contratosFixos, {});
     ESTADO_BUDGETS = normalizarBudgets(lerEstadoJson(resultado.estado.budgets, { '2026-08': { manutencao: 106000 } }));
     ESTADO_HISTORICO = lerEstadoJson(resultado.estado.historico, []);
     ESTADO_EXCLUIDOS = lerEstadoJson(resultado.estado.excluidos, []);
     FECHAMENTOS_EMPRESA = lerEstadoJson(resultado.estado.fechamentosEmpresa, {});
     FECHAMENTOS_CONTRATO_FIXO = lerEstadoJson(resultado.estado.fechamentosContratoFixo, {});
+
+    // mesma migração RHIKELMY → FUSION TELECOM (ver acima), agora nos fechamentos já
+    // registrados — sem isso um fechamento feito sob o nome antigo ficaria órfão (nenhuma
+    // obra bate mais com aquele nome depois da migração acima).
+    const chaveRhikelmy = Object.keys(FECHAMENTOS_EMPRESA).find(k => /RHIKELMY/i.test(k));
+    if (chaveRhikelmy){
+      const fechamentos = { ...FECHAMENTOS_EMPRESA };
+      fechamentos['FUSION TELECOM'] = (fechamentos['FUSION TELECOM'] || [])
+        .concat(fechamentos[chaveRhikelmy])
+        .sort((a,b) => new Date(a.fechadoEm) - new Date(b.fechadoEm));
+      delete fechamentos[chaveRhikelmy];
+      salvarFechamentosEmpresa(fechamentos);
+    }
 
     // limpeza pontual (2026-08-28): "Excluir Todos os Relatórios" (removido nesta versão)
     // foi clicado em 24/08/2026 no meio do mês, deixando um retrato de "2026-08" em
