@@ -1707,10 +1707,13 @@ function renderOrcamentoGrupo(tipoGrupo){
 // Pedido do Vinicius em 2026-08-27: clicar em "Valor a Receber (total)" abre uma visão
 // completa das 8 contas contábeis — orçamento, LPU, contrato fixo, total e saldo (positivo
 // = sobrou, negativo = faltou) de cada uma, mais subtotal OPEX/CAPEX e o saldo geral da
-// operação inteira. Sempre o ciclo atual, ao vivo — não depende do chip/filtro selecionado
-// na tela (é uma foto completa, não um recorte).
+// operação inteira. Ao vivo — não depende do chip de conta/prestadora/semana selecionado
+// na tela (é uma foto completa, não um recorte) — mas SIM respeita fechamento por
+// prestadora (ver obraEstaFechada, 2026-08-28): obra já fechada não é mais "a receber",
+// então some daqui igual some de todo o resto da tela — pedido do Vinicius em 2026-08-28,
+// depois de notar que esse modal continuava contando obra já fechada.
 function calcularLinhaConta(s, chave, chaveFixo){
-  const gastoLpu = todasObrasCombinadas().filter(s.match).reduce((sum,r) => sum + r.totalGeral, 0);
+  const gastoLpu = todasObrasCombinadas().filter(s.match).filter(r => !obraEstaFechada(r)).reduce((sum,r) => sum + r.totalGeral, 0);
   const gastoFixo = totalContratosFixosMes(chaveFixo, s.id);
   const total = gastoLpu + gastoFixo;
   const budget = budgetDoSegmento(chave, s.id);
