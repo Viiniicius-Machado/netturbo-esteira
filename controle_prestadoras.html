@@ -64,6 +64,13 @@
   .chip-row{display:flex;gap:.4rem;flex-wrap:wrap}
   .chip{padding:.4rem .9rem;border:1px solid var(--border-hi);background:var(--surface3);color:var(--text-dim);border-radius:20px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;user-select:none}
   .chip.active{background:rgba(168,201,60,.15);border-color:var(--accent);color:var(--accent)}
+  /* chips de conta contábil crescem pra preencher a largura da linha (em vez de ficar
+     grudados à esquerda com espaço vazio sobrando) — pedido do Vinicius em 2026-08-28,
+     depois de mover esses chips pro topo da tela. flex-grow distribui o espaço sobrando
+     de CADA linha entre os chips daquela linha (inclusive a última, com só 2 chips),
+     max-width evita que fiquem enormes quando sobra muito espaço numa linha curta. */
+  .chip-row-contas{display:flex;flex-wrap:wrap;gap:.5rem}
+  .chip-row-contas .chip-conta{flex:1 1 150px;max-width:320px}
   .chip-conta{display:flex;flex-direction:column;align-items:flex-start;gap:.05rem;border-radius:8px;padding:.4rem .7rem}
   .chip-conta .chip-conta-codigo{font-size:.74rem;letter-spacing:.02em}
   .chip-conta .chip-conta-nome{font-family:'Inter',sans-serif;font-size:.6rem;font-weight:500;letter-spacing:0;text-transform:none;color:var(--text-muted)}
@@ -228,8 +235,9 @@
     <div class="import-log" id="importLog"></div>
   </div>
 
+  <div class="chip-row chip-row-contas" id="chipsSegmento" style="margin:1.1rem 0"></div>
+
   <div class="toolbar">
-    <div class="chip-row" id="chipsEmpresa"></div>
     <div class="toolbar-spacer"></div>
     <div class="periodo-wrap">
       <button class="btn btn-outline btn-sm periodo-btn" id="btnPeriodo" type="button">
@@ -252,6 +260,8 @@
 
   <div class="stat-row" id="statRow"></div>
 
+  <div class="chip-row" id="chipsEmpresa" style="margin:1.1rem 0"></div>
+
   <div class="grid-2">
     <div class="card">
       <div class="card-header">Por Prestadora <small id="subPrestadoras"></small></div>
@@ -260,7 +270,6 @@
     <div class="card">
       <div class="card-header">Orçamento por Segmento <small id="mesOrcamentoLabel"></small></div>
       <div class="card-body">
-        <div class="chip-row" id="chipsSegmento" style="margin-bottom:.8rem"></div>
         <div class="gauge-card">
           <div class="gauge-svg-wrap">
             <svg class="gauge-svg" viewBox="0 0 100 100">
@@ -1096,7 +1105,15 @@ function renderChipsSegmento(){
   document.querySelectorAll('#chipsSegmento .chip').forEach(chip => {
     chip.addEventListener('click', () => {
       SEGMENTO_ATIVO = chip.dataset.seg;
+      // clicar na conta contábil precisa adaptar a tela inteira pra aquela conta —
+      // não só o card de Orçamento (pedido do Vinicius em 2026-08-28): stats do topo,
+      // Por Prestadora, Ranking de Descrições e a tabela de Obras Importadas também
+      // filtram por SEGMENTO_ATIVO (ver obrasFiltradas), mas antes só recalculavam no
+      // próximo renderTudo() — o clique no chip ficava "preso" no card de Orçamento.
       renderOrcamento();
+      renderStatsEEmpresas();
+      renderRankingSev();
+      renderTabela();
     });
   });
 }
