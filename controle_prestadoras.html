@@ -138,6 +138,7 @@
   .rank-sub{font-size:.66rem;color:var(--text-muted);margin-top:.1rem}
   .rank-bar-track{height:6px;background:var(--surface2);border-radius:3px;margin-top:.32rem;overflow:hidden}
   .rank-bar-fill{height:100%;background:var(--accent);border-radius:3px}
+  .rank-fechar{display:flex;flex-direction:column;align-items:flex-end;gap:.3rem;flex-shrink:0}
 
   /* ── orçamento ── */
   .gauge-card{display:flex;align-items:center;gap:1.1rem;flex-wrap:wrap}
@@ -342,7 +343,11 @@
   </div>
 
   <div class="card">
-    <div class="card-header">Obras Importadas <small id="subObras"></small></div>
+    <div class="card-header">Obras Importadas <small id="subObras"></small>
+      <label style="display:flex;align-items:center;gap:.35rem;font-size:.68rem;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);cursor:pointer;margin-left:auto">
+        <input type="checkbox" id="chkMostrarFechadas"/> mostrar também as já fechadas
+      </label>
+    </div>
     <div class="table-wrap">
       <table>
         <thead>
@@ -356,6 +361,7 @@
             <th data-sort="aprovador">Aprovador</th>
             <th data-sort="importadoEm">Importado em</th>
             <th data-sort="totalGeral">Total</th>
+            <th>Fechamento</th>
             <th></th>
           </tr>
         </thead>
@@ -366,7 +372,6 @@
   </div>
 
   <footer class="tool-actions">
-    <button class="btn btn-danger btn-sm" id="btnExcluirTodos">Excluir Todos os Relatórios</button>
     <button class="btn btn-danger btn-sm" id="btnResetSeed">Restaurar dados originais</button>
   </footer>
 </main>
@@ -424,6 +429,12 @@ let ESTADO_CONTRATOS_FIXOS = {};
 let ESTADO_BUDGETS = {};
 let ESTADO_HISTORICO = [];
 let ESTADO_EXCLUIDOS = [];
+// fechamento por prestadora (não por conta contábil nem geral) — pedido do Vinicius em
+// 2026-08-28: uma prestadora pode ficar só um período com a gente, e fechar o mês dela
+// não pode depender de esperar todo mundo. { [empresa]: [{chave, fechadoEm}, ...] },
+// ordenado por fechadoEm asc. Cada fechamento é só um corte no tempo — não apaga nem
+// move nenhuma obra (ver obraEstaFechada) — LPU e Contrato Fixo nunca perdem detalhe.
+let FECHAMENTOS_EMPRESA = {};
 let EMPRESA_ATIVA = null;  // null = todas
 // filtro de período (voltar no tempo) — 'atual' é o ciclo ao vivo (comportamento de sempre).
 // 'semana' filtra Por Prestadora/stats dentro do ciclo atual (único período com detalhe por
@@ -433,6 +444,7 @@ let EMPRESA_ATIVA = null;  // null = todas
 let FILTRO_PERIODO = { tipo:'atual' };
 let ORD_SEV = 'valor';
 let ORDENACAO_TABELA = { campo: 'dataOrdenacao', dir: -1 };
+let MOSTRAR_FECHADAS = false; // tabela "Obras Importadas": inclui obras já fechadas (ver obraEstaFechada)
 
 /* ═══════════════════════════ UTIL ═══════════════════════════ */
 function normalizarEmpresa(nome){
@@ -680,6 +692,78 @@ function totalContratosFixosMes(chave, segId){
 function diasNoMes(ano, mesIdx){ return new Date(ano, mesIdx + 1, 0).getDate(); }
 function chaveMes(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
 
+/* ═══════════════════ FECHAMENTO POR PRESTADORA (LPU) ═══════════════════
+   "Fechar" uma prestadora não apaga nem move nada — só grava um corte no tempo
+   (fechadoEm). Toda obra dela (PDF ou LPU preenchida no sistema, ver
+   todasObrasCombinadas) importada ATÉ esse instante entra no fechamento; toda obra
+   importada DEPOIS fica em aberto e cai automaticamente no PRÓXIMO fechamento dessa
+   mesma prestadora — mesmo que outras prestadoras (ou outras contas contábeis dela)
+   continuem em aberto. Pedido do Vinicius em 2026-08-28: uma prestadora pode deixar
+   de trabalhar com a gente no meio do mês, sem depender de esperar todo mundo fechar
+   junto. Contrato Fixo não precisa desse mecanismo — já é guardado por ciclo pra
+   sempre (ver ESTADO_CONTRATOS_FIXOS), nunca é apagado nem zerado por fechamento. */
+function carregarFechamentosEmpresa(){ return FECHAMENTOS_EMPRESA; }
+function salvarFechamentosEmpresa(obj){
+  FECHAMENTOS_EMPRESA = obj;
+  persistirEstado('fechamentosEmpresa', obj);
+}
+function fechamentosDaEmpresa(empresa){ return carregarFechamentosEmpresa()[empresa] || []; }
+function ultimoFechamentoEmpresa(empresa){
+  const lista = fechamentosDaEmpresa(empresa);
+  return lista.length ? lista[lista.length - 1] : null;
+}
+// devolve a chave (mês) do fechamento que "cobre" essa obra, ou null se ela ainda
+// está em aberto — primeiro corte cujo instante é posterior à importação da obra.
+function fechamentoQueCobreObra(r){
+  const cortes = fechamentosDaEmpresa(r.empresa);
+  if (!cortes.length) return null;
+  const impMs = new Date(r.importadoEm).getTime() || 0;
+  const corte = cortes.find(c => new Date(c.fechadoEm).getTime() >= impMs);
+  return corte ? corte.chave : null;
+}
+function obraEstaFechada(r){ return !!fechamentoQueCobreObra(r); }
+// respeita a mesma conta contábil (chip do topo) que já está na tela — fechar uma
+// prestadora fecha exatamente o que está sendo mostrado pra ela agora (Todos/OPEX/
+// CAPEX/uma conta específica), sem depender do filtro de semana (que é só uma lupa
+// visual, não delimita o ciclo que está sendo fechado).
+function obrasAbertasParaFechar(empresa){
+  return todasObrasCombinadas().filter(r => {
+    if (r.empresa !== empresa || obraEstaFechada(r)) return false;
+    if (SEGMENTO_ATIVO === 'todos') return true;
+    if (SEGMENTO_ATIVO === 'opex') return SEGMENTOS.some(s => s.tipo === 'OPEX' && s.match(r));
+    if (SEGMENTO_ATIVO === 'capex') return SEGMENTOS.some(s => s.tipo === 'CAPEX' && s.match(r));
+    const seg = SEGMENTOS.find(s => s.id === SEGMENTO_ATIVO);
+    return seg ? seg.match(r) : true;
+  });
+}
+function fecharPrestadora(empresa){
+  const abertas = obrasAbertasParaFechar(empresa);
+  const total = abertas.reduce((s,r) => s + r.totalGeral, 0);
+  const chave = chaveMes(new Date());
+  const escopo = SEGMENTO_ATIVO === 'todos' ? 'todas as contas contábeis'
+    : SEGMENTO_ATIVO === 'opex' ? 'as contas OPEX'
+    : SEGMENTO_ATIVO === 'capex' ? 'as contas CAPEX'
+    : 'a conta ' + (SEGMENTOS.find(s => s.id === SEGMENTO_ATIVO) || {}).descricao;
+  if (!confirm(
+    `Fechar o mês de ${empresa} (${escopo})?\n\n` +
+    `${abertas.length} obra(s) em aberto totalizando ${fmtMoeda(total)} entram no fechamento de ${labelMesChaveLongo(chave)}.\n\n` +
+    `Nada é apagado: qualquer obra importada depois de agora pra essa prestadora conta pro PRÓXIMO fechamento, e dá pra reabrir este aqui se for engano.`
+  )) return;
+  const fechamentos = carregarFechamentosEmpresa();
+  const lista = fechamentosDaEmpresa(empresa).concat([{ chave, fechadoEm: new Date().toISOString() }]);
+  salvarFechamentosEmpresa({ ...fechamentos, [empresa]: lista });
+  renderTudo();
+}
+function reabrirPrestadora(empresa){
+  const ultimo = ultimoFechamentoEmpresa(empresa);
+  if (!ultimo) return;
+  if (!confirm(`Reabrir o fechamento de ${labelMesChaveLongo(ultimo.chave)} de ${empresa}? As obras que entraram nesse fechamento voltam a contar no ciclo atual.`)) return;
+  const fechamentos = carregarFechamentosEmpresa();
+  const lista = fechamentosDaEmpresa(empresa).slice(0, -1);
+  salvarFechamentosEmpresa({ ...fechamentos, [empresa]: lista });
+  renderTudo();
+}
+
 // contratos fixos fecham em ciclo próprio (21 a 20, pagamento dia 28) — não bate com o mês
 // calendário usado pela LPU (01 a 30, pagamento dia 15). A chave do ciclo é o mês em que ele
 // fecha/paga: de 21/ago a 20/set é rotulado "2026-09" (pedido do Vinicius em 2026-08-20).
@@ -796,31 +880,12 @@ function salvarBudgetSegmento(chave, segId, valor){
   salvarBudgets(budgets);
 }
 
-// histórico mensal (evolução das entregas de relatório LPU): como a base de obras é zerada
-// manualmente no fechamento (btnExcluirTodos), guardamos aqui um retrato de cada mês fechado
-// — sem isso não haveria como comparar mês a mês (pedido do Vinicius em 2026-08-20).
+// histórico mensal (evolução das entregas de relatório LPU) — legado do fechamento
+// geral antigo (apagava tudo e guardava só o resumo agregado aqui). Substituído em
+// 2026-08-28 pelo fechamento por prestadora (ver FECHAMENTOS_EMPRESA acima), que não
+// apaga nada — por isso essas funções só LEEM entradas antigas pra quem fechou mês
+// antes dessa data continuar vendo o retrato de então; nada novo é gravado aqui.
 function carregarHistorico(){ return ESTADO_HISTORICO; }
-function salvarHistorico(lista){
-  ESTADO_HISTORICO = lista;
-  persistirEstado('historico', lista);
-}
-function capturarSnapshotMes(){
-  const hoje = new Date();
-  const chave = chaveMes(hoje);
-  const chaveFixo = chaveCicloFixo(hoje);
-  const snap = { chave, fechadoEm: hoje.toISOString(), segmentos:{} };
-  SEGMENTOS.forEach(seg => {
-    const lista = TODAS_OBRAS.filter(seg.match);
-    snap.segmentos[seg.id] = {
-      lpu: lista.reduce((s,r) => s + r.totalGeral, 0),
-      qtd: lista.length,
-      fixo: totalContratosFixosMes(chaveFixo, seg.id),
-    };
-  });
-  const historico = carregarHistorico().filter(h => h.chave !== chave);
-  historico.push(snap);
-  salvarHistorico(historico);
-}
 function labelMesChave(chave){
   const [ano, mes] = chave.split('-').map(Number);
   return new Date(ano, mes - 1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.', '');
@@ -830,12 +895,13 @@ function labelMesChaveLongo(chave){
   return new Date(ano, mes - 1, 1).toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
 }
 
-// Resumo agregado (LPU/Qtd/Fixo/Orçamento) de um mês ou ano já fechado — a base de
-// obras é zerada no fechamento (ver capturarSnapshotMes acima), então isso é o único
-// jeito de "voltar no tempo" pra fora do ciclo atual (pedido do Vinicius em 2026-08-22,
-// promovido de um select isolado em "Evolução Mensal" pro filtro de período do topo em
-// 2026-08-27). O detalhe por prestadora não é guardado no fechamento, então essa visão
-// fica restrita ao card "Orçamento por Segmento" — ver renderOrcamentoHistorico*.
+// Resumo agregado (LPU/Qtd/Fixo/Orçamento) de um mês ou ano já fechado sob o sistema
+// ANTIGO de fechamento geral (pedido do Vinicius em 2026-08-22, promovido de um select
+// isolado em "Evolução Mensal" pro filtro de período do topo em 2026-08-27). Só lê
+// ESTADO_HISTORICO — meses fechados a partir de 2026-08-28 usam o fechamento por
+// prestadora (ver FECHAMENTOS_EMPRESA) e não aparecem aqui. O detalhe por prestadora
+// nunca foi guardado nesse resumo antigo, então essa visão fica restrita ao card
+// "Orçamento por Segmento" — ver renderOrcamentoHistorico*.
 function labelAnoDisponivel(){
   const anos = [...new Set(carregarHistorico().map(h => h.chave.split('-')[0]))].sort().reverse();
   return anos;
@@ -988,13 +1054,20 @@ dropzone.addEventListener('drop', e => { if (e.dataTransfer.files.length) proces
 inputArquivos.addEventListener('change', e => { if (e.target.files.length) processarArquivos(e.target.files); e.target.value = ''; });
 
 /* ═══════════════════════════ FILTROS ═══════════════════════════ */
-// sem filtro de mês pro CICLO em si de propósito: a base é zerada manualmente a cada
-// fechamento (ver excluirObra/btnResetSeed), então tudo que estiver na tela é o ciclo
-// atual. 'mes'/'ano' fechados não têm detalhe por obra guardado (só o resumo agregado,
-// ver renderOrcamentoHistoricoMes/Ano) — por isso retornam lista vazia aqui.
-function obrasFiltradas(){
+// sem filtro de mês pro CICLO em si de propósito: a obra some daqui quando a
+// prestadora dela é fechada (ver obraEstaFechada/fecharPrestadora), não quando o
+// calendário vira o mês — então tudo que aparecer aqui é sempre "ainda em aberto"
+// pra quem trabalhou nela. 'mes'/'ano' fechados (sistema antigo, ver ESTADO_HISTORICO)
+// não têm detalhe por obra guardado (só o resumo agregado, ver
+// renderOrcamentoHistoricoMes/Ano) — por isso retornam lista vazia aqui.
+function obrasFiltradas(opts){
+  const incluirFechadas = !!(opts && opts.incluirFechadas);
   let lista = todasObrasCombinadas().filter(r => !EMPRESA_ATIVA || r.empresa === EMPRESA_ATIVA);
   if (FILTRO_PERIODO.tipo === 'mes' || FILTRO_PERIODO.tipo === 'ano') return [];
+  // obra já fechada (ver fecharPrestadora) some do ciclo atual — não é apagada, só deixa
+  // de contar aqui; continua existindo pra sempre em TODAS_OBRAS/OBRAS_LPU_SISTEMA, e a
+  // tabela de Obras Importadas tem um jeito de voltar a mostrá-la (incluirFechadas).
+  if (!incluirFechadas) lista = lista.filter(r => !obraEstaFechada(r));
   if (FILTRO_PERIODO.tipo === 'semana' && FILTRO_PERIODO.inicio && FILTRO_PERIODO.fim){
     const iniMs = FILTRO_PERIODO.inicio.getTime(), fimMs = FILTRO_PERIODO.fim.getTime();
     lista = lista.filter(r => {
@@ -1048,7 +1121,14 @@ function renderStatsEEmpresas(){
   const ranking = Object.entries(porEmpresa).sort((a,b) => b[1].valor - a[1].valor);
   const maxValor = ranking.length ? ranking[0][1].valor : 1;
 
-  document.getElementById('rankEmpresas').innerHTML = ranking.length ? ranking.map(([empresa, d], i) => `
+  document.getElementById('rankEmpresas').innerHTML = ranking.length ? ranking.map(([empresa, d], i) => {
+    const ultimo = ultimoFechamentoEmpresa(empresa);
+    const fechadaAgora = ultimo && ultimo.chave === chaveMes(new Date());
+    const acaoHtml = fechadaAgora
+      ? `<span class="badge-historico" style="background:rgba(139,195,74,.12);color:var(--green);border-color:rgba(139,195,74,.35)" title="Fechado em ${new Date(ultimo.fechadoEm).toLocaleString('pt-BR')}">Fechado ${new Date(ultimo.fechadoEm).toLocaleDateString('pt-BR')}</span>
+         <button class="btn btn-outline btn-sm" data-reabrir="${empresa.replace(/"/g,'&quot;')}">Reabrir</button>`
+      : `<button class="btn btn-outline btn-sm" data-fechar="${empresa.replace(/"/g,'&quot;')}" title="Carimba as obras em aberto dela até agora; o que entrar depois vai pro próximo fechamento">Fechar mês</button>`;
+    return `
     <div class="rank-item">
       <div class="rank-pos">${i+1}º</div>
       <div class="rank-main">
@@ -1056,8 +1136,17 @@ function renderStatsEEmpresas(){
         <div class="rank-sub">${d.qtd} obra(s) · ticket médio ${fmtMoeda(d.valor / d.qtd)}</div>
         <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(d.valor/maxValor*100).toFixed(1)}%"></div></div>
       </div>
+      <div class="rank-fechar">${acaoHtml}</div>
     </div>
-  `).join('') : '<div class="empty-msg">Nenhuma obra no filtro atual.</div>';
+  `;
+  }).join('') : '<div class="empty-msg">Nenhuma obra no filtro atual.</div>';
+
+  document.querySelectorAll('#rankEmpresas [data-fechar]').forEach(btn => {
+    btn.addEventListener('click', () => fecharPrestadora(btn.dataset.fechar));
+  });
+  document.querySelectorAll('#rankEmpresas [data-reabrir]').forEach(btn => {
+    btn.addEventListener('click', () => reabrirPrestadora(btn.dataset.reabrir));
+  });
 }
 
 /* ═══════════════════════════ RENDER: orçamento manutenção (bolo único, todas as prestadoras) ═══════════════════════════ */
@@ -1287,16 +1376,17 @@ function renderOrcamento(){
   document.getElementById('budgetEditBox').style.display = '';
   renderContratosFixos(chaveFixo);
 
-  // orçamento é um bolo único por segmento — soma de TODAS as prestadoras e TODOS os
-  // relatórios cadastrados na tela que casam com a conta contábil do segmento ativo,
-  // ignora o filtro de empresa e a data do relatório: a base é zerada manualmente a
-  // cada fechamento de mês (ver excluirObra/btnResetSeed), então tudo que estiver aqui
-  // é o ciclo atual, ainda não pago (decidido com o Vinicius em 2026-08-15; segmentos
-  // Melhoria REDE e Preventiva adicionados em 2026-08-19). Manutenção e Implantação também
-  // somam os respectivos contratos fixos (VAL NOTURNO/DIURNO e SOUZA TELECOM), que não vêm
-  // de PDF importado (2026-08-19, generalizado em 2026-08-26). Também soma LPU preenchida
+  // orçamento é um bolo único por segmento — soma de TODAS as prestadoras (ainda em
+  // aberto, ver obraEstaFechada) e TODOS os relatórios cadastrados na tela que casam
+  // com a conta contábil do segmento ativo, ignora o filtro de empresa e a data do
+  // relatório: obra some daqui quando a prestadora dela é fechada individualmente
+  // (ver fecharPrestadora), então tudo que estiver aqui é o ciclo ainda em aberto,
+  // não fechado (decidido com o Vinicius em 2026-08-15; segmentos Melhoria REDE e
+  // Preventiva adicionados em 2026-08-19). Manutenção e Implantação também somam os
+  // respectivos contratos fixos (VAL NOTURNO/DIURNO e SOUZA TELECOM), que não vêm de
+  // PDF importado (2026-08-19, generalizado em 2026-08-26). Também soma LPU preenchida
   // pelo prestador direto no sistema, sem PDF anexado (ver OBRAS_LPU_SISTEMA, 2026-08-27).
-  const lista = todasObrasCombinadas().filter(segmento.match);
+  const lista = todasObrasCombinadas().filter(segmento.match).filter(r => !obraEstaFechada(r));
   const gastoLpu = lista.reduce((s,r) => s + r.totalGeral, 0);
   const gastoFixo = totalContratosFixosMes(chaveFixo, segmento.id);
   const gasto = gastoLpu + gastoFixo;
@@ -1505,7 +1595,7 @@ function renderOrcamentoGrupo(tipoGrupo){
 
   let gastoLpu = 0, gastoFixo = 0, budget = 0;
   contas.forEach(s => {
-    gastoLpu += todasObrasCombinadas().filter(s.match).reduce((sum,r) => sum + r.totalGeral, 0);
+    gastoLpu += todasObrasCombinadas().filter(s.match).filter(r => !obraEstaFechada(r)).reduce((sum,r) => sum + r.totalGeral, 0);
     gastoFixo += totalContratosFixosMes(chaveFixo, s.id);
     budget += budgetDoSegmento(chave, s.id);
   });
@@ -1841,7 +1931,7 @@ function renderExcluidosForaSegmento(){
 }
 
 function renderTabela(){
-  let lista = obrasFiltradas().map(r => ({
+  let lista = obrasFiltradas({ incluirFechadas: MOSTRAR_FECHADAS }).map(r => ({
     ...r,
     dataOrdenacao: (parseDataBR(r.periodoIni) || parseDataBR(r.dataRelatorio) || new Date(0)).getTime()
   }));
@@ -1857,7 +1947,9 @@ function renderTabela(){
   const tbody = document.getElementById('tbodyObras');
   document.getElementById('msgVazioObras').style.display = lista.length ? 'none' : 'block';
 
-  tbody.innerHTML = lista.map(r => `
+  tbody.innerHTML = lista.map(r => {
+    const chaveFechamento = fechamentoQueCobreObra(r);
+    return `
     <tr>
       <td><span class="pill-empresa">${r.empresa}</span></td>
       <td>${r.tecnico || '—'}</td>
@@ -1868,12 +1960,19 @@ function renderTabela(){
       <td>${r.aprovador || '—'}</td>
       <td>${fmtDataHora(r.importadoEm)}</td>
       <td>${fmtMoeda(r.totalGeral)}</td>
+      <td>${chaveFechamento ? `<span class="conta-tag">${labelMesChave(chaveFechamento)}</span>` : '<span style="color:var(--text-muted)">em aberto</span>'}</td>
       <td>${r.origemLpu
         ? '<span style="font-size:.68rem;color:var(--text-muted);font-style:italic">LPU no sistema</span>'
         : `<button class="btn btn-outline btn-sm" onclick="excluirObra('${r.id.replace(/'/g,"\\'")}')">Remover</button>`}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
+
+document.getElementById('chkMostrarFechadas').addEventListener('change', e => {
+  MOSTRAR_FECHADAS = e.target.checked;
+  renderTabela();
+});
 
 document.querySelectorAll('th[data-sort]').forEach(th => {
   th.addEventListener('click', () => {
@@ -1913,14 +2012,6 @@ function renderChipsEmpresa(){
     });
   });
 }
-
-document.getElementById('btnExcluirTodos').addEventListener('click', () => {
-  if (!confirm('Isso apaga TODOS os relatórios importados nesta tela (não dá pra desfazer). Use ao fechar o mês, depois que as prestadoras forem pagas. Continuar?')) return;
-  capturarSnapshotMes();
-  TODAS_OBRAS = [];
-  salvarObras(TODAS_OBRAS);
-  renderTudo();
-});
 
 document.getElementById('btnResetSeed').addEventListener('click', () => {
   if (!confirm('Isso apaga tudo que foi importado (pra TODO MUNDO que usa esta tela, os dados agora são compartilhados) e volta só para os PDFs que já estavam anexados originalmente. Continuar?')) return;
@@ -1972,6 +2063,7 @@ async function iniciar(){
     ESTADO_BUDGETS = normalizarBudgets(budgetsLocais || { '2026-08': { manutencao: 106000 } });
     ESTADO_HISTORICO = historicoLocal || [];
     ESTADO_EXCLUIDOS = excluidosLocais || [];
+    FECHAMENTOS_EMPRESA = {};
 
     await salvarObras(TODAS_OBRAS);
     await Promise.all([
@@ -1979,6 +2071,7 @@ async function iniciar(){
       persistirEstadoAgora('budgets', ESTADO_BUDGETS),
       persistirEstadoAgora('historico', ESTADO_HISTORICO),
       persistirEstadoAgora('excluidos', ESTADO_EXCLUIDOS),
+      persistirEstadoAgora('fechamentosEmpresa', FECHAMENTOS_EMPRESA),
     ]);
     await persistirEstadoAgora('bootstrap', 'v1');
   } else {
@@ -1987,6 +2080,7 @@ async function iniciar(){
     ESTADO_BUDGETS = normalizarBudgets(lerEstadoJson(resultado.estado.budgets, { '2026-08': { manutencao: 106000 } }));
     ESTADO_HISTORICO = lerEstadoJson(resultado.estado.historico, []);
     ESTADO_EXCLUIDOS = lerEstadoJson(resultado.estado.excluidos, []);
+    FECHAMENTOS_EMPRESA = lerEstadoJson(resultado.estado.fechamentosEmpresa, {});
   }
 
   // LPUs preenchidas pelo próprio prestador direto no sistema (não só PDF anexado) — pedido
