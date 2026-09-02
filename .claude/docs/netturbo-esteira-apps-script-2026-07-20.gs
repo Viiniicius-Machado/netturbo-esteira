@@ -291,6 +291,7 @@ function doPost(e) {
     if (acao === 'LPU_ATUALIZAR_PDF')    return atualizarLpuPdf(ss, data);
     if (acao === 'REGISTRAR_ORCAMENTO_MENSAL') return registrarOrcamentoMensal(ss, data);
     if (acao === 'SALVAR_OBRAS_PRESTADORAS') return salvarObrasPrestadoras(ss, data);
+    if (acao === 'SALVAR_PDF_OBRA_PRESTADORA') return salvarPdfObraPrestadora(ss, data);
     if (acao === 'SALVAR_ESTADO_CONTROLE_PRESTADORAS') return salvarEstadoControlePrestadoras(ss, data);
     if (acao === 'REGISTRAR_DISPONIBILIDADE')  return registrarDisponibilidade(ss, data);
     if (acao === 'EXCLUIR_DISPONIBILIDADE')    return excluirDisponibilidade(ss, data);
@@ -308,6 +309,10 @@ function doPost(e) {
     if (acao === 'EXCLUIR_TAREFA_AGENDA') return excluirTarefaAgenda(ss, data);
     if (acao === 'CONCLUIR_TAREFA_AGENDA') return concluirTarefaAgenda(ss, data);
     if (acao === 'MARCAR_TAREFA_VISTA')   return marcarTarefaVista(ss, data);
+    if (acao === 'CRIAR_NOTIFICACAO_CPFL')   return criarNotificacaoCpfl(ss, data);
+    if (acao === 'EDITAR_NOTIFICACAO_CPFL')  return editarNotificacaoCpfl(ss, data);
+    if (acao === 'EXCLUIR_NOTIFICACAO_CPFL') return excluirNotificacaoCpfl(ss, data);
+    if (acao === 'LIGAR_NOTIFICACAO_DESPACHO') return ligarNotificacaoDespacho(ss, data);
 
     return resposta('error', { message: 'Ação desconhecida: ' + acao });
   } catch (err) {
@@ -340,6 +345,8 @@ function doGet(e) {
   if (params.acao === 'LISTAR_CONTROLE_MATERIAL') return listarControleMaterial(ss);
   if (params.acao === 'LISTAR_AGENDA_PESSOA') return listarAgendaPessoa(ss, params);
   if (params.acao === 'CONTAR_TAREFAS_NAO_VISTAS') return contarTarefasNaoVistas(ss, params);
+  if (params.acao === 'LISTAR_NOTIFICACOES_CPFL') return listarNotificacoesCpfl(ss);
+  if (params.acao === 'LISTAR_LPU_ESTEIRA_CONTAS') return listarLpuEsteiraContas(ss);
   return resposta('ok', { sistema: 'Netturbo Esteira de Despacho' });
 }
 
@@ -695,7 +702,9 @@ const HEADERS_ACESSOS = ['Empresa','Técnico','PIN','Complemento Hash','Configur
 // etapa de LPU (preencher / NF / financeiro) é roteada para o responsável abaixo.
 const RESPONSAVEL_LPU_POR_EMPRESA = {
   "VAL": "Marcos Mendes Merino",
-  "SOUZA TELECOM": "Klheyton Barbosa de Souza"
+  "SOUZA TELECOM": "Klheyton Barbosa de Souza",
+  "FUSION TELECOM": "Edercley Gomes Macedo",
+  "FABIEDER": "Fabieder Firmino da Silva"
 };
 
 // Empresas que NÃO cobram por LPU (nada de "Pendente de Preenchimento LPU",
@@ -1539,6 +1548,25 @@ function validarAtividade(ss, data) {
     if (empresaApoio && EMPRESAS_SEM_LPU.indexOf(empresaApoio) === -1) {
       sheet.getRange(rowIndex, idx('Status LPU Apoio')).setValue('PENDENTE_DECISAO');
     }
+    // Acompanhamento de notificação da companhia elétrica (ver ligarNotificacaoDespacho)
+    // fecha o ciclo lá também se essa atividade veio de uma notificação da tela
+    // Acompanhamento Camp. Elétrica: Status vira CONCLUIDO com a RFO validada.
+    const idAtividadeAtual = sheet.getRange(rowIndex, idx('ID Atividade')).getValue();
+    const abaNotificacoes = ss.getSheetByName(ABA_NOTIFICACOES_CPFL);
+    if (abaNotificacoes && idAtividadeAtual) {
+    const idxNotif = h => HEADERS_NOTIFICACOES_CPFL.indexOf(h) + 1;
+    const colLigacao = idxNotif('ID Atividade Esteira');
+    const dadosNotif = abaNotificacoes.getLastRow() >= 2 ? abaNotificacoes.getRange(2, colLigacao, abaNotificacoes.getLastRow() - 1, 1).getValues() : [];
+    const posNotif = dadosNotif.findIndex(r => r[0] === idAtividadeAtual);
+    if (posNotif !== -1) {
+    const rowNotif = posNotif + 2;
+    abaNotificacoes.getRange(rowNotif, idxNotif('Status')).setValue('CONCLUIDO');
+    abaNotificacoes.getRange(rowNotif, idxNotif('Timestamp Conclusão')).setValue(new Date().toLocaleString('pt-BR'));
+    abaNotificacoes.getRange(rowNotif, idxNotif('RFO Solução')).setValue(data.solucao || '');
+    abaNotificacoes.getRange(rowNotif, idxNotif('RFO Materiais')).setValue(data.materiais || '');
+    abaNotificacoes.getRange(rowNotif, idxNotif('RFO Melhoria')).setValue(data.melhoria || '');
+    }
+    }
 
     return resposta('ok', {});
   } else {
@@ -2209,7 +2237,7 @@ const ABA_CONTROLE_PRESTADORAS_OBRAS = 'CONTROLE_PRESTADORAS_OBRAS';
 const HEADERS_CONTROLE_PRESTADORAS_OBRAS = [
   'ID', 'Empresa', 'CNPJ', 'Técnico', 'Cidade', 'Cliente/POP', 'ID Etiqueta',
   'Período Início', 'Período Fim', 'Data Relatório', 'Conta Código', 'Conta Descrição',
-  'Total Geral', 'Itens JSON', 'Arquivo', 'Importado Em', 'Aprovador'
+  'Total Geral', 'Itens JSON', 'Arquivo', 'Importado Em', 'Aprovador', 'PDF URL'
 ];
 const ABA_CONTROLE_PRESTADORAS_ESTADO = 'CONTROLE_PRESTADORAS_ESTADO';
 const HEADERS_CONTROLE_PRESTADORAS_ESTADO = ['Chave', 'Valor JSON', 'Atualizado Por', 'Atualizado Em'];
@@ -2235,7 +2263,7 @@ function listarControlePrestadoras(ss) {
         clientePop: row[5], idEtiqueta: row[6], periodoIni: fmtTextoLivre(row[7]),
         periodoFim: fmtTextoLivre(row[8]), dataRelatorio: fmtTextoLivre(row[9]),
         contaCodigo: row[10], contaDescricao: row[11], totalGeral: Number(row[12]) || 0,
-        itens: itens, arquivo: row[14], importadoEm: row[15], aprovador: row[16]
+        itens: itens, arquivo: row[14], importadoEm: row[15], aprovador: row[16], pdfUrl: row[17] || ''
       };
     });
   }
@@ -2270,11 +2298,36 @@ function salvarObrasPrestadoras(ss, data) {
       o.id || '', o.empresa || '', o.cnpj || '', o.tecnico || '', o.cidade || '',
       o.clientePop || '', o.idEtiqueta || '', o.periodoIni || '', o.periodoFim || '',
       o.dataRelatorio || '', o.contaCodigo || '', o.contaDescricao || '', Number(o.totalGeral) || 0,
-      JSON.stringify(o.itens || []), o.arquivo || '', o.importadoEm || '', o.aprovador || ''
+      JSON.stringify(o.itens || []), o.arquivo || '', o.importadoEm || '', o.aprovador || '', o.pdfUrl || ''
     ]);
     sheet.getRange(2, 1, valores.length, HEADERS_CONTROLE_PRESTADORAS_OBRAS.length).setValues(valores);
   }
   return resposta('ok', {});
+}
+
+// Sobe UM PDF original de obra importada pro Drive (pedido do Vinicius em
+// 2026-09-02: antes o sistema só lia os dados do PDF pra preencher a obra e
+// descartava o arquivo — não dava pra abrir de novo depois pra conferir). Chamado
+// pelo front uma vez por PDF, ANTES do SALVAR_OBRAS_PRESTADORAS que persiste a
+// lista inteira — assim o pdfUrl já vem pronto dentro do objeto da obra e não
+// precisa subir o arquivo de novo a cada vez que a lista inteira é resalva.
+function getOrCriarPastaObraPrestadora() {
+  const NOME_PASTA = 'Netturbo Esteira - PDFs Obras Prestadoras';
+  const pastas = DriveApp.getFoldersByName(NOME_PASTA);
+  if (pastas.hasNext()) return pastas.next();
+  return DriveApp.createFolder(NOME_PASTA);
+}
+
+function salvarPdfObraPrestadora(ss, data) {
+  const autor = autorizarAcao(ss, data, 'LIDERANCA', 'SALVAR_PDF_OBRA_PRESTADORA', data.autor, data.nomeArquivo || '');
+  if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+  if (!data.pdfBase64) return resposta('error', { message: 'pdfBase64 ausente' });
+  const bytes = Utilities.base64Decode(data.pdfBase64);
+  const blob = Utilities.newBlob(bytes, 'application/pdf', data.nomeArquivo || ('obra_' + new Date().getTime() + '.pdf'));
+  const pasta = getOrCriarPastaObraPrestadora();
+  const arquivo = pasta.createFile(blob);
+  arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return resposta('ok', { pdfUrl: arquivo.getUrl() });
 }
 
 // Upsert de uma chave só (contratosFixos/budgets/historico/excluidos) — cada
@@ -3112,4 +3165,142 @@ function adicionarColunasNovas() {
       Logger.log('Coluna "' + h + '" ja existe.');
     }
   });
+}
+// Acompanhamento Camp. Elétrica (notificações da companhia elétrica, ex. troca de
+// poste) — tela acompanhamento_cpfl.html. Aba própria NOTIFICACOES_CPFL, auto-criada
+// no 1º cadastro (garantirAba). Despachar (index.html) grava o ID Atividade Esteira
+// aqui (ligarNotificacaoDespacho); validar fecha o ciclo (ver bloco em validarAtividade).
+const ABA_NOTIFICACOES_CPFL = 'NOTIFICACOES_CPFL';
+const HEADERS_NOTIFICACOES_CPFL = [
+'ID','Timestamp Criação','Criado Por','Ação','Notificação','Cidade','Coordenadas',
+'Data','Prazo','Hora','Equipe','Status',
+'ID Atividade Esteira','Timestamp Despacho','Timestamp Conclusão',
+'RFO Solução','RFO Materiais','RFO Melhoria'
+];
+
+function criarNotificacaoCpfl(ss, data){
+const autor = autorizarAcao(ss, data, 'LIDERANCA', 'CRIAR_NOTIFICACAO_CPFL', null, data.notificacao || '');
+if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+const sheet = garantirAba(ss, ABA_NOTIFICACOES_CPFL, HEADERS_NOTIFICACOES_CPFL, '#1a1200', '#ffa000');
+const row = sheet.getLastRow() + 1;
+const id = 'CPFL-' + new Date().getTime();
+const idx = h => HEADERS_NOTIFICACOES_CPFL.indexOf(h) + 1;
+sheet.getRange(row, idx('Data'), 1, 1).setNumberFormat('@STRING@');
+sheet.getRange(row, idx('Prazo'), 1, 1).setNumberFormat('@STRING@');
+sheet.getRange(row, idx('Hora'), 1, 1).setNumberFormat('@STRING@');
+const valores = [
+id, new Date().toLocaleString('pt-BR'), autor,
+data.tipoAcao || '', data.notificacao || '', data.cidade || '', data.coordenadas || '',
+data.data || '', data.prazo || '', data.hora || '', data.equipe || '',
+'PLANEJADO',
+'','','',
+'','',''
+];
+sheet.getRange(row, 1, 1, valores.length).setValues([valores]);
+return resposta('ok', { id: id, rowIndex: row });
+}
+
+function editarNotificacaoCpfl(ss, data){
+const autor = autorizarAcao(ss, data, 'LIDERANCA', 'EDITAR_NOTIFICACAO_CPFL', null, 'rowIndex ' + data.rowIndex);
+if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+const sheet = ss.getSheetByName(ABA_NOTIFICACOES_CPFL);
+if (!sheet) return resposta('error', { message: 'Aba não encontrada.' });
+const rowIndex = parseInt(data.rowIndex);
+if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+const idx = h => HEADERS_NOTIFICACOES_CPFL.indexOf(h) + 1;
+const chaveHeader = { tipoAcao:'Ação', notificacao:'Notificação', cidade:'Cidade', coordenadas:'Coordenadas', data:'Data', prazo:'Prazo', hora:'Hora', equipe:'Equipe', status:'Status' };
+Object.keys(chaveHeader).forEach(c => {
+if (data[c] !== undefined) sheet.getRange(rowIndex, idx(chaveHeader[c])).setValue(data[c]);
+});
+return resposta('ok', {});
+}
+
+function excluirNotificacaoCpfl(ss, data){
+const autor = autorizarAcao(ss, data, 'LIDERANCA', 'EXCLUIR_NOTIFICACAO_CPFL', null, 'rowIndex ' + data.rowIndex);
+if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+const sheet = ss.getSheetByName(ABA_NOTIFICACOES_CPFL);
+if (!sheet) return resposta('error', { message: 'Aba não encontrada.' });
+const rowIndex = parseInt(data.rowIndex);
+if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+sheet.deleteRow(rowIndex);
+return resposta('ok', {});
+}
+
+function listarNotificacoesCpfl(ss){
+const sheet = ss.getSheetByName(ABA_NOTIFICACOES_CPFL);
+if (!sheet || sheet.getLastRow() < 2) return resposta('ok', { notificacoes: [] });
+const data = sheet.getDataRange().getValues();
+data.shift();
+const notificacoes = data.map((row, i) => {
+const obj = { rowIndex: i + 2 };
+HEADERS_NOTIFICACOES_CPFL.forEach((h, j) => { obj[h] = row[j]; });
+return obj;
+});
+return resposta('ok', { notificacoes: notificacoes });
+}
+
+function ligarNotificacaoDespacho(ss, data){
+const autor = autorizarAcao(ss, data, 'LIDERANCA', 'LIGAR_NOTIFICACAO_DESPACHO', null, 'rowIndex ' + data.rowIndex);
+if (!autor) return resposta('error', { message: 'Sessão expirada. Faça login novamente.' });
+const sheet = ss.getSheetByName(ABA_NOTIFICACOES_CPFL);
+if (!sheet) return resposta('error', { message: 'Aba não encontrada.' });
+const rowIndex = parseInt(data.rowIndex);
+if (!rowIndex) return resposta('error', { message: 'rowIndex ausente' });
+const idx = h => HEADERS_NOTIFICACOES_CPFL.indexOf(h) + 1;
+sheet.getRange(rowIndex, idx('ID Atividade Esteira')).setValue(data.idAtividadeEsteira || '');
+sheet.getRange(rowIndex, idx('Timestamp Despacho')).setValue(new Date().toLocaleString('pt-BR'));
+sheet.getRange(rowIndex, idx('Status')).setValue('DESPACHADO');
+return resposta('ok', {});
+}
+
+// Pra tela Controle de Obras/Prestadoras (controle_prestadoras.html) também contabilizar
+// as LPUs preenchidas pelo próprio prestador no sistema (não só PDF anexado) — pedido do
+// Vinicius em 2026-08-27. Devolve um registro por LPU preenchida (titular e/ou apoio, cada
+// atividade pode gerar até 2) com Total > 0, em qualquer estágio (a tela de Controle conta
+// o valor assim que a LPU é preenchida, igual já faz com PDF anexado — não espera validar/
+// aprovar). O front cruza por Etiqueta/Protocolo + empresa com o que já tem em
+// CONTROLE_PRESTADORAS_OBRAS pra não contar duas vezes se o mesmo serviço tiver as duas
+// coisas (ver mesclarLpuEsteira em controle_prestadoras.html). rowIndex incluído em cada
+// registro a partir de 2026-09-02 pra dar pra buscar o PDF depois (ver LPU_OBTER_PDF,
+// botão "Ver PDF" em controle_prestadoras.html).
+function listarLpuEsteiraContas(ss){
+  const hoje = new Date();
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+  const paraDataSegura = v => {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(String(v).trim());
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+  };
+  const dentroDoMesAtual = v => { const d = paraDataSegura(v); return !!(d && d >= inicioMes && d < fimMes); };
+const sheet = ss.getSheetByName(ABA_ESTEIRA);
+if (!sheet || sheet.getLastRow() < 2) return resposta('ok', { registros: [] });
+const col = h => HEADERS_ESTEIRA.indexOf(h);
+const data = sheet.getDataRange().getValues();
+data.shift();
+const registros = [];
+data.forEach((row, i) => {
+const idAtividade = row[col('ID Atividade')];
+const etiqueta = row[col('Etiqueta')] || '';
+const protocolo = row[col('Protocolo O&M')] || row[col('Protocolo NOC')] || '';
+const contaContabil = row[col('Conta Contábil')] || '';
+const cliente = row[col('Cliente')] || '';
+const timestampRecebido = row[col('Timestamp Recebido')] || '';
+const lpuTotal = Number(row[col('LPU Total')]) || 0;
+if (lpuTotal > 0 && dentroDoMesAtual(row[col('LPU Timestamp Preenchimento')])){
+registros.push({ rowIndex: i + 2, idAtividade, etiqueta, protocolo, contaContabil, cliente, timestampRecebido,
+empresa: row[col('Empresa')] || '', cnpj: row[col('LPU CNPJ')] || '',
+tecnico: row[col('Técnico')] || row[col('LPU Técnicos')] || '', totalGeral: lpuTotal, origem: 'titular' });
+}
+const lpuApoioTotal = Number(row[col('LPU Apoio Total')]) || 0;
+if (lpuApoioTotal > 0 && dentroDoMesAtual(row[col('LPU Apoio Timestamp Preenchimento')])){
+registros.push({ rowIndex: i + 2, idAtividade, etiqueta, protocolo, contaContabil, cliente, timestampRecebido,
+empresa: row[col('Empresa Apoio')] || '', cnpj: row[col('LPU Apoio CNPJ')] || '',
+tecnico: row[col('Técnico Apoio')] || row[col('LPU Apoio Técnicos')] || '', totalGeral: lpuApoioTotal, origem: 'apoio' });
+}
+});
+return resposta('ok', { registros });
 }
