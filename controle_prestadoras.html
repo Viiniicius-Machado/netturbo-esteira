@@ -2252,6 +2252,12 @@ function renderTudo(){
 }
 
 async function iniciar(){
+  // o Apps Script pode levar 10-15s pra responder (redirect + cold start) e até então
+  // a tela fica só com o markup padrão (tudo "–", tabela vazia) sem nenhum aviso — parece
+  // travada/quebrada. Mostra "Carregando..." pra deixar claro que só está esperando o servidor.
+  const rankEmpresasEl = document.getElementById('rankEmpresas');
+  if (rankEmpresasEl) rankEmpresasEl.innerHTML = '<div style="padding:1rem;color:var(--text-dim)">Carregando dados do servidor...</div>';
+
   let resultado;
   try { resultado = await apiGet('acao=LISTAR_CONTROLE_PRESTADORAS'); }
   catch(e){ resultado = null; }
