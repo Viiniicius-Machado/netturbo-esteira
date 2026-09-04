@@ -1251,6 +1251,22 @@ function renderStatsEEmpresas(){
     porEmpresa[r.empresa].valor += r.totalGeral;
     porEmpresa[r.empresa].qtd += 1;
   });
+  // 2026-09-04: se uma prestadora ficou com ZERO obras em aberto (todas caíram no fechamento
+  // do mês atual), ela não aparece em `lista` (que exclui fechadas) e por isso sumia dessa
+  // lista inteira — levando junto o único lugar onde existe o botão "Reabrir", travando o
+  // fechamento pra sempre sem jeito de desfazer pela tela (bug real: FABIEDER em 2026-09-04).
+  // Adiciona ela de volta aqui, mostrando o total do que foi fechado, só pra manter o Reabrir
+  // acessível — nunca conta pros cards de topo (Valor a Receber etc.), que seguem vindo de `lista`.
+  if (!emPeriodoFechado){
+    const chaveAtual = chaveMes(new Date());
+    const empresasComObraAberta = new Set(Object.keys(porEmpresa));
+    obrasFiltradas({ incluirFechadas:true }).forEach(r => {
+      if (empresasComObraAberta.has(r.empresa) || fechamentoQueCobreObra(r) !== chaveAtual) return;
+      if (!porEmpresa[r.empresa]) porEmpresa[r.empresa] = { valor:0, qtd:0 };
+      porEmpresa[r.empresa].valor += r.totalGeral;
+      porEmpresa[r.empresa].qtd += 1;
+    });
+  }
   const ranking = Object.entries(porEmpresa).sort((a,b) => b[1].valor - a[1].valor);
   const maxValor = ranking.length ? ranking[0][1].valor : 1;
 
@@ -2311,11 +2327,17 @@ async function iniciar(){
     // reconhece pelo CNPJ (ver EMPRESA_POR_CNPJ), mas ela só roda uma vez, na importação;
     // corrigir a regra não migra sozinho o que já estava salvo, por isso esse ajuste.
     // Idempotente: só reescreve e salva se achar alguma obra desatualizada.
+    // 2026-09-04: recalcula também o `id` (que embute o nome da empresa, ver idRegistro) junto
+    // com o `empresa` — só trocar o campo e manter o id antigo deixa o registro "órfão": um
+    // reimport do mesmo PDF depois da migração calcula um id novo (com o nome já corrigido) que
+    // não bate mais com o id antigo salvo, e processarArquivos entende como obra nova em vez de
+    // atualizar a existente (duplicando o valor). Bug real: aconteceu com FABIEDER em 2026-09-04.
     let precisaMigrarEmpresa = false;
     TODAS_OBRAS.forEach(r => {
       const esperado = EMPRESA_POR_CNPJ[somenteDigitos(r.cnpj)];
       if (esperado && r.empresa !== esperado){
         r.empresa = esperado;
+        r.id = idRegistro(r);
         precisaMigrarEmpresa = true;
       }
     });
@@ -2328,16 +2350,26 @@ async function iniciar(){
     FECHAMENTOS_EMPRESA = lerEstadoJson(resultado.estado.fechamentosEmpresa, {});
     FECHAMENTOS_CONTRATO_FIXO = lerEstadoJson(resultado.estado.fechamentosContratoFixo, {});
 
-    // mesma migração RHIKELMY → FUSION TELECOM (ver acima), agora nos fechamentos já
-    // registrados — sem isso um fechamento feito sob o nome antigo ficaria órfão (nenhuma
-    // obra bate mais com aquele nome depois da migração acima).
-    const chaveRhikelmy = Object.keys(FECHAMENTOS_EMPRESA).find(k => /RHIKELMY/i.test(k));
-    if (chaveRhikelmy){
+    // migração de fechamentos presos em nome antigo (2026-08-28, generalizada em 2026-09-04
+    // a partir do caso pontual RHIKELMY→FUSION TELECOM): roda a mesma resolução de nome usada
+    // na importação (normalizarEmpresa, sem CNPJ — só os fallbacks de texto, ex. .includes
+    // ('FABIEDER')) contra toda chave salva aqui; se resolver pra um nome diferente, funde o
+    // fechamento nele. Sem isso um fechamento feito sob o nome antigo (pessoa física/grafia
+    // divergente no PDF) fica órfão pra sempre, porque nenhuma obra bate mais com aquele nome
+    // depois da migração por CNPJ acima (bug real: aconteceu com "FABIEDER FIRMINO DA SILVA").
+    const chavesOrfas = Object.keys(FECHAMENTOS_EMPRESA).filter(k => {
+      const canonico = normalizarEmpresa(k, '');
+      return canonico && canonico !== k && canonico !== 'DESCONHECIDA';
+    });
+    if (chavesOrfas.length){
       const fechamentos = { ...FECHAMENTOS_EMPRESA };
-      fechamentos['FUSION TELECOM'] = (fechamentos['FUSION TELECOM'] || [])
-        .concat(fechamentos[chaveRhikelmy])
-        .sort((a,b) => new Date(a.fechadoEm) - new Date(b.fechadoEm));
-      delete fechamentos[chaveRhikelmy];
+      chavesOrfas.forEach(chaveAntiga => {
+        const chaveNova = normalizarEmpresa(chaveAntiga, '');
+        fechamentos[chaveNova] = (fechamentos[chaveNova] || [])
+          .concat(fechamentos[chaveAntiga])
+          .sort((a,b) => new Date(a.fechadoEm) - new Date(b.fechadoEm));
+        delete fechamentos[chaveAntiga];
+      });
       salvarFechamentosEmpresa(fechamentos);
     }
 
