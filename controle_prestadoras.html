@@ -457,7 +457,7 @@ let ORDENACAO_TABELA = { campo: 'dataOrdenacao', dir: -1 };
 let MOSTRAR_FECHADAS = false; // tabela "Obras Importadas": inclui obras já fechadas (ver obraEstaFechada)
 
 /* ═══════════════════════════ UTIL ═══════════════════════════ */
-function somenteDigitos(s){ return (s || '').replace(/\D/g, ''); }
+function somenteDigitos(s){ return String(s == null ? '' : s).replace(/\D/g, ''); }
 
 // Vários prestadores emitem o relatório no nome da pessoa física (MEI), não da razão
 // social do grupo — pedido do Vinicius em 2026-09-04: em vez de codificar um `.includes`
