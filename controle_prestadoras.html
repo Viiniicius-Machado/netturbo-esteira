@@ -457,16 +457,44 @@ let ORDENACAO_TABELA = { campo: 'dataOrdenacao', dir: -1 };
 let MOSTRAR_FECHADAS = false; // tabela "Obras Importadas": inclui obras já fechadas (ver obraEstaFechada)
 
 /* ═══════════════════════════ UTIL ═══════════════════════════ */
-function normalizarEmpresa(nome){
+function somenteDigitos(s){ return (s || '').replace(/\D/g, ''); }
+
+// Vários prestadores emitem o relatório no nome da pessoa física (MEI), não da razão
+// social do grupo — pedido do Vinicius em 2026-09-04: em vez de codificar um `.includes`
+// por pessoa (frágil a variação de grafia/espaçamento no PDF, ex. "SOARESMACEDO" colado),
+// mapeia por CNPJ, que é fixo e vem junto do nome no mesmo regex (ver parsearRelatorio).
+// Fonte: CNPJ_POR_EMPRESA em PREENCHIMENTO_LPU.html (mesmo CNPJ que já vai pro relatório
+// de LPU automaticamente) — se cadastrar prestador novo lá, replicar o CNPJ aqui também
+// (não tem módulo compartilhado entre as telas, cada .html é independente).
+const EMPRESA_POR_CNPJ = {
+  '47114651000176': 'VAL TELECOM',
+  '37986202000164': 'SOLUTEC',
+  '54851754000184': 'OLIVEIRA TELECOM', // ex.: EVANEIS SILVA OLIVEIRA
+  '54029825000168': 'PV TELECOM',
+  '53354002000145': 'DOIS IRMÃOS',
+  '44547517000170': 'SOUZA TELECOM',
+  '51944068000160': 'FUSION TELECOM', // RHIKELMY SOARES MACEDO
+  '06347643000192': 'SPEEDY SERVICE',
+  '33266195000175': 'EFM TELECOMUNICAÇÕES LTDA',
+  '42168745000104': 'J.K TELECOM',
+  '48000266000160': 'EAGLE TELECOM',
+  '63111114000129': 'WALTINEY',
+  '54594463000158': 'CAF',
+  '57345891000135': 'FABIEDER',       // FABIEDER FIRMINO DA SILVA
+  '24940278000107': 'EMCALE',
+  '65473257000106': 'LIMER ON',
+};
+function normalizarEmpresa(nome, cnpj){
+  const porCnpj = EMPRESA_POR_CNPJ[somenteDigitos(cnpj)];
+  if (porCnpj) return porCnpj;
   const n = (nome || '').toUpperCase().trim().replace(/\s+/g,' ');
   if (n.includes('VAL')) return 'VAL TELECOM';
   if (n.includes('SOLUTEC')) return 'SOLUTEC';
   if (n.includes('OLIVEIRA')) return 'OLIVEIRA TELECOM';
   if (n.includes('PV')) return 'PV TELECOM';
-  // PDF às vezes vem anexado/nomeado com o nome da pessoa (RHIKELMY SOARES MACEDO,
-  // CNPJ 51.944.068/0001-60) em vez da razão social — pedido do Vinicius em 2026-08-28
-  // pra reconhecer isso como FUSION TELECOM, igual já acontece com VAL/SOLUTEC/etc.
+  // fallback por nome, pra quando o CNPJ vier ilegível/ausente do PDF
   if (n.includes('RHIKELMY')) return 'FUSION TELECOM';
+  if (n.includes('FABIEDER')) return 'FABIEDER';
   return n || 'DESCONHECIDA';
 }
 
@@ -485,7 +513,7 @@ function transformarRegistroLpu(reg){
   const dataStr = reg.timestampRecebido ? new Date(reg.timestampRecebido).toLocaleDateString('pt-BR') : '';
   return {
     id: 'LPU-' + reg.origem + '-' + reg.idAtividade,
-    empresa: normalizarEmpresa(reg.empresa),
+    empresa: normalizarEmpresa(reg.empresa, reg.cnpj),
     cnpj: reg.cnpj || '',
     tecnico: reg.tecnico || '',
     cidade: '',
@@ -850,7 +878,7 @@ function idRegistro(rec){
 function normalizarRegistroSeed(r){
   return {
     id: null, // preenchido depois de normalizar empresa
-    empresa: normalizarEmpresa(r.empresa || r.pastaEmpresa),
+    empresa: normalizarEmpresa(r.empresa || r.pastaEmpresa, r.cnpj),
     cnpj: r.cnpj || '',
     tecnico: r.tecnico || '',
     cidade: r.cidade || '',
@@ -1042,7 +1070,7 @@ function parsearRelatorio(flat, nomeArquivo){
     });
   }
 
-  rec.empresa = normalizarEmpresa(rec.empresa);
+  rec.empresa = normalizarEmpresa(rec.empresa, rec.cnpj);
   rec.id = idRegistro(rec);
   return rec;
 }
@@ -2271,16 +2299,17 @@ async function iniciar(){
   } else {
     TODAS_OBRAS = resultado.obras;
 
-    // migração pontual (2026-08-28): obras importadas com o PDF anexado/nomeado com o
-    // nome da pessoa (RHIKELMY SOARES MACEDO) em vez da razão social — pedido do
-    // Vinicius pra reconhecer como FUSION TELECOM (CNPJ 51.944.068/0001-60, ver
-    // normalizarEmpresa). normalizarEmpresa só roda uma vez, na importação — corrigir a
-    // regra não migra sozinho o que já estava salvo, por isso esse ajuste pontual.
-    // Idempotente: só reescreve e salva se achar alguma obra com o nome antigo.
+    // migração (2026-08-28, generalizada em 2026-09-04): obras importadas com o PDF
+    // anexado/nomeado com o nome da pessoa física (RHIKELMY SOARES MACEDO, FABIEDER
+    // FIRMINO DA SILVA, ...) em vez da razão social do grupo — normalizarEmpresa já
+    // reconhece pelo CNPJ (ver EMPRESA_POR_CNPJ), mas ela só roda uma vez, na importação;
+    // corrigir a regra não migra sozinho o que já estava salvo, por isso esse ajuste.
+    // Idempotente: só reescreve e salva se achar alguma obra desatualizada.
     let precisaMigrarEmpresa = false;
     TODAS_OBRAS.forEach(r => {
-      if (r.empresa && /RHIKELMY/i.test(r.empresa) && r.empresa !== 'FUSION TELECOM'){
-        r.empresa = 'FUSION TELECOM';
+      const esperado = EMPRESA_POR_CNPJ[somenteDigitos(r.cnpj)];
+      if (esperado && r.empresa !== esperado){
+        r.empresa = esperado;
         precisaMigrarEmpresa = true;
       }
     });
