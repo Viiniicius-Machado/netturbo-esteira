@@ -1187,7 +1187,17 @@ async function processarArquivos(fileList){
         erros++;
         continue;
       }
-      const existente = mapa.get(rec.id);
+      // Mesmo arquivo importado antes com leitura falha (sem CNPJ e sem itens — ex.: PDF
+      // "_signed.pdf" da EMCALE lido antes de lerRelatorio, que virou "DESCONHECIDA" com id
+      // lixo): o id antigo nunca bate com o novo, então sem isso reimportar duplicaria a obra.
+      let quebrado = null;
+      for (const [id, r] of mapa){
+        if (id !== rec.id && r.arquivo === rec.arquivo && !r.cnpj && !(r.itens || []).length){
+          quebrado = quebrado || r;
+          mapa.delete(id);
+        }
+      }
+      const existente = mapa.get(rec.id) || quebrado;
       rec.aprovador = aprovadorAtual;
       // "Importado em" preserva a 1ª vez que a obra entrou no orçamento — reimportar (ex.:
       // PDF corrigido) não deve mexer nessa data, só o aprovador reflete quem tocou por último.
