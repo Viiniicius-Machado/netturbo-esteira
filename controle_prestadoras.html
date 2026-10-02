@@ -1291,32 +1291,32 @@ function renderStatsEEmpresas(){
     porEmpresa[r.empresa].valor += r.totalGeral;
     porEmpresa[r.empresa].qtd += 1;
   });
-  // 2026-09-04: se uma prestadora ficou com ZERO obras em aberto (todas caíram no fechamento
-  // do mês atual), ela não aparece em `lista` (que exclui fechadas) e por isso sumia dessa
-  // lista inteira — levando junto o único lugar onde existe o botão "Reabrir", travando o
-  // fechamento pra sempre sem jeito de desfazer pela tela (bug real: FABIEDER em 2026-09-04).
-  // Adiciona ela de volta aqui, mostrando o total do que foi fechado, só pra manter o Reabrir
-  // acessível — nunca conta pros cards de topo (Valor a Receber etc.), que seguem vindo de `lista`.
-  if (!emPeriodoFechado){
-    const chaveAtual = chaveMes(new Date());
-    const empresasComObraAberta = new Set(Object.keys(porEmpresa));
-    obrasFiltradas({ incluirFechadas:true }).forEach(r => {
-      if (empresasComObraAberta.has(r.empresa) || fechamentoQueCobreObra(r) !== chaveAtual) return;
-      if (!porEmpresa[r.empresa]) porEmpresa[r.empresa] = { valor:0, qtd:0 };
-      porEmpresa[r.empresa].valor += r.totalGeral;
-      porEmpresa[r.empresa].qtd += 1;
-    });
-  }
+  // 2026-10-02 (pedido do Vinicius): prestadora fechada no mês SOME do ciclo atual — antes
+  // (2026-09-04) ela era readicionada aqui com o total do fechamento só pra manter o botão
+  // "Reabrir" acessível, mas isso deixava quantidade/valor do mês aparecendo como se ainda
+  // estivesse em aberto. O "Reabrir" foi pra visão "Mês fechado" (ver acaoHtml abaixo); aqui
+  // fica só um aviso apontando pra lá.
+  const chaveAtual = chaveMes(new Date());
+  const fechadasNoMes = emPeriodoFechado ? [] : Object.keys(carregarFechamentosEmpresa())
+    .filter(e => !porEmpresa[e] && (!EMPRESA_ATIVA || e === EMPRESA_ATIVA))
+    .filter(e => { const u = ultimoFechamentoEmpresa(e); return u && u.chave === chaveAtual; });
   const ranking = Object.entries(porEmpresa).sort((a,b) => b[1].valor - a[1].valor);
   const maxValor = ranking.length ? ranking[0][1].valor : 1;
 
   document.getElementById('rankEmpresas').innerHTML = ranking.length ? ranking.map(([empresa, d], i) => {
     // Fechar/Reabrir só fazem sentido no ciclo ao vivo — período já fechado é só leitura
     // (pedido do Vinicius em 2026-09-02, junto com a reconstrução do filtro "Mês fechado").
+    // Exceção: o fechamento do mês corrente pode ser reaberto pela visão "Mês fechado" daquele
+    // mês (único lugar onde a prestadora fechada aparece agora, ver fechadasNoMes acima).
     let acaoHtml = '';
-    if (!emPeriodoFechado){
-      const ultimo = ultimoFechamentoEmpresa(empresa);
-      const fechadaAgora = ultimo && ultimo.chave === chaveMes(new Date());
+    const ultimo = ultimoFechamentoEmpresa(empresa);
+    if (emPeriodoFechado){
+      if (FILTRO_PERIODO.tipo === 'mes' && ultimo && ultimo.chave === chaveAtual && FILTRO_PERIODO.chave === chaveAtual){
+        acaoHtml = `<span class="badge-historico" style="background:rgba(139,195,74,.12);color:var(--green);border-color:rgba(139,195,74,.35)" title="Fechado em ${new Date(ultimo.fechadoEm).toLocaleString('pt-BR')}">Fechado ${new Date(ultimo.fechadoEm).toLocaleDateString('pt-BR')}</span>
+           <button class="btn btn-outline btn-sm" data-reabrir="${empresa.replace(/"/g,'&quot;')}">Reabrir</button>`;
+      }
+    } else {
+      const fechadaAgora = ultimo && ultimo.chave === chaveAtual;
       acaoHtml = fechadaAgora
         ? `<span class="badge-historico" style="background:rgba(139,195,74,.12);color:var(--green);border-color:rgba(139,195,74,.35)" title="Fechado em ${new Date(ultimo.fechadoEm).toLocaleString('pt-BR')}">Fechado ${new Date(ultimo.fechadoEm).toLocaleDateString('pt-BR')}</span>
            <button class="btn btn-outline btn-sm" data-reabrir="${empresa.replace(/"/g,'&quot;')}">Reabrir</button>`
@@ -1334,6 +1334,9 @@ function renderStatsEEmpresas(){
     </div>
   `;
   }).join('') : '<div class="empty-msg">Nenhuma obra no filtro atual.</div>';
+  if (fechadasNoMes.length){
+    document.getElementById('rankEmpresas').innerHTML += `<div class="empty-msg">✓ Mês já fechado: ${fechadasNoMes.join(', ')} — veja (ou reabra) em <b>Mês fechado</b>.</div>`;
+  }
 
   document.querySelectorAll('#rankEmpresas [data-fechar]').forEach(btn => {
     btn.addEventListener('click', () => fecharPrestadora(btn.dataset.fechar));
