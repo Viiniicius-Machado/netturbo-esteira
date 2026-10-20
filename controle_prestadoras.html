@@ -194,6 +194,8 @@
   .contrato-excedente label{flex:1;min-width:0}
   .contrato-excedente input[type=number]{width:60px;flex-shrink:0;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--text);font-size:.8rem;padding:.3rem .4rem;font-family:'Rajdhani',sans-serif;font-weight:700}
   .contrato-excedente b{color:var(--amber);flex-shrink:0}
+  .contrato-desconto input[type=number]{width:90px}
+  .contrato-desconto b{color:var(--red)}
   .contrato-improdutivas{font-size:.72rem;color:var(--red);background:color-mix(in srgb, var(--red) 12%, transparent);border:1px solid color-mix(in srgb, var(--red) 35%, transparent);border-radius:6px;padding:.5rem .6rem;margin-top:.4rem;line-height:1.4}
   .contrato-subtotal{margin-top:.7rem;padding-top:.6rem;border-top:1px solid var(--border-hi);font-family:'Rajdhani',sans-serif;font-weight:700;display:flex;justify-content:space-between;font-size:.85rem}
   .contratos-total{margin-top:1rem;padding-top:.9rem;border-top:1px solid var(--border-hi);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;display:flex;justify-content:space-between;gap:1rem}
@@ -289,6 +291,7 @@
               <div class="linha-sub" id="linhaContratoFixo">↳ Contrato Fixo <b id="orcFixo">–</b></div>
               <div class="linha-sub" id="linhaVariaveis">↳ Variáveis batidas <b id="orcVariaveis">–</b></div>
               <div class="linha-sub" id="linhaImprodutivas" style="color:var(--red)">↳ Improdutivas (informativo) <b id="orcImprodutivas">–</b></div>
+              <div class="linha-sub" id="linhaDescontos" style="color:var(--red);display:none">↳ Descontos (já abatidos) <b id="orcDescontos">–</b></div>
               <div>Orçamento <b id="orcBudget">–</b></div>
               <div class="linha-destaque">Saldo <b id="orcSaldo">–</b></div>
               <div>Ritmo diário (LPU) <b id="orcRitmo">–</b></div>
@@ -726,11 +729,29 @@ function setExcedenteValorManual(chave, contratoId, valor){
   salvarContratosFixos(dados);
 }
 
-function totalContratoFixo(chave, contrato){
+// Desconto do ciclo (faltas etc.) digitado em R$ — vale pra qualquer contrato fixo e
+// SUBTRAI do Total, diferente das improdutivas que são só informativas (pedido do
+// Vinicius em 2026-10-20: no mês com falta o contrato não é pago cheio).
+function descontoContrato(chave, contratoId){
+  const dados = carregarContratosFixos();
+  return Number(dados[chave] && dados[chave][contratoId] && dados[chave][contratoId]._desconto) || 0;
+}
+function setDescontoContrato(chave, contratoId, valor){
+  const dados = carregarContratosFixos();
+  if (!dados[chave]) dados[chave] = {};
+  if (!dados[chave][contratoId]) dados[chave][contratoId] = {};
+  dados[chave][contratoId]._desconto = valor;
+  salvarContratosFixos(dados);
+}
+
+function totalContratoFixoBruto(chave, contrato){
   const totalVariaveis = contrato.variaveis.reduce((s,v) => s + (variavelBatida(chave, contrato.id, v.id) ? v.valor : 0), contrato.valorFixo);
   if (contrato.modoExcedente === 'valor') return totalVariaveis + excedenteValorManual(chave, contrato.id);
   if (contrato.metaAtividades && contrato.valorExcedente) return totalVariaveis + excedenteAtividades(chave, contrato) * contrato.valorExcedente;
   return totalVariaveis;
+}
+function totalContratoFixo(chave, contrato){
+  return Math.max(0, totalContratoFixoBruto(chave, contrato) - descontoContrato(chave, contrato.id));
 }
 function totalContratosFixosMes(chave, segId){
   return contratosDoSegmento(segId).reduce((s,c) => s + totalContratoFixo(chave, c), 0);
@@ -1472,6 +1493,11 @@ function renderContratosFixos(chave){
         </div>
       `).join('')}
       ${campoExcedenteHtml(chave, c, fechado)}
+      <div class="contrato-excedente contrato-desconto">
+        <label>Desconto no mês (faltas etc.) — R$</label>
+        <input type="number" min="0" step="0.01" data-desconto-contrato="${c.id}" value="${descontoContrato(chave, c.id) || ''}" placeholder="0,00" ${fechado ? 'disabled' : ''}/>
+        ${descontoContrato(chave, c.id) ? `<b>−${fmtMoeda(descontoContrato(chave, c.id))}</b>` : ''}
+      </div>
       <div class="contrato-subtotal"><span>Total ${c.label}</span><span>${fmtMoeda(totalContratoFixo(chave, c))}</span></div>
     </div>
   `;
@@ -1508,6 +1534,11 @@ function renderContratosFixos(chave){
       setExcedenteValorManual(chave, inp.dataset.excedenteValorContrato, Math.max(0, Number(inp.value) || 0));
       renderOrcamento();
     });
+  });
+  document.querySelectorAll('#contratosFixosBody input[data-desconto-contrato]').forEach(inp => {
+    const ler = () => Math.max(0, Number(inp.value) || 0);
+    inp.addEventListener('input', () => setDescontoContrato(chave, inp.dataset.descontoContrato, ler()));
+    inp.addEventListener('change', () => { setDescontoContrato(chave, inp.dataset.descontoContrato, ler()); renderOrcamento(); });
   });
 
   document.getElementById('totalContratosFixos').textContent = fmtMoeda(totalContratosFixosMes(chave, SEGMENTO_ATIVO));
@@ -1627,10 +1658,14 @@ function renderOrcamento(){
     } else {
       linhaImpEl.style.display = 'none';
     }
+    const totalDescontos = contratosSeg.reduce((s,c) => s + descontoContrato(chaveFixo, c.id), 0);
+    document.getElementById('linhaDescontos').style.display = totalDescontos > 0 ? '' : 'none';
+    document.getElementById('orcDescontos').textContent = '−' + fmtMoeda(totalDescontos);
   } else {
     linhaFixoEl.style.display = 'none';
     document.getElementById('linhaVariaveis').style.display = 'none';
     document.getElementById('linhaImprodutivas').style.display = 'none';
+    document.getElementById('linhaDescontos').style.display = 'none';
   }
   renderEvolucaoLpu(chave, segmento);
   renderEvolucaoFixo(chave, chaveFixo, segmento);
@@ -1743,6 +1778,7 @@ function renderOrcamentoHistoricoHtml(segmento, dadosSeg, subtitulo){
   document.getElementById('excluidosForaSegmento').innerHTML = '';
   document.getElementById('linhaVariaveis').style.display = 'none';
   document.getElementById('linhaImprodutivas').style.display = 'none';
+  document.getElementById('linhaDescontos').style.display = 'none';
 
   const linhaFixoEl = document.getElementById('linhaContratoFixo');
   if (!dadosSeg){
@@ -1835,6 +1871,7 @@ function renderOrcamentoGrupo(tipoGrupo){
   document.getElementById('excluidosForaSegmento').innerHTML = '';
   document.getElementById('linhaVariaveis').style.display = 'none';
   document.getElementById('linhaImprodutivas').style.display = 'none';
+  document.getElementById('linhaDescontos').style.display = 'none';
 
   let gastoLpu = 0, gastoFixo = 0, budget = 0;
   contas.forEach(s => {
