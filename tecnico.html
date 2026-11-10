@@ -187,6 +187,7 @@
     .tec-ag-task-anexos a{font-size:.68rem;color:var(--accent);text-decoration:none;background:rgba(168,201,60,.08);border:1px solid var(--border-hi);border-radius:6px;padding:.25rem .5rem}
     .tec-ag-anexar{margin-top:.55rem;font-size:.68rem;color:var(--text-dim);border:1px dashed var(--border-hi);border-radius:6px;padding:.35rem .6rem;display:inline-flex;align-items:center;gap:.3rem;cursor:pointer}
     .tec-ag-anexar:hover{border-color:var(--accent);color:var(--accent)}
+    .tec-ag-travada{margin-top:.55rem;font-size:.68rem;color:var(--text-muted);display:inline-flex;align-items:center;gap:.3rem}
     .tec-ag-empty{font-size:.8rem;color:var(--text-muted);padding:1rem 0;text-align:center}
   </style>
 </head>
@@ -592,18 +593,21 @@ function tecAgRender(){
     html += `<div class="tec-ag-date">${dia}/${mes}/${ano}</div>`;
     porData[data].forEach(t => {
       html += `<div class="tec-ag-task ${t.concluido ? 'tec-ag-concluido' : ''} ${!t.visto ? 'tec-ag-unseen' : ''}">
-        <div class="tec-ag-task-title"><input type="checkbox" ${t.concluido ? 'checked' : ''} onchange="tecAgConcluir('${t.id}', this.checked)"/> ${tecAgEsc(t.titulo)}</div>
+        <div class="tec-ag-task-title"><input type="checkbox" ${t.concluido ? 'checked disabled title="Concluída — só a liderança reabre"' : ''} onchange="tecAgConcluir('${t.id}', this.checked)"/> ${tecAgEsc(t.titulo)}</div>
         ${t.descricao ? `<div class="tec-ag-task-desc">${tecAgEsc(t.descricao)}</div>` : ''}
         <div class="tec-ag-task-meta">
           <span>${tecAgEsc(t.criadoPor)}</span>
           ${t.mencionados.map(m => `<span class="tec-ag-mention-pill">@${tecAgEsc(m.nome)}</span>`).join('')}
         </div>
         ${t.anexos.length ? `<div class="tec-ag-task-anexos">${t.anexos.map(a => `<a href="${a.url}" target="_blank" rel="noopener">${tecAgEsc(a.nome)}</a>`).join('')}</div>` : ''}
-        <label class="tec-ag-anexar">
+        ${t.concluido ? `<div class="tec-ag-travada">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Concluída — não aceita mais fotos/anexos
+        </div>` : `<label class="tec-ag-anexar">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           Anexar foto ou arquivo
           <input type="file" accept="image/*,.pdf" style="display:none" onchange="tecAgAnexar('${t.id}', this)"/>
-        </label>
+        </label>`}
       </div>`;
     });
   });
@@ -621,13 +625,18 @@ async function tecAgConcluir(id, concluido){
 function tecAgAnexar(id, input){
   const file = input.files && input.files[0];
   if(!file) return;
+  // Tarefa concluída (pelo técnico ou pela liderança) não recebe mais foto — o backend
+  // também recusa, isso aqui só evita o upload à toa se a tela estiver desatualizada.
+  if((tecAgTarefas.find(t=>t.id===id)||{}).concluido){ input.value = ''; showToast('Tarefa concluída — não aceita mais anexos.'); return; }
   const reader = new FileReader();
   reader.onload = async () => {
     try{
-      await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
         body: JSON.stringify({ acao:'CRIAR_TAREFA_AGENDA', sessionToken: TECNICO_TOKEN, id,
           data: (tecAgTarefas.find(t=>t.id===id)||{}).data, titulo: (tecAgTarefas.find(t=>t.id===id)||{}).titulo,
           anexos: [{ nome: file.name, base64: reader.result }] }) });
+      const r = await resp.json().catch(()=>({}));
+      if(r.status === 'error'){ showToast(r.message || 'Não foi possível anexar.'); await tecAgCarregar(); return; }
       showToast('Anexo enviado!');
       await tecAgCarregar();
     }catch(e){ showToast('Erro ao enviar o anexo.'); }

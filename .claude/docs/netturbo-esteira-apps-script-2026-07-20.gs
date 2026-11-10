@@ -2883,6 +2883,15 @@ function criarOuEditarTarefaAgenda(ss, data) {
   const sheet = garantirAgenda(ss);
   const mencionados = Array.isArray(data.mencionados) ? data.mencionados.filter(m => m && m.nome && m.tipo) : [];
 
+  // Tarefa concluída (pelo técnico ou pela liderança) não recebe mais foto/anexo de
+  // técnico — checa antes de subir qualquer coisa pro Drive. Liderança continua podendo.
+  if (data.id && autor.tipo === 'TECNICO') {
+    const infoAtual = encontrarLinhaAgenda(sheet, data.id);
+    if (infoAtual && String(infoAtual.dados[HEADERS_AGENDA.indexOf('Concluído')]) === 'sim') {
+      return resposta('error', { message: 'Tarefa concluída — não aceita mais fotos/anexos.' });
+    }
+  }
+
   const novosAnexos = Array.isArray(data.anexos) ? data.anexos : [];
   let anexosSubidos = [];
   try {
@@ -2980,6 +2989,12 @@ function concluirTarefaAgenda(ss, data) {
   const souCriador = criadoPor === autor.nome && criadoPorTipo === autor.tipo;
   const souMencionado = mencionados.some(m => m.nome === autor.nome && m.tipo === autor.tipo);
   if (!souCriador && !souMencionado) return resposta('error', { message: 'Você não tem acesso a essa tarefa.' });
+  // Técnico não reabre tarefa concluída (senão desmarcava, anexava mais foto e marcava
+  // de novo) — só a liderança reabre.
+  const jaConcluida = String(info.dados[HEADERS_AGENDA.indexOf('Concluído')]) === 'sim';
+  if (autor.tipo === 'TECNICO' && jaConcluida && data.concluido === false) {
+    return resposta('error', { message: 'Tarefa concluída — só a liderança pode reabrir.' });
+  }
 
   sheet.getRange(info.linha, HEADERS_AGENDA.indexOf('Concluído') + 1).setValue(data.concluido === false ? 'não' : 'sim');
   return resposta('ok', {});
