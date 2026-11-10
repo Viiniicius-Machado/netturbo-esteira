@@ -58,6 +58,22 @@
     .stat-card{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);border-radius:var(--radius);padding:.7rem .9rem}
     .stat-value{font-family:'Rajdhani',sans-serif;font-size:1.5rem;font-weight:700;color:var(--accent);line-height:1.1}
     .stat-label{font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.2rem}
+    .stat-card.stat-clicavel{cursor:pointer;transition:border-color .15s,background .15s}
+    .stat-card.stat-clicavel:hover{background:var(--surface2)}
+    .stat-card.stat-clicavel.ativo{background:var(--accent-dim);border-color:var(--accent)}
+    .stat-hint{font-size:.58rem;color:var(--text-dim);margin-top:.25rem}
+
+    /* lista de obras que compõem o valor do card clicado */
+    .detalhe-obras{background:var(--surface);border:1px solid var(--accent-dark);border-radius:var(--radius-lg);margin:-.4rem 0 1rem;overflow:hidden}
+    .detalhe-obras-header{padding:.55rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.5rem}
+    .detalhe-obras-fechar{margin-left:auto;background:none;border:none;color:var(--text-dim);font-size:1.1rem;cursor:pointer;line-height:1}
+    .detalhe-linha{display:flex;align-items:center;gap:.8rem;padding:.55rem 1rem;border-bottom:1px solid var(--border);font-size:.8rem}
+    .detalhe-linha .obra{flex:1;min-width:0}
+    .detalhe-linha .obra-prot{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--text)}
+    .detalhe-linha .obra-cli{font-size:.7rem;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .detalhe-linha .obra-valor{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;color:var(--accent);white-space:nowrap}
+    .detalhe-total{display:flex;justify-content:space-between;padding:.6rem 1rem;background:var(--surface2);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.04em;text-transform:uppercase}
+    .detalhe-total span:last-child{color:var(--accent)}
 
     .atv-card{background:var(--surface3);border:1px solid var(--border-hi);border-left:3px solid var(--accent);border-radius:var(--radius-lg);padding:.8rem .9rem;margin-bottom:.6rem}
     .protocolo{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:.9rem}
@@ -125,19 +141,24 @@
 <main id="app" style="display:none">
 
   <div class="stat-row">
-    <div class="stat-card">
+    <div class="stat-card stat-clicavel" data-grupo="pendentes" onclick="alternarDetalhe('pendentes')" title="Ver obras">
       <div class="stat-value" id="stPendenteValor">R$ 0,00</div>
       <div class="stat-label">Pendente de Nota Fiscal</div>
+      <div class="stat-hint">Toque para ver as obras</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card stat-clicavel" data-grupo="aguardando" onclick="alternarDetalhe('aguardando')" title="Ver obras">
       <div class="stat-value" id="stAguardandoValor">R$ 0,00</div>
       <div class="stat-label">Aguardando Pagamento</div>
+      <div class="stat-hint">Toque para ver as obras</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card stat-clicavel" data-grupo="pagos" onclick="alternarDetalhe('pagos')" title="Ver obras">
       <div class="stat-value" id="stPagoValor">R$ 0,00</div>
       <div class="stat-label">Já Pago</div>
+      <div class="stat-hint">Toque para ver as obras</div>
     </div>
   </div>
+
+  <div class="detalhe-obras" id="detalheObras" style="display:none"></div>
 
   <div class="card">
     <div class="card-header">Pendente de Fechamento<div style="flex:1"></div><span class="col-count" id="countPendentes">0</span></div>
@@ -184,6 +205,12 @@ let TECNICO_LOGADO = '';
 let EMPRESA_LOGADA = '';
 let TECNICO_TOKEN = ''; // ver comentário em tecnico.html — mesma sessão, mesma chave sessionStorage
 let TODOS_ITENS = [];
+// Card de valor aberto (pendentes/aguardando/pagos) — clicar no valor expande a lista de
+// obras que compõem aquele total, cada uma com o próprio valor do lado. Fica guardado aqui
+// pra continuar aberto quando o auto-refresh de 30s re-renderiza a tela.
+let DETALHE_ABERTO = '';
+let GRUPOS = { pendentes: [], aguardando: [], pagos: [] };
+const TITULOS_GRUPO = { pendentes: 'Pendente de Nota Fiscal', aguardando: 'Aguardando Pagamento', pagos: 'Já Pago' };
 
 // Sem empresas SEM_LPU na lista — não passam por cobrança de LPU nem NF.
 function popularEmpresas(){
@@ -342,6 +369,7 @@ function renderFechamento(){
   const pendentes = TODOS_ITENS.filter(a => statusLpu(a)==='APROVADO_AGUARDANDO_NF' && !campoLpu(a,'NF URL'));
   const aguardando = TODOS_ITENS.filter(a => statusLpu(a)==='APROVADO_AGUARDANDO_NF' && campoLpu(a,'NF URL'));
   const pagos = TODOS_ITENS.filter(a => statusLpu(a)==='PAGO');
+  GRUPOS = { pendentes, aguardando, pagos };
 
   const somaValor = lista => lista.reduce((s,a) => s + Number(campoLpu(a,'Total')||0), 0);
   document.getElementById('stPendenteValor').textContent = fmtMoeda(somaValor(pendentes));
@@ -368,6 +396,37 @@ function renderFechamento(){
   document.getElementById('colPagos').innerHTML = pagos.length
     ? pagos.map(a => cardAtividade(a, { badge: '<span class="badge-pago">PAGO</span>', extra: `<br><b>Pago em:</b> ${campoLpu(a,'Timestamp Pago')||'—'}` })).join('')
     : '<div class="empty-msg">Nenhum pagamento no histórico ainda.</div>';
+
+  renderDetalhe();
+}
+
+window.alternarDetalhe = function(grupo){
+  DETALHE_ABERTO = DETALHE_ABERTO === grupo ? '' : grupo;
+  renderDetalhe();
+};
+
+function renderDetalhe(){
+  const box = document.getElementById('detalheObras');
+  document.querySelectorAll('.stat-card[data-grupo]').forEach(c => c.classList.toggle('ativo', c.dataset.grupo === DETALHE_ABERTO));
+  if(!DETALHE_ABERTO){ box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  const lista = GRUPOS[DETALHE_ABERTO] || [];
+  const total = lista.reduce((s,a) => s + Number(campoLpu(a,'Total')||0), 0);
+  const linhas = lista.length
+    ? lista.map(a => {
+        const badgeApoio = a.tipoLpu === 'apoio' ? '<span class="badge-apoio">APOIO</span>' : '';
+        return `<div class="detalhe-linha">
+          <div class="obra">
+            <div class="obra-prot">${a['Protocolo O&M'] || a['Protocolo NOC'] || '—'}${badgeApoio}</div>
+            <div class="obra-cli">${a['Cliente']||'—'}</div>
+          </div>
+          <div class="obra-valor">${fmtMoeda(campoLpu(a,'Total'))}</div>
+        </div>`;
+      }).join('') + `<div class="detalhe-total"><span>Total (${lista.length} obra${lista.length===1?'':'s'})</span><span>${fmtMoeda(total)}</span></div>`
+    : '<div class="empty-msg">Nenhuma obra neste valor.</div>';
+
+  box.innerHTML = `<div class="detalhe-obras-header">${TITULOS_GRUPO[DETALHE_ABERTO]}<button class="detalhe-obras-fechar" onclick="alternarDetalhe('')" title="Fechar">×</button></div>${linhas}`;
+  box.style.display = 'block';
 }
 
 document.getElementById('inputNF').addEventListener?.('change', function(){});
