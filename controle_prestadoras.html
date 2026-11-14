@@ -57,6 +57,10 @@
   .import-log .il-line{padding:.15rem 0}
   .il-ok{color:var(--green)}
   .il-warn{color:var(--amber)}
+  .il-clicavel{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+  .il-clicavel:hover{filter:brightness(1.25)}
+  @keyframes obraDestaque{0%,60%{background:rgba(245,166,35,.35)}100%{background:transparent}}
+  tr.obra-destacada td{animation:obraDestaque 3.5s ease-out}
   .il-err{color:var(--red)}
 
   /* ── FILTROS ── */
@@ -1150,13 +1154,43 @@ function parsearRelatorio(flat, nomeArquivo){
 
 /* ═══════════════════════════ IMPORTAÇÃO (drag&drop / seletor) ═══════════════════════════ */
 const logEl = document.getElementById('importLog');
-function logImport(msg, tipo){
+// aoClicar opcional: deixa a linha do log clicável (ex.: obra da planilha repetida de um PDF
+// já importado → abre aquele PDF e destaca a obra na tabela, ver mostrarObraRepetida).
+function logImport(msg, tipo, aoClicar){
   logEl.classList.add('show');
   const div = document.createElement('div');
   div.className = 'il-line ' + (tipo === 'ok' ? 'il-ok' : tipo === 'warn' ? 'il-warn' : tipo === 'err' ? 'il-err' : '');
   div.textContent = msg;
+  if (aoClicar){
+    div.classList.add('il-clicavel');
+    div.title = 'Clique para abrir o PDF e localizar a obra na tabela';
+    div.addEventListener('click', aoClicar);
+  }
   logEl.prepend(div);
 }
+
+// Pedido do Vinicius em 2026-11-14: achar fácil qual PDF está repetindo a linha da planilha.
+// Abre o PDF (se foi salvo no Drive) e rola até a obra na tabela "Obras Importadas",
+// destacando a linha. Se a obra estiver escondida pelo filtro atual (prestadora, período,
+// conta ou já fechada), avisa em vez de não fazer nada.
+function mostrarObraRepetida(id){
+  const obra = TODAS_OBRAS.find(o => o.id === id);
+  if (!obra) return;
+  if (obra.pdfUrl) window.open(obra.pdfUrl, '_blank', 'noopener');
+  const tr = document.querySelector('#tbodyObras tr[data-obra-id="' + CSS.escape(id) + '"]');
+  if (tr){
+    tr.scrollIntoView({ behavior:'smooth', block:'center' });
+    tr.classList.remove('obra-destacada'); void tr.offsetWidth;
+    tr.classList.add('obra-destacada');
+  } else {
+    logImport('A obra do PDF "' + (obra.arquivo || obra.idEtiqueta) + '" não está aparecendo na tabela com o filtro atual'
+      + ' (prestadora/período/conta ou já fechada — marque "mostrar também as já fechadas" se for o caso).', 'warn');
+  }
+  if (!obra.pdfUrl){
+    logImport('PDF "' + (obra.arquivo || obra.idEtiqueta) + '" foi importado antes de 02/09/2026 e não tem arquivo salvo pra abrir — só dá pra localizar na tabela.', 'warn');
+  }
+}
+window.mostrarObraRepetida = mostrarObraRepetida;
 
 async function coletarPdfsDeArquivos(fileList){
   const pdfs = []; // { nome, arrayBuffer }
@@ -1456,7 +1490,8 @@ async function processarPlanilha(file){
     vistosNesteArquivo.add(rec.id);
     const doPdf = rec.idEtiqueta && chavesPdf.get(chaveDedupObra(rec.idEtiqueta, rec.empresa));
     if (doPdf){
-      logImport('Planilha: ' + rotulo + ' · ' + rec.empresa + ' já importada por PDF (' + (doPdf.arquivo || doPdf.idEtiqueta) + ') — mantida a do PDF.', 'warn');
+      logImport('Planilha: ' + rotulo + ' · ' + rec.empresa + ' já importada por PDF (' + (doPdf.arquivo || doPdf.idEtiqueta) + ') — mantida a do PDF. 🔍 clique para ver o PDF',
+        'warn', () => mostrarObraRepetida(doPdf.id));
       repetidos++;
       return;
     }
@@ -2472,7 +2507,7 @@ function renderTabela(){
   tbody.innerHTML = lista.map(r => {
     const chaveFechamento = fechamentoQueCobreObra(r);
     return `
-    <tr>
+    <tr data-obra-id="${String(r.id || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}">
       <td><span class="pill-empresa">${r.empresa}</span></td>
       <td>${r.tecnico || '—'}</td>
       <td>${r.clientePop || '—'}</td>
