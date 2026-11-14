@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="auth.js"></script>
 <style>
   :root{
@@ -230,13 +231,13 @@
 <main>
   <div class="dropzone" id="dropzone">
     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/></svg>
-    <div class="dropzone-title">Arraste aqui os PDFs (relatório de prestação de serviços) ou os ZIPs das prestadoras</div>
-    <div class="dropzone-sub">Aceita .pdf e .zip (procura PDFs dentro, em qualquer subpasta). Reimportar o mesmo arquivo não duplica o registro.</div>
+    <div class="dropzone-title">Arraste aqui a planilha de obras (Excel), os PDFs (relatório de prestação de serviços) ou os ZIPs das prestadoras</div>
+    <div class="dropzone-sub">Aceita .xlsx/.xls/.csv (aba "Obras": uma linha por obra, com Prestador, CNPJ e Valor total; aba "Serviços" opcional com o detalhe por código SEV), .pdf e .zip. Reimportar o mesmo arquivo não duplica o registro.</div>
     <div class="dropzone-actions">
       <button class="btn btn-accent" onclick="document.getElementById('inputArquivos').click()">Selecionar Arquivos</button>
-      <input type="file" id="inputArquivos" multiple accept=".pdf,.zip"/>
+      <input type="file" id="inputArquivos" multiple accept=".pdf,.zip,.xlsx,.xls,.csv"/>
     </div>
-    <div class="dropzone-sub">Aprovador é preenchido sozinho com quem estiver logado ao importar (a assinatura do aprovador no PDF é uma imagem escaneada, não dá pra ler automaticamente).</div>
+    <div class="dropzone-sub">Aprovador: na planilha vem da coluna "Aprovado por (líder)"; no PDF é preenchido sozinho com quem estiver logado ao importar (a assinatura do aprovador no PDF é uma imagem escaneada, não dá pra ler automaticamente).</div>
     <div class="import-log" id="importLog"></div>
   </div>
 
@@ -550,14 +551,35 @@ function chaveDedupObra(idOuProtocolo, empresa){
 function mesclarLpuEsteira(obrasPdf, registros){
   const chavesPdf = new Set();
   obrasPdf.forEach(o => { if (o.idEtiqueta) chavesPdf.add(chaveDedupObra(o.idEtiqueta, o.empresa)); });
+  const chavesPlanilha = chavesObrasPlanilha(obrasPdf);
   return registros
     .filter(reg => {
       const chaveEtiqueta = reg.etiqueta ? chaveDedupObra(reg.etiqueta, reg.empresa) : null;
       const chaveProtocolo = reg.protocolo ? chaveDedupObra(reg.protocolo, reg.empresa) : null;
-      const duplicado = (chaveEtiqueta && chavesPdf.has(chaveEtiqueta)) || (chaveProtocolo && chavesPdf.has(chaveProtocolo));
+      const duplicado = (chaveEtiqueta && chavesPdf.has(chaveEtiqueta)) || (chaveProtocolo && chavesPdf.has(chaveProtocolo))
+        || registroEsteiraRepeteObraPlanilha(reg.etiqueta, reg.protocolo, reg.empresa, chavesPlanilha);
       return !duplicado;
     })
     .map(transformarRegistroLpu);
+}
+// obra importada por planilha (2026-11-14, ver processarPlanilha): Etiqueta da planilha ou,
+// sem ela, o nº do protocolo vai em idEtiqueta (o backend só grava as colunas fixas de
+// CONTROLE_PRESTADORAS_OBRAS — não tem coluna de Protocolo). Do lado da ESTEIRA o protocolo
+// vem como texto ("Protocolo 151806 - Fabieder dia ..."), então compara pelo número também.
+// Só vale contra obra de planilha — PDF x ESTEIRA continua exatamente como era.
+function numeroProtocolo(s){
+  const t = String(s == null ? '' : s).trim();
+  const m = /protocolo\D{0,5}(\d{4,})/i.exec(t) || /^(\d{4,})$/.exec(t);
+  return m ? m[1] : '';
+}
+function chavesObrasPlanilha(obras){
+  const chaves = new Set();
+  obras.forEach(o => { if (o.origemPlanilha && o.idEtiqueta) chaves.add(chaveDedupObra(o.idEtiqueta, o.empresa)); });
+  return chaves;
+}
+function registroEsteiraRepeteObraPlanilha(etiqueta, protocolo, empresa, chavesPlanilha){
+  return [etiqueta, protocolo, numeroProtocolo(protocolo)].filter(Boolean)
+    .some(k => chavesPlanilha.has(chaveDedupObra(k, empresa)));
 }
 function todasObrasCombinadas(){ return TODAS_OBRAS.concat(OBRAS_LPU_SISTEMA); }
 
@@ -1188,7 +1210,12 @@ async function subirPdfObraPrestadora(arrayBuffer, nomeArquivo){
 }
 
 async function processarArquivos(fileList){
-  const pdfs = await coletarPdfsDeArquivos(fileList);
+  const arquivos = Array.from(fileList);
+  const planilhas = arquivos.filter(f => /\.(xlsx|xlsm|xls|csv)$/i.test(f.name));
+  const outros = arquivos.filter(f => !planilhas.includes(f));
+  for (const planilha of planilhas) await processarPlanilha(planilha);
+  if (!outros.length) return;
+  const pdfs = await coletarPdfsDeArquivos(outros);
   if (!pdfs.length){ logImport('Nenhum PDF encontrado nos arquivos selecionados.', 'warn'); return; }
 
   let novos = 0, atualizados = 0, erros = 0;
@@ -1236,6 +1263,218 @@ async function processarArquivos(fileList){
   TODAS_OBRAS = Array.from(mapa.values());
   salvarObras(TODAS_OBRAS);
   logImport(novos + ' nova(s) obra(s), ' + atualizados + ' atualizada(s), ' + erros + ' ignorada(s).', novos ? 'ok' : 'warn');
+  renderTudo();
+}
+
+/* ═══════════════════════════ IMPORTAÇÃO DE PLANILHA (Excel) ═══════════════════════════ */
+// Pedido do Vinicius em 2026-11-14: orçamento das obras começou a chegar por vários meios
+// (não só PDF), então a base passa a vir numa planilha. Layout (ex.: obras_lpu_2026-11.xlsx):
+//   aba "Obras"    → 1 linha = 1 obra: LPU, Chamado, Cliente, Etiqueta, Protocolo NOC/O&M,
+//                    Cidade, Prestador, CNPJ, Técnico, Conta contábil (+ nome), Valor total
+//                    (R$), Data de preenchimento, Aprovado por (líder)...
+//   aba "Serviços" → opcional, 1 linha por código SEV da obra (LPU, Código, Serviço, Medida,
+//                    Quantidade, Valor) — alimenta o ranking por serviço igual ao item do PDF.
+// Colunas achadas pelo nome do cabeçalho (sem acento/maiúscula), não pela posição, então
+// coluna a mais/a menos ou fora de ordem não quebra. Prestador é resolvido igual ao PDF
+// (normalizarEmpresa: CNPJ primeiro, nome depois) — mesmos nomes que já aparecem na tela.
+//
+// Critério de obra repetida (mesmo espírito do PDF/LPU no sistema):
+//   - id da obra = empresa + nº da LPU (sem LPU: Chamado/Etiqueta/Protocolo) → reimportar a
+//     planilha (ou uma versão corrigida) ATUALIZA a obra, não soma de novo; "Importado em"
+//     da 1ª vez é preservado.
+//   - obra já importada por PDF com a mesma Etiqueta ou Protocolo + empresa → linha da
+//     planilha é ignorada (fica a do PDF), avisando no log.
+//   - LPU preenchida no sistema (ESTEIRA) com a mesma Etiqueta/Protocolo/nº LPU + empresa →
+//     sai da conta (ver mesclarLpuEsteira), vale a da planilha.
+//   - mesma linha repetida dentro da própria planilha (mesmo id) → conta uma vez só.
+//   Duas LPUs diferentes com o mesmo Protocolo (ex.: LPU-00106 e LPU-00108 da FUSION, rotas
+//   diferentes no mesmo protocolo) são obras distintas — o nº da LPU é o que manda.
+function marcarOrigemPlanilha(r){
+  if (!String(r.id || '').startsWith('XLS|')) return;
+  r.origemPlanilha = true;
+  const ident = String(r.id).split('|').slice(2).join('|');
+  r.lpu = /^LPU-/i.test(ident) ? ident : '';
+}
+function normCabecalho(s){
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/\(r\$\)/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+// valor da linha na 1ª coluna cujo cabeçalho normalizado bate com um dos nomes
+function campoLinha(linha, nomes){
+  const chaves = Object.keys(linha);
+  for (const nome of nomes){
+    for (const k of chaves) if (normCabecalho(k) === nome) return linha[k];
+  }
+  return '';
+}
+function txt(v){ return String(v == null ? '' : v).trim(); }
+// número da planilha: célula numérica vem como number; texto pode vir "1.234,56" ou "R$ 400,00"
+function numPlanilha(v){
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  let s = txt(v).replace(/[R$\s]/g, '');
+  if (!s) return 0;
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(s);
+  return isFinite(n) ? n : 0;
+}
+// data da planilha → "dd/mm/aaaa" (mesmo formato do PDF, usado em parseDataBR/filtros)
+function dataPlanilha(v){
+  if (v instanceof Date && !isNaN(v.getTime())) return v.toLocaleDateString('pt-BR');
+  if (typeof v === 'number' && v > 20000){ // serial de data do Excel
+    const d = new Date(Math.round((v - 25569) * 86400000));
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()).toLocaleDateString('pt-BR');
+  }
+  const m = /(\d{2})\/(\d{2})\/(\d{4})/.exec(txt(v));
+  if (m) return m[1] + '/' + m[2] + '/' + m[3];
+  const iso = /(\d{4})-(\d{2})-(\d{2})/.exec(txt(v));
+  return iso ? iso[3] + '/' + iso[2] + '/' + iso[1] : '';
+}
+function acharAba(wb, testeCabecalho){
+  for (const nome of wb.SheetNames){
+    const linhas = XLSX.utils.sheet_to_json(wb.Sheets[nome], { defval:'', raw:true });
+    if (!linhas.length) continue;
+    const cab = Object.keys(linhas[0]).map(normCabecalho);
+    if (testeCabecalho(cab)) return linhas;
+  }
+  return null;
+}
+
+function itensDaPlanilha(linhasServicos){
+  const porLpu = new Map();
+  (linhasServicos || []).forEach(l => {
+    const lpu = txt(campoLinha(l, ['lpu'])).toUpperCase();
+    const codigo = txt(campoLinha(l, ['codigo', 'cod', 'codigo sev', 'sev']));
+    if (!lpu || !codigo) return;
+    const qtd = numPlanilha(campoLinha(l, ['quantidade', 'qtd', 'qtde']));
+    const total = Math.round(numPlanilha(campoLinha(l, ['valor', 'valor total', 'total'])) * 100) / 100;
+    const critico = normCabecalho(campoLinha(l, ['critico']));
+    const item = {
+      codigo, descricao: txt(campoLinha(l, ['servico', 'descricao'])),
+      fator: critico && !/^(nao|n|0|false)$/.test(critico) ? 'Crítico' : 'Comum',
+      classe: '', unidade: txt(campoLinha(l, ['medida', 'unidade'])),
+      valorUnit: qtd ? Math.round(total / qtd * 10000) / 10000 : 0, qtd, total,
+    };
+    if (!porLpu.has(lpu)) porLpu.set(lpu, []);
+    porLpu.get(lpu).push(item);
+  });
+  return porLpu;
+}
+
+// "SEV0085 × 2,00; SEV0079 × 1,00" (coluna Serviços da aba Obras) — usado só quando a
+// planilha não tem a aba Serviços; sem valor por item, entra só código e quantidade.
+function itensDoResumo(resumo){
+  return txt(resumo).split(';').map(p => {
+    const m = /(SEV\w+)\s*[×xX*]\s*([\d.,]+)/.exec(p);
+    return m ? { codigo:m[1], descricao:'', fator:'Comum', classe:'', unidade:'', valorUnit:0, qtd:numPlanilha(m[2]), total:0 } : null;
+  }).filter(Boolean);
+}
+
+function registroDaLinhaPlanilha(l, itensPorLpu, nomeArquivo){
+  const lpu = txt(campoLinha(l, ['lpu', 'n lpu', 'numero lpu'])).toUpperCase();
+  const chamado = txt(campoLinha(l, ['chamado']));
+  const cnpj = txt(campoLinha(l, ['cnpj']));
+  const empresa = normalizarEmpresa(txt(campoLinha(l, ['prestador', 'prestadora', 'empresa'])), cnpj);
+  const etiqueta = txt(campoLinha(l, ['etiqueta', 'id etiqueta']));
+  const protocolo = txt(campoLinha(l, ['protocolo o m', 'protocolo om'])) || txt(campoLinha(l, ['protocolo noc', 'protocolo']));
+  let total = numPlanilha(campoLinha(l, ['valor total', 'total', 'valor']));
+  if (!total) total = numPlanilha(campoLinha(l, ['valor servicos'])) + numPlanilha(campoLinha(l, ['reembolso']));
+  total = Math.round(total * 100) / 100;
+  const data = dataPlanilha(campoLinha(l, ['data de preenchimento', 'data']))
+    || dataPlanilha(campoLinha(l, ['conclusao tecnica do chamado']))
+    || dataPlanilha(campoLinha(l, ['aprovado em']));
+  const contaBruta = txt(campoLinha(l, ['conta contabil']));
+  const contaCodigo = extrairContaCodigo(contaBruta);
+  const contaDescricao = txt(campoLinha(l, ['conta contabil nome'])) || extrairContaDescricao(contaBruta);
+  let itens = (lpu && itensPorLpu.get(lpu)) || [];
+  if (!itens.length) itens = itensDoResumo(campoLinha(l, ['servicos']));
+  const clientePop = txt(campoLinha(l, ['cliente', 'cliente pop']));
+  // ID/Etiqueta: Etiqueta da planilha; sem ela, o nº do protocolo (mesmo tipo de valor que
+  // o PDF traz nesse campo, ex. "137337") — é o que cruza com PDF e com a ESTEIRA.
+  const idEtiqueta = etiqueta || numeroProtocolo(protocolo) || protocolo;
+  const identificador = lpu || chamado || idEtiqueta || [clientePop, data, total].join('|');
+  return {
+    id: 'XLS|' + empresa + '|' + identificador,
+    empresa, cnpj,
+    tecnico: txt(campoLinha(l, ['tecnico'])),
+    cidade: txt(campoLinha(l, ['cidade'])),
+    clientePop,
+    idEtiqueta,
+    lpu: /^LPU-/i.test(identificador) ? identificador : '',
+    periodoIni: data, periodoFim: data, dataRelatorio: data,
+    contaCodigo, contaDescricao,
+    totalGeral: total,
+    itens,
+    arquivo: nomeArquivo,
+    importadoEm: new Date().toISOString(),
+    aprovador: txt(campoLinha(l, ['aprovado por lider', 'aprovado por', 'aprovador'])),
+    origemPlanilha: true,
+  };
+}
+
+async function processarPlanilha(file){
+  let wb;
+  try {
+    wb = XLSX.read(await file.arrayBuffer(), { type:'array', cellDates:true });
+  } catch(e){
+    logImport('Erro ao abrir a planilha "' + file.name + '": ' + e.message, 'err');
+    return;
+  }
+  const linhasObras = acharAba(wb, cab => (cab.includes('prestador') || cab.includes('prestadora') || cab.includes('cnpj'))
+    && (cab.includes('valor total') || cab.includes('total') || cab.includes('valor')));
+  if (!linhasObras){
+    logImport('Planilha "' + file.name + '" sem aba de obras reconhecida (precisa das colunas Prestador/CNPJ e Valor total).', 'warn');
+    return;
+  }
+  const linhasServicos = acharAba(wb, cab => cab.includes('lpu') && cab.includes('codigo') && !cab.includes('valor total'));
+  const itensPorLpu = itensDaPlanilha(linhasServicos);
+
+  const usuarioLogado = NetturboAuth.usuario();
+  const aprovadorAtual = (usuarioLogado && usuarioLogado.nome) || '';
+  const mapa = new Map(TODAS_OBRAS.map(r => [r.id, r]));
+  // obras de PDF (não planilha) por Etiqueta/Protocolo + empresa — critério de obra repetida
+  const chavesPdf = new Map();
+  TODAS_OBRAS.forEach(o => {
+    if (!o.origemPlanilha && o.idEtiqueta) chavesPdf.set(chaveDedupObra(o.idEtiqueta, o.empresa), o);
+  });
+
+  let novos = 0, atualizados = 0, repetidos = 0, ignorados = 0;
+  const vistosNesteArquivo = new Set();
+  linhasObras.forEach((l, i) => {
+    if (!Object.values(l).some(v => txt(v))) return; // linha em branco
+    const rec = registroDaLinhaPlanilha(l, itensPorLpu, file.name);
+    const rotulo = 'linha ' + (i + 2) + (rec.lpu ? ' (' + rec.lpu + ')' : '');
+    if (!rec.totalGeral || !rec.empresa || rec.empresa === 'DESCONHECIDA'){
+      logImport('Planilha: ' + rotulo + ' sem prestador ou sem valor — ignorada.', 'warn');
+      ignorados++;
+      return;
+    }
+    if (vistosNesteArquivo.has(rec.id)){
+      logImport('Planilha: ' + rotulo + ' repetida dentro da própria planilha — contada uma vez só.', 'warn');
+      repetidos++;
+      return;
+    }
+    vistosNesteArquivo.add(rec.id);
+    const doPdf = rec.idEtiqueta && chavesPdf.get(chaveDedupObra(rec.idEtiqueta, rec.empresa));
+    if (doPdf){
+      logImport('Planilha: ' + rotulo + ' · ' + rec.empresa + ' já importada por PDF (' + (doPdf.arquivo || doPdf.idEtiqueta) + ') — mantida a do PDF.', 'warn');
+      repetidos++;
+      return;
+    }
+    const existente = mapa.get(rec.id);
+    if (!rec.aprovador) rec.aprovador = aprovadorAtual;
+    if (existente){ rec.importadoEm = existente.importadoEm; atualizados++; }
+    else novos++;
+    mapa.set(rec.id, rec);
+  });
+
+  TODAS_OBRAS = Array.from(mapa.values());
+  salvarObras(TODAS_OBRAS);
+  // LPU do sistema já carregada na tela que acabou de virar repetida de uma obra da planilha
+  const chavesPlanilha = chavesObrasPlanilha(TODAS_OBRAS);
+  OBRAS_LPU_SISTEMA = OBRAS_LPU_SISTEMA.filter(o =>
+    !registroEsteiraRepeteObraPlanilha(o.idEtiqueta, o.protocolo, o.empresa, chavesPlanilha));
+  logImport('Planilha "' + file.name + '": ' + novos + ' nova(s) obra(s), ' + atualizados + ' atualizada(s), '
+    + repetidos + ' repetida(s), ' + ignorados + ' ignorada(s).', (novos || atualizados) ? 'ok' : 'warn');
   renderTudo();
 }
 
@@ -2165,7 +2404,7 @@ document.querySelectorAll('[data-ordsev]').forEach(chip => {
 
 /* ═══════════════════════════ RENDER: tabela de obras ═══════════════════════════ */
 function excluirObra(id){
-  if (!confirm('Remover esta obra do controle? (isso não apaga o PDF, só tira do painel)')) return;
+  if (!confirm('Remover esta obra do controle? (isso não apaga o PDF/planilha, só tira do painel)')) return;
   TODAS_OBRAS = TODAS_OBRAS.filter(r => r.id !== id);
   salvarObras(TODAS_OBRAS);
   renderTudo();
@@ -2237,7 +2476,7 @@ function renderTabela(){
       <td><span class="pill-empresa">${r.empresa}</span></td>
       <td>${r.tecnico || '—'}</td>
       <td>${r.clientePop || '—'}</td>
-      <td>${r.idEtiqueta || '—'}</td>
+      <td>${r.lpu ? r.lpu + (r.idEtiqueta ? '<br><span style="color:var(--text-muted);font-size:.72rem">' + r.idEtiqueta + '</span>' : '') : (r.idEtiqueta || '—')}</td>
       <td>${r.periodoIni || r.dataRelatorio || '—'}</td>
       <td><span class="conta-tag ${isManutencao(r)?'manut':''}">${r.contaDescricao || '—'}</span></td>
       <td>${r.aprovador || '—'}</td>
@@ -2265,6 +2504,7 @@ function botaoVerPdfHtml(r){
     return `<button class="btn btn-outline btn-sm" onclick="verPdfLpu(${r.rowIndex}, '${r.tipoLpu}')">Ver PDF</button>`;
   }
   if (r.pdfUrl) return `<a class="btn btn-outline btn-sm" href="${r.pdfUrl}" target="_blank" rel="noopener">Ver PDF</a>`;
+  if (r.origemPlanilha) return '<span style="font-size:.68rem;color:var(--text-muted);font-style:italic">Planilha</span>';
   return '<span style="color:var(--text-muted)">—</span>';
 }
 async function verPdfLpu(rowIndex, tipoLpu){
@@ -2400,6 +2640,9 @@ async function iniciar(){
     await persistirEstadoAgora('bootstrap', 'v1');
   } else {
     TODAS_OBRAS = resultado.obras;
+    // obra de planilha (id "XLS|EMPRESA|LPU-00087", ver registroDaLinhaPlanilha): o backend
+    // não guarda esses campos, então são reconstruídos a partir do id a cada carga.
+    TODAS_OBRAS.forEach(marcarOrigemPlanilha);
 
     // migração (2026-08-28, generalizada em 2026-09-04): obras importadas com o PDF
     // anexado/nomeado com o nome da pessoa física (RHIKELMY SOARES MACEDO, FABIEDER
